@@ -5,6 +5,9 @@
 # File name: hmm/mdc_name.hmm
 #----------------------------------------------------------------------
 
+# HMM Name
+Name HMM
+
 # HMM states
 #
 titl, baby, knwn, andor, gname1, gname2, ghyph, gopbr, gclbr, agname1, agname2, coma, sname1, sname2, shyph, sopbr, sclbr, asname1, asname2, pref1, pref2, rubb

@@ -7,7 +7,7 @@
 #          - Address Component Abbreviations from AS.4590 - 1999
 #            (Australian Standard for Interchange of Client Information)
 #
-# Last update: 30/08/2002, Peter Christen
+# Last update: 13/12/2002, Peter Christen
 #
 # =============================================================================
 # Freely extensible biomedical record linkage (Febrl) Version 0.1
@@ -120,7 +120,7 @@ tag=<WT>  # Tag for wayfare type words
           square : sq, sqr
     statehighway : shwy
           strand : stra, strnd
-          street : st, str, streets, stret, strets, sty
+          street : st, str, streets, stret, strets, sty, sstreet, sstreets
            strip : strp
           subway : sbwy
          terrace : ter, terr, tce, terace, terrac, terrance, terrrace

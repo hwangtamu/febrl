@@ -3,7 +3,7 @@
 #
 # Source: - NSW Health Department pattern and classification files
 #
-# Last update: 30/08/2002, Peter Christen
+# Last update: 10/12/2002, Peter Christen
 #
 # =============================================================================
 # Freely extensible biomedical record linkage (Febrl) Version 0.1
@@ -33,7 +33,8 @@ tag=<PA>  # Tag for postal address words
 
              bag : lb, lmb, mb, mailbag, lockedbag, mail bag, locked bag,
                    locked mail bag
-             box : pobox, postbox, post box, po box
+             box : pobox, postbox, post box, po box, post office box,
+                   p o box, p office box
             mail : m, ml
      mailservice : ms, m s, mail service
              rmb : road mail box, r m b, roadside mail box, roadside mailbox

@@ -46,9 +46,9 @@ tag=<LQ>  # Tag for locality qualifier words
         northern : nrthn, nrtn, nrthrn, nthn, nthrn, northen
        northwest : nw, nthwest, ntwest
            south : s, so, sth
-       southeast : se, stheast, steast
+       southeast : se, stheast
         southern : sthn, sthrn
-       southwest : sw, sthwest, stwest
+       southwest : sw, sthwest
            upper : uppr, upr
             west : w, wessst, wst
          western : westrn, wstrn, wstn

@@ -5,6 +5,9 @@
 # File name: hmm/geoloc-absdiscount.hmm
 #----------------------------------------------------------------------
 
+# HMM Name
+Address HMM
+
 # HMM states
 #
 wfnu, wfna1, wfna2, wfql, wfty, unnu, unty, prna1, prna2, inna1, inna2, inty, panu, paty, hyph, sla, coma, opbr, clbr, loc1, loc2, locql, pc, ter1, ter2, cntr1, cntr2, rubb

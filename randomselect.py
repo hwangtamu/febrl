@@ -1,7 +1,7 @@
 # =============================================================================
-# pyRandomSelect.py - Auxiliary program to randomly select records
+# randomselect.py - Auxiliary program to randomly select records
 #
-# Freely extensible biomedical record linkage (Febrl) Version 0.1
+# Freely extensible biomedical record linkage (Febrl) Version 0.2
 # See http://datamining.anu.edu.au/projects/linkage.html
 #
 # =============================================================================
@@ -13,7 +13,7 @@
 # Software distributed under the License is distributed on an "AS IS" basis,
 # WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License for
 # the specific language governing rights and limitations under the License.
-# The Original Software is "pyRandomSelect.py".
+# The Original Software is "randomselect.py".
 # The Initial Developers of the Original Software are Dr Peter Christen
 # (Department of Computer Science, Australian National University), Dr Tim
 # Churches (Centre for Epidemiology and Research, New South Wales Department
@@ -24,14 +24,14 @@
 #
 # =============================================================================
 
-"""Module pyRandomSelect.py - Auxiliary program to randomly select records.
+"""Module randomselect.py - Auxiliary program to randomly select records.
 
    USAGE:
-     pyRandomSelect.py [in_file] [out_file] -perc [percentage_value]
+     python randomselect.py [in_file] [out_file] -perc [percentage_value]
 
      or
 
-     pyRandomSelect.py [in_file] [out_file] -num [num_records]
+     python randomselect.py [in_file] [out_file] -num [num_records]
 
    ARGUMENTS:
      in_file   Name of the input file with the original data records
@@ -78,19 +78,19 @@ def selectrandom():
   # Process command line arguments and check for correctness  - - - - - - - - -
   #
   if (len(sys.argv) != 5):
-    print '***** Error: %s needs three arguments:'% (sys.argv[0])
+    print '***** Error: %s needs three arguments:' % (sys.argv[0])
     print '*****        - Name of the original input data file'
     print '*****        - Name of the output file with the selected records'
     print '*****        Then either'
-    print '*****        -  -perc [percentage_value]'
+    print '*****          -perc [percentage_value]'
     print '*****        or'
-    print '*****        -  -num  [num_records]'
+    print '*****          -num  [num_records]'
     raise Exception()
 
   if (sys.argv[1] == sys.argv[2]):
     print '***** Error: Input and output files must differ'
-    print '*****        Input file name: ', sys.argv[1]
-    print '*****        Output file name:', sys.argv[2]
+    print '*****        Input file name:  %s' % (sys.argv[1])
+    print '*****        Output file name: %s' % (sys.argv[2])
     raise Exception()
 
   in_file_name = sys.argv[1]
@@ -101,24 +101,27 @@ def selectrandom():
   elif(sys.argv[3][:2] == '-n'):
     select_mode = 'num'
   else:
-    print '***** Error: Illegal random selection argument:', sys.argv[3]
+    print '***** Error: Illegal random selection argument: %s' % \
+          (sys.argv[3])
     print '*****        Possible are:'
-    print '*****        -  -perc [percentage_value]'
+    print '*****          -perc [percentage_value]'
     print '*****        or'
-    print '*****        -  -num  [num_records]'
+    print '*****          -num  [num_records]'
     raise Exception()
 
   if (select_mode == 'perc'):
     perc_val = float(sys.argv[4])
     if (perc_val <= 0.0) or (perc_val >= 100.0):
-      print '***** Error: Illegal value for random percentage:', sys.argv[4]
+      print '***** Error: Illegal value for random percentage: %s' % \
+            (sys.argv[4])
       print '*****        Value must be between 0.0 and 100.0'
       raise Exception()
 
   else:  # Number of records given
     num_rec = int(sys.argv[4])
     if (num_rec <= 0):
-      print '***** Error: Illegal value for number of records:', sys.argv[4]
+      print '***** Error: Illegal value for number of records: %s' % \
+            (sys.argv[4])
       print '*****        Value must be positive.'
       raise Exception()
 
@@ -127,7 +130,7 @@ def selectrandom():
   try:
     f_in = open(in_file_name,'r')
   except:
-    print '***** Error: Can not open input file:', in_file_name
+    print '***** Error: Can not open input file: %s' % (str(in_file_name))
     raise IOError()
 
   print "Counting lines in source file..."
@@ -137,8 +140,8 @@ def selectrandom():
   f_in.close()
 
   if (select_mode == 'num') and (num_rec > line_count):  # Illegal value
-    print '***** Error: Illegal values for number of records:', num_rec
-    print '*****        File only contains',line_count, 'lines/records'
+    print '***** Error: Illegal values for number of records: %i' % (num_rec)
+    print '*****        File only contains %i lines/records' % (line_count)
     raise Exception()
 
   # Flag records which have been selected randomly  - - - - - - - - - - - - - -
@@ -159,7 +162,7 @@ def selectrandom():
       record_flags[random_rec_num] = 1
       selected_rec_num += 1
 
-  print 'Selected', selected_rec_num, 'records...'
+  print 'Selected %i records' % (selected_rec_num)
 
   # Open files, read lines and write selected records to output file  - - - - -
 
@@ -168,7 +171,8 @@ def selectrandom():
   try:
     f_out = open(out_file_name,'w')
   except:
-    print '***** Error: Can not write to output file:', out_file_name
+    print '***** Error: Can not write to output file: %s' % \
+          (str(out_file_name))
     f_in.close()
     raise IOError()
 
@@ -200,3 +204,4 @@ def selectrandom():
 selectrandom()
 
 # ----------------------------------------------------------------------------
+

@@ -3,7 +3,7 @@
 #
 # Source: - NSW Health Department pattern and classification files
 #
-# Last update: 14/08/2002, Peter Christen
+# Last update: 12/09/2002, Peter Christen
 #
 # Entries in the file are of the form:
 #
@@ -40,7 +40,7 @@
 # =============================================================================
 
 # Remove characters and words from input
-             ' ' := '.', '?', '~', '_', ':', ';', '^', '=', ' n a ',
+             ' ' := '.', '?', '~', '_', ':', ';', '^', '=', ' n a ', '*',
                     ' n/a ', ' n.a.', '\', ' also ', ' name ', ' only ',
                     ' abbrev ', ' initials ', ' unk ', ' unkn ',
                     ' missing ', ' unknown '
@@ -64,3 +64,8 @@
             '-a' := "-a'"
             '-l' := "-l'"
             '-i' := "-i'"
+
+# Correct roman numbers
+#                ' i ' := ' first '
+               ' ii ' := ' second '
+              ' iii ' := ' third '
