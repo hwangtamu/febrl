@@ -1,25 +1,24 @@
 # =============================================================================
 # datasetTest.py - Test module for dataset.py
 #
-# Freely extensible biomedical record linkage (Febrl) Version 0.2
+# Freely extensible biomedical record linkage (Febrl) Version 0.2.1
 # See http://datamining.anu.edu.au/projects/linkage.html
 #
 # =============================================================================
 # AUSTRALIAN NATIONAL UNIVERSITY OPEN SOURCE LICENSE (ANUOS LICENSE)
-# VERSION 1.0
+# VERSION 1.1
 #
-# The contents of this file are subject to the ANUOS License Version 1.0 (the
+# The contents of this file are subject to the ANUOS License Version 1.1 (the
 # "License"); you may not use this file except in compliance with the License.
 # Software distributed under the License is distributed on an "AS IS" basis,
 # WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License for
 # the specific language governing rights and limitations under the License.
 # The Original Software is "datasetTest.py".
 # The Initial Developers of the Original Software are Dr Peter Christen
-# (Department of Computer Science, Australian National University), Dr Tim
+# (Department of Computer Science, Australian National University) and Dr Tim
 # Churches (Centre for Epidemiology and Research, New South Wales Department
-# of Health) and Drs Markus Hegland, Stephen Roberts and Ole Nielsen
-# (Mathematical Sciences Insitute, Australian National University). Copyright
-# (C) 2002 the Australian National University and others. All Rights Reserved.
+# of Health). Copyright (C) 2002, 2003 the Australian National University and
+# others. All Rights Reserved.
 # Contributors:
 #
 # =============================================================================
@@ -1107,14 +1106,15 @@ class TestCase(unittest.TestCase):
     # Initialise data set for writing
     #
     test_ds = dataset.DataSetShelve(name='ShelveDS',
-                                    description='no description',
-                                    access_mode='write',
-                                    fields = {'gname':0,
-                                              'sname':1,
-                                              'pcode':2},
-                                    fields_default='missing',
-                                    file_name='./testshelve',
-                                    missing_values =['','missing'])
+                             description='no description',
+                             access_mode='write',
+                                  clear = True,
+                                 fields = {'gname':0,
+                                           'sname':1,
+                                           'pcode':2},
+                          fields_default='missing',
+                               file_name='./testshelve',
+                         missing_values =['','missing'])
 
     assert (test_ds.name == 'ShelveDS'), \
            'Shelve data set has wrong name (should be "ShelveDS"): '+ \
@@ -1160,6 +1160,7 @@ class TestCase(unittest.TestCase):
     test_ds = dataset.DataSetShelve(name='ShelveDS',
                                     description='no description',
                                     access_mode='read',
+                                    clear = True,
                                     fields = {'gname':0,
                                               'sname':1,
                                               'pcode':2},
@@ -1238,7 +1239,7 @@ class TestCase(unittest.TestCase):
     test_ds.finalise()
     test_ds = None
 
-    # Re-initialise data set for readwrite
+    # Re-initialise data set for readwrite, don't clear
 
     test_ds = dataset.DataSetShelve(name='ShelveDS',
                                     description='no description',

@@ -1,25 +1,24 @@
 # =============================================================================
 # febrl.py - Main module and classes for febrl projects.
 #
-# Freely extensible biomedical record linkage (Febrl) Version 0.2
+# Freely extensible biomedical record linkage (Febrl) Version 0.2.1
 # See http://datamining.anu.edu.au/projects/linkage.html
 #
 # =============================================================================
 # AUSTRALIAN NATIONAL UNIVERSITY OPEN SOURCE LICENSE (ANUOS LICENSE)
-# VERSION 1.0
+# VERSION 1.1
 #
-# The contents of this file are subject to the ANUOS License Version 1.0 (the
+# The contents of this file are subject to the ANUOS License Version 1.1 (the
 # "License"); you may not use this file except in compliance with the License.
 # Software distributed under the License is distributed on an "AS IS" basis,
 # WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License for
 # the specific language governing rights and limitations under the License.
 # The Original Software is "febrl.py".
 # The Initial Developers of the Original Software are Dr Peter Christen
-# (Department of Computer Science, Australian National University), Dr Tim
+# (Department of Computer Science, Australian National University) and Dr Tim
 # Churches (Centre for Epidemiology and Research, New South Wales Department
-# of Health) and Drs Markus Hegland, Stephen Roberts and Ole Nielsen
-# (Mathematical Sciences Insitute, Australian National University). Copyright
-# (C) 2002 the Australian National University and others. All Rights Reserved.
+# of Health). Copyright (C) 2002, 2003 the Australian National University and
+# others. All Rights Reserved.
 # Contributors:
 #
 # =============================================================================
@@ -69,20 +68,17 @@ class Febrl:
     """Constructor - Set attributes and load list of available projects.
     """
 
-    self.version_major =      '0.2'
+    self.version_major =      '0.2.1'
     self.version_minor =      ''
     self.version =            self.version_major+'.'+self.version_minor
-    self.license =            'ANUOS Version 1.0'
-    self.copyright =          '(C) 2002 the Australian National University' + \
-                              ' and others'
+    self.license =            'ANUOS Version 1.1'
+    self.copyright =          '(C) 2002, 2003 the Australian National ' + \
+                              'University and others'
     self.initial_developers = 'Dr Peter Christen (Department of Computer ' + \
-                              'Science, Australian National University), ' + \
-                              'Dr Tim Churches (Centre for Epidemiology '+ \
-                              'and Research, New South Wales Department ' + \
-                              'of Health) and Drs Markus Hegland, Stephen ' + \
-                              'Roberts and Ole Nielsen (Mathematical ' + \
-                              'Sciences Insitute, Australian National ' + \
-                              'University)'
+                              'Science, Australian National University) ' + \
+                              'and Dr Tim Churches (Centre for Epidemiology'+ \
+                              ' and Research, New South Wales Department ' + \
+                              'of Health)'
     self.contributors =       ''
 
     self.description = None
@@ -197,6 +193,21 @@ class Febrl:
 
     return new_project
 
+  # ---------------------------------------------------------------------------
+
+  def finalise(self):
+    """Finalise a Febrl project.
+    """
+
+    print '1:'
+    print '1:Febrl stopped.'
+
+    parallel.Barrier()  # Make sure all processes are here
+
+    parallel.Finalize()  # Finalise parallel environment
+
+    sys.exit()
+
 # =============================================================================
 
 class Project:
@@ -215,6 +226,7 @@ class Project:
     self.file_name =        None
     self.project_path =     febrl.febrl_path  # Inherit path
     self.block_size =       10000  # File blocking size (in number of records)
+    self.parallel_write =   'host' # Set either to 'host' (default) or 'all'
 
     for (keyword, value) in kwargs.items():
       if (keyword == 'name'):
@@ -233,10 +245,21 @@ class Project:
           raise Esception
         self.block_size = value
 
+      elif (keyword == 'parallel_write'):
+        if (value not in ['host','all']):
+          print 'error:Argument "parallel_write" must be set to "host"'+ \
+                ' or "all"'
+          raise Exception
+        self.parallel_write = value
+
       else:
         print 'error:Illegal constructor argument keyword: "%s"' % \
               (str(keyword))
         raise Exception
+
+    # Set the parallel writing/saving mode  - - - - - - - - - - - - - - - - - -
+    #
+    parallel.writemode = self.parallel_write
 
   # ---------------------------------------------------------------------------
 
@@ -281,6 +304,611 @@ class Project:
 
   # ---------------------------------------------------------------------------
 
+  def standardise(self, **kwargs):
+    """Clean and standardise the given data set using the defined record
+       standardiser.
+
+       Records are loaded block wise from the input data set, then standardised
+       and written into the output data set.
+
+       If the argument 'first_record' is not given, it will automatically be
+       set to the first record in the data set (i.e. record number 0).
+       Similarly, if the argument 'number_records' is not given, it will be set
+       to the total number of records in the input data set.
+
+       The output data set can be any data set type except a memory based data
+       set (as all standardised records would lost once the program finishes).
+       This output data set has to be initialised in 'write', 'append' or
+       'readwrite' access mode.
+    """
+
+    self.input_dataset =    None   # A reference ot the (raw) input data set
+                                   # data set
+    self.output_dataset =   None   # A reference to the output data set
+
+    self.rec_standardiser = None   # Reference to a record standardiser
+    self.first_record =     None   # Number of the first record to process
+    self.number_records =   None   # Number of records to process
+
+    for (keyword, value) in kwargs.items():
+      if (keyword == 'input_dataset'):
+        self.input_dataset = value
+      elif (keyword == 'output_dataset'):
+        self.output_dataset = value
+
+      elif (keyword == 'rec_standardiser'):
+        self.rec_standardiser = value
+
+      elif (keyword == 'first_record'):
+        if (not isinstance(value, int)) or (value < 0):
+          print 'error:Argument "first_record" is not a valid integer number'
+          raise Exception
+        self.first_record = value
+      elif (keyword == 'number_records'):
+        if (not isinstance(value, int)) or (value <= 0):
+          print 'error:Argument "number_records" is not a positive integer '+ \
+                'number'
+          raise Exception
+        self.number_records = value
+
+      else:
+        print 'error:Illegal constructor argument keyword: "%s"' % \
+              (str(keyword))
+        raise Exception
+
+    # Do some checks on the input arguments - - - - - - - - - - - - - - - - - -
+    #
+    if (self.input_dataset == None):
+      print 'error:Input data set is not defined'
+      raise Exception
+
+    if (self.output_dataset == None):
+      print 'error:Output data set is not defined'
+      raise Exception
+    elif (self.output_dataset.dataset_type == 'MEMORY'):
+      print 'error:Output data set can not be a memory based data set'
+      raise Exception
+    if (self.output_dataset.access_mode not in ['write','append','readwrite']):
+      print 'error:Output dataset must be initialised in one of the access' + \
+            ' modes: "write", "append", or "readwrite"'
+      raise Exception
+
+    if (self.rec_standardiser == None):
+      print 'error:Record standardiser is not defined'
+      raise Exception
+
+    if (self.first_record == None):
+      self.first_record = 0  # Take default first record in data set
+
+    if (self.number_records == None):  # Process all records
+      self.number_records = self.input_dataset.num_records
+
+    print '1:'
+    print '1:***** Standardise data set: "%s" (type "%s")' % \
+          (self.input_dataset.name, self.input_dataset.dataset_type)
+    print '1:*****        into data set: "%s" (type "%s")' % \
+          (self.output_dataset.name, self.output_dataset.dataset_type)
+    print '1:'
+
+    # Call the main standardisation routine - - - - - - - - - - - - - - - - - -
+    # (no indexing will be done)
+    #
+    [stand_time, comm_time] = do_load_standard_indexing(self.input_dataset,
+                                                        self.output_dataset,
+                                                        self.rec_standardiser,
+                                                        None,
+                                                        self.first_record,
+                                                        self.number_records,
+                                                        self.block_size)
+
+  # ---------------------------------------------------------------------------
+
+  def deduplicate(self, **kwargs):
+    """Deduplicate the given data set using the defined record standardiser,
+       record comparators, blocking indexes and classifiers.
+
+       Records are loaded block wise from the input data set, then standardised
+       (if the record standardiser is defined, otherwise the input data set is
+       directly deduplicated), linked and the results are printed and/or saved
+       into the result file(s).
+
+       If the argument 'first_record' is not given, it will automatically be
+       set to the first record in the data set (i.e. record number 0).
+       Similarly, if the argument 'number_records' is not given, it will be set
+       to the total number of records in the input data set.
+
+       The temporary data set must be a random acces data set implementation,
+       i.e. either a Shelve or a Memory data set. For large data set it is
+       recommended to use a Shelve data set. This temporary data set has to be
+       initialised in access mode 'readwrite'.
+
+       Currently, the output can be a printed or saved list of record pairs in
+       both a detailed and condensed form (if the arguments
+       'output_rec_pair_details' and 'output_rec_pair_weights' are set to
+       'True' or to a file name (a string). The output can be filtered by
+       setting the 'output_threshold' (meaning all record pairs with a weight
+       less then this threshold are not printed or saved).
+
+       In future versions, it will be possible to compile an output data set.
+
+       A histogram can be saved or printed by setting the argument
+       'output_histogram' to 'True' or to a file name.
+
+       It is also possible to apply a one-to-one assignment procedure by
+       setting the argument 'output_assignment' to 'one2one'.
+    """
+
+    self.input_dataset =    None   # A reference ot the (raw) input data set
+    self.tmp_dataset =      None   # A reference to a temporary (random access)
+                                   # data set
+#    self.output_dataset =   None   # A reference to the output data set
+
+    self.rec_standardiser = None   # Reference to a record standardiser
+    self.rec_comparator =   None   # Reference to a record comparator
+    self.blocking_index =   None   # Reference to a blocking index
+    self.classifier =       None   # Reference to a weight vector classifier
+
+    self.first_record =     None   # Number of the first record to process
+    self.number_records =   None   # Number of records to process
+
+    self.output_histogram = False         # Set to True, a file name or False
+                                          # (default) if a histogram of weights
+                                          # should be printed or saved
+    self.output_rec_pair_details = False  # Set to True, a file name or False
+                                          # (default) if record pairs should
+                                          # be printed or saved in details
+    self.output_rec_pair_weights = False  # Set to True, a file name or False
+                                          # (default) if record pairs should
+                                          # be printed or saved with weights
+    self.output_threshold = None          # Set to a weight threshold (only
+                                          # record pairs with weights equal to
+                                          # or above will be saved and or
+                                          # printed)
+    self.output_assignment = None         # Set to 'one2one' if one-to-one
+                                          # assignment should be forced
+                                          # (default: None)
+
+    for (keyword, value) in kwargs.items():
+      if (keyword == 'input_dataset'):
+        self.input_dataset = value
+      elif (keyword == 'tmp_dataset'):
+        self.tmp_dataset = value
+#      elif (keyword == 'output_dataset'):
+#        self.output_dataset = value
+
+      elif (keyword == 'rec_standardiser'):
+        self.rec_standardiser = value
+      elif (keyword == 'rec_comparator'):
+        self.rec_comparator = value
+      elif (keyword == 'blocking_index'):
+        self.blocking_index = value
+      elif (keyword == 'classifier'):
+        self.classifier = value
+
+      elif (keyword == 'first_record'):
+        if (not isinstance(value, int)) or (value < 0):
+          print 'error:Argument "first_record" is not a valid integer number'
+          raise Exception
+        self.first_record = value
+      elif (keyword == 'number_records'):
+        if (not isinstance(value, int)) or (value <= 0):
+          print 'error:Argument "number_records" is not a positive integer '+ \
+                'number'
+          raise Exception
+        self.number_records = value
+
+      elif (keyword == 'output_rec_pair_details'):
+        if (not isinstance(value, str)) and (value not in [True, False]):
+          print 'error:Argument "output_rec_pair_details" must be ' + \
+                'a file name or "True" or "False"'
+          raise Exception
+        self.output_rec_pair_details = value
+      elif (keyword == 'output_rec_pair_weights'):
+        if (not isinstance(value, str)) and (value not in [True, False]):
+          print 'error:Argument "output_rec_pair_weights" must be ' + \
+                'a file name or "True" or "False"'
+          raise Exception
+        self.output_rec_pair_weights = value
+      elif (keyword == 'output_histogram'):
+        if (not isinstance(value, str)) and (value not in [True, False]):
+          print 'error:Argument "output_histogram" must be ' + \
+                'a file name or "True" or "False"'
+          raise Exception
+        self.output_histogram = value
+      elif (keyword == 'output_threshold'):
+        if (not (isinstance(value, int) or isinstance(value, float))):
+          print 'error:Argument "output_threshold" is not a number: %s' % \
+                (str(value))
+        self.output_threshold = value
+      elif (keyword == 'output_assignment'):
+        if (value not in ['one2one', None]):
+          print 'error:Illegal value for argument "output_assignment": %s' % \
+                (str(value))
+          raise Exception
+        else:
+          self.output_assignment = value
+
+      else:
+        print 'error:Illegal constructor argument keyword: "%s"' % \
+              (str(keyword))
+        raise Exception
+
+    # Do some checks on the input arguments - - - - - - - - - - - - - - - - - -
+    #
+    if (self.input_dataset == None):
+      print 'error:Input data set is not defined'
+      raise Exception
+
+    if (self.tmp_dataset == None):
+      print 'error:Temporary data set is not defined'
+      raise Exception
+    elif (self.tmp_dataset.dataset_type not in ['SHELVE', 'MEMORY']):
+      print 'error:Temporary data set must be a random access data set' + \
+            ' (either Shelve or Memory)'
+      raise Exception
+    if (self.tmp_dataset.access_mode not in ['write','append','readwrite']):
+      print 'error:Temporary data set must be initialised in one of the ' + \
+            'access  modes: "write", "append", or "readwrite"'
+      raise Exception
+
+#    if (self.output_dataset == None):
+#      print 'error:Output data set is not defined'
+#      raise Exception
+
+    # Make sure at least one output is defined
+    #
+    if (self.output_rec_pair_weights == False) and \
+       (self.output_rec_pair_details == False) and \
+       (self.output_histogram == False):
+      print 'error:No ouput of results is defined.'
+      raise Exception
+    #
+    # Code above to be removed once output data set functionality implemented
+
+    if (self.first_record == None):
+      self.first_record = 0  # Take default first record in data set
+
+    if (self.number_records == None):  # Process all records
+      self.number_records = self.input_dataset.num_records
+
+    if (self.rec_comparator == None):
+      print 'error:No record comparator defined'
+      raise Exception
+    if (self.rec_comparator.dataset_a != self.tmp_dataset) or \
+       (self.rec_comparator.dataset_b != self.tmp_dataset):
+      print 'error:Illegal data set definition in record comparator'
+      raise Exception
+
+    if (self.blocking_index == None):
+      print 'error:No blocking index defined'
+      raise Exception
+
+    if (self.classifier == None):
+      print 'error:No classifier defined'
+      raise Exception
+    if (self.classifier.dataset_a != self.tmp_dataset) or \
+       (self.classifier.dataset_b != self.tmp_dataset):
+      print 'error:Illegal data set definition in classifier'
+      raise Exception
+
+    total_time = time.time()  # Get current time
+
+    print '1:'
+    print '1:***** Deduplicate data set: "%s" (type "%s")' % \
+          (self.input_dataset.name, self.input_dataset.dataset_type)
+    print '1:*****   Temporary data set: "%s" (type "%s")' % \
+          (self.tmp_dataset.name, self.tmp_dataset.dataset_type)
+    print '1:'
+    print '1:Step 1: Loading, standardisation and indexing'
+    print '1:-------'
+    print '1:'
+
+    step_1_time = time.time()  # Get current time
+
+    # Call the main standardisation routine - - - - - - - - - - - - - - - - - -
+    #
+    [p, step_1_comm_time] = do_load_standard_indexing(self.input_dataset,
+                                                      self.tmp_dataset,
+                                                      self.rec_standardiser,
+                                                      self.blocking_index,
+                                                      self.first_record,
+                                                      self.number_records,
+                                                      self.block_size)
+
+    # If Febrl is run in parallel, collect blocking index in process 0  - - - -
+    #
+    if (parallel.rank() == 0):
+      for p in range(1, parallel.size()):
+        tmp_time = time.time()
+        tmp_indexes = parallel.receive(p)
+        step_1_comm_time += (time.time() - tmp_time)
+        print '1:    Received index from process %i' % (p)
+
+        self.blocking_index.merge(tmp_indexes)
+
+    else:  # Send index to process 0
+      tmp_time = time.time()
+      parallel.send(self.blocking_index.index, 0) # Send indexes to process 0
+      step_1_comm_time += (time.time() - tmp_time)
+      print '1:    Sent index to process 0'
+
+    # If run in parallel, broadcast the blocking index from process 0 - - - - -
+    #
+    if (parallel.size() > 1):
+      if (parallel.rank() == 0):
+        for p in range(1, parallel.size()):
+          tmp_time = time.time()
+          parallel.send(self.blocking_index.index, p)
+          step_1_comm_time += (time.time() - tmp_time)
+          print '1:    Sent index to process %i' % (p)
+
+      else:
+        tmp_time = time.time()
+        tmp_indexes = parallel.receive(0)
+        step_1_comm_time += (time.time() - tmp_time)
+        print '1:    Received index from process 0'
+
+        self.blocking_index.merge(tmp_indexes)
+
+    # Compact the blocking index  - - - - - - - - - - - - - - - - - - - - - - -
+    #
+    self.blocking_index.compact()
+
+    step_1_time = time.time() - step_1_time  # Calculate time for step 1
+    step_1_time_string = output.time_string(step_1_time)
+
+    print '1:'
+    print '1:Step 1 finished in %s' % (step_1_time_string)
+
+    # End of step 1 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    #
+    parallel.Barrier()  # Make sure all processes are here
+
+    # Now re-initialise the temporary data set in read access mode only - - - -
+    #
+    self.tmp_dataset.re_initialise('read')
+
+    #################### START PARALLEL TEST CODE #############################
+    # Save temporary data sets and indexes to files (on all processes)
+    #
+    if (SAVE_PARALLEL_TEST_FILES == True):
+      #f = open('tmp_data_set-dedup-'+str(parallel.rank())+'-'+ \
+      #         str(parallel.size()),'w')
+      #tmp_list = self.tmp_dataset.dict.keys()
+      #tmp_list.sort()
+
+      #for r in tmp_list:
+      #  rec = self.tmp_dataset.dict[r]
+      #  rec_items = rec.items()
+      #  rec_items.sort()
+      #  rec = str(r)+': '+str(rec_items)
+      #  f.write(rec+os.linesep)
+      #f.close()
+
+      f = open('indexes-dedup-'+str(parallel.rank())+'-'+ \
+               str(parallel.size()),'w')
+
+      for i in range (self.blocking_index.num_indexes):
+        tmp_index = self.blocking_index.index[i].keys()
+        tmp_index.sort()
+
+        for bi in tmp_index:
+          ind = self.blocking_index.index[i][bi]
+          ind_list = ind.items()
+          ind_list.sort()
+
+          ii = str(i)+'_'+str(bi)+': '+str(ind_list)
+          f.write(ii+os.linesep)
+      f.close()
+
+    #################### END PARALLEL TEST CODE ###############################
+
+    print '1:'
+    print '1:Step 2: Perform deduplication within blocks'
+    print '1:-------'
+    print '1:'
+
+    step_2_time = time.time()  # Get current time
+    step_2_comm_time = 0.0
+
+    # Get the record pairs which have to be compared  - - - - - - - - - - - - -
+    #
+    tmp_time = time.time()
+    [rec_pair_dict, rec_pair_cnt] = \
+           indexing.deduplication_rec_pairs(self.blocking_index)
+    rec_pair_time = time.time() - tmp_time
+    rec_pair_time_string = output.time_string(rec_pair_time)
+
+    print '1:'
+    print '1:  Built record pair dictionary with %i entries in %s' % \
+          (rec_pair_cnt, rec_pair_time_string)
+
+    # And do the comparisons of record pairs into classifer - - - - - - - - - -
+    #
+    [p] = do_comparison(self.tmp_dataset, self.tmp_dataset,
+                        self.rec_comparator, self.classifier,
+                        rec_pair_dict, rec_pair_cnt, self.block_size)
+
+    # Now gather classifier results on process 0 and merge  - - - - - - - - - -
+    #
+    if (parallel.size() > 1):
+      if (parallel.rank() == 0):
+        for p in range(1, parallel.size()):
+          tmp_time = time.time()
+          tmp_classifier_results = parallel.receive(p)
+          step_2_comm_time += (time.time() - tmp_time)
+          print '1:    Received classifier from process %i and merged it' % (p)
+
+          self.classifier.merge(tmp_classifier_results)
+
+      else:
+        tmp_time = time.time()
+        parallel.send(self.classifier.results, 0) # Send classifier results to
+                                                  # process 0
+        step_2_comm_time += (time.time() - tmp_time)
+        print '1:    Sent classifier to process 0'
+
+    # If run in parallel, broadcast the classifier results from process 0 - - -
+    #
+    if (parallel.size() > 1):
+      if (parallel.rank() == 0):
+        for p in range(1, parallel.size()):
+          tmp_time = time.time()
+          parallel.send(self.classifier.results, p)
+          step_2_comm_time += (time.time() - tmp_time)
+          print '1:    Sent classifier to process %i' % (p)
+
+      else:
+        tmp_time = time.time()
+        self.classifier.results = parallel.receive(0)
+        step_2_comm_time += (time.time() - tmp_time)
+        print '1:    Received classifier from process 0'
+
+    #################### START PARALLEL TEST CODE #############################
+    # Save classifiers and weight vectors to files (only process 0)
+    #
+    if (SAVE_PARALLEL_TEST_FILES == True):
+      tmp_list = rec_pair_dict.keys()
+      tmp_list.sort()
+      f = open('rec-pair-dict-dedup-'+str(parallel.rank())+'-'+ \
+               str(parallel.size()),'w')
+      for rp in tmp_list:
+        rec_list = rec_pair_dict[rp].items()
+        rec_list.sort()
+        r = str(rp)+': '+str(rec_list)
+        f.write(r+os.linesep)
+      f.close()
+
+      tmp_list = self.classifier.results.keys()
+      tmp_list.sort()
+      f = open('classifier_results_dict-dedup-'+str(parallel.rank())+'-'+ \
+               str(parallel.size()),'w')
+      for c in tmp_list:
+        res = self.classifier.results[c].items()
+        res.sort()
+        ce = str(c)+': '+str(res)
+        f.write(ce+os.linesep)
+      f.close()
+
+    #################### END PARALLEL TEST CODE ###############################
+
+    step_2_time = time.time() - step_2_time  # Calculate time for step 2
+    step_2_time_string = output.time_string(step_2_time)
+
+    print '1:'
+    print '1:Step 2 (deduplication) finished in %s' % (step_2_time_string)
+    print '1:  Totally %i record pair comparisons' % (rec_pair_cnt)
+
+    # Output the results  - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+    print '1:'
+    print '1:Step 3: Output and assignment procedures'
+    print '1:-------'
+    print '1:'
+
+    step_3_time = time.time()  # Get current time
+
+    # Get the results dictionary with all the record pairs and their weights
+    #
+    results_dict = self.classifier.results
+
+    if (results_dict == {}):
+      print 'warning:Results dictionary empty'
+
+    else:  # There are results
+
+      # Do assignment restrictions if they are defined  - - - - - - - - - - - -
+      #
+      if (self.output_assignment != None):  # An output assignment is defined
+
+        if (self.output_assignment == 'one2one'):
+
+          # Do a one-to-one assignment on the classifier results dict
+          #
+          o2o_results_dict = lap.do_lap('auction', results_dict, \
+                                        'deduplication', self.output_threshold)
+      else:  # No one-to-one assignment, set one2one result to None
+        o2o_results_dict = None
+
+      #################### START PARALLEL TEST CODE ###########################
+
+      if (SAVE_PARALLEL_TEST_FILES == True):
+        tmp_list = o2o_results_dict.items()
+        tmp_list.sort()
+        f = open('one2one-dedup-'+str(parallel.rank())+'-'+ \
+                 str(parallel.size()),'w')
+        for c in tmp_list:
+          f.write(str(c)+os.linesep)
+        f.close()
+
+      #################### END PARALLEL TEST CODE #############################
+
+      if (parallel.rank() == 0):  # Only processor 0 prints results
+
+        # Print or save weights histogram - - - - - - - - - - - - - - - - - - -
+        #
+        if (self.output_histogram == True):
+          output.histogram(results_dict)
+        elif (self.output_histogram != False):
+          output.histogram(results_dict, self.output_histogram)
+
+        # Print or save detailed record pairs - - - - - - - - - - - - - - - - -
+        #
+        if (self.output_rec_pair_details == True):
+          output.rec_pair_details(self.tmp_dataset, self.tmp_dataset,
+                                  results_dict, o2o_results_dict,
+                                  self.output_threshold)
+        elif (self.output_rec_pair_details != False):
+          output.rec_pair_details(self.tmp_dataset, self.tmp_dataset,
+                                  results_dict, o2o_results_dict,
+                                  self.output_threshold,
+                                  self.output_rec_pair_details)
+
+        # Print or save record pairs with weights - - - - - - - - - - - - - - -
+        #
+        if (self.output_rec_pair_weights == True):
+          output.rec_pair_weights(self.tmp_dataset.name,
+                                  self.tmp_dataset.name,
+                                  results_dict, o2o_results_dict,
+                                  self.output_threshold)
+        elif (self.output_rec_pair_weights != False):
+          output.rec_pair_weights(self.tmp_dataset.name,
+                                  self.tmp_dataset.name,
+                                  results_dict, o2o_results_dict,
+                                  self.output_threshold,
+                                  self.output_rec_pair_weights)
+
+    step_3_time = time.time() - step_3_time  # Calculate time for step 3
+    step_3_time_string = output.time_string(step_3_time)
+
+    print '1:'
+    print '1:Step 3 (output and assignments) finished in %s' % \
+          (step_3_time_string)
+    print '1:'
+
+    parallel.Barrier()  # Wait here for all processes - - - - - - - - - - - - -
+
+    total_time = time.time() - total_time  # Calculate total time
+
+    total_time_string =       output.time_string(total_time)
+    step_1_comm_time_string = output.time_string(step_1_comm_time)
+    step_2_comm_time_string = output.time_string(step_2_comm_time)
+
+    print '1:Total time needed for deduplication of %i records: %s' % \
+          (self.number_records, total_time_string)
+    print '1:  Time for step 1 (standardisation):       %s' % \
+          (step_1_time_string)
+    print '1:  Time for step 2 (deduplication):         %s' % \
+          (step_2_time_string)
+    print '1:  Time for step 3 (assignment and output): %s' % \
+          (step_3_time_string)
+    print '1:  Time for communication in step 1: %s' % \
+          (step_1_comm_time_string)
+    print '1:  Time for communication in step 2: %s' % \
+          (step_2_comm_time_string)
+
+  # ---------------------------------------------------------------------------
+
   def link(self, **kwargs):
     """Link the given two data set using the defined record standardisers,
        record comparators, blocking indexes and classifiers.
@@ -288,23 +916,30 @@ class Project:
        Records are loaded block wise from the input data sets, then
        standardised (if the record standardisers are defined, otherwise an
        input data set is directly taken for the linkage process), linked and
-       the results are printed and/or saved into the result file.
+       the results are printed and/or saved into the result file(s).
 
-       If the argument 'first_record' is not given, it is assumed to be the
-       first record in the data set (i.e. record number 0).
-       Similarly, if the argument 'number_records' is not given, it is assumed
-       to be all records in the input data set.
+       If the arguments 'first_record_a' and/or 'first_record_b' are not given,
+       they will automatically be set to the first record in the data sets
+       (i.e. record number 0). Similarly, if the arguments 'number_records_a'
+       and/or 'number_records_b' are not given, they will be set to the total
+       number of records in the input data sets.
 
-       Currently, the output can be a printed list of record pairs (if the
-       argument 'output_print' is set to 'True' and/or a text file with the
-       linked record numbers, if the argument 'output_file' is set to a file
-       name). The output can be filtered by setting the 'output_threshold'
-       (meaning all record pairs with a weight less then this threshold are not
-       printed or saved).
-       If future versions, it will be possible to compile an output data set.
+       The temporary data sets must be random acces data set implementations,
+       i.e. either Shelve or a Memory data sets. For large data set it is
+       recommended to use Shelve data sets. This temporary data sets have to be
+       initialised in access mode 'readwrite'.
 
-       A histogram can be printed by setting the argument 'output_histogram' to
-       'True'.
+       Currently, the output can be a printed or saved list of record pairs in
+       both a detailed and condensed form (if the arguments
+       'output_rec_pair_details' and 'output_rec_pair_weights' are set to
+       'True' or to a file name (a string). The output can be filtered by
+       setting the 'output_threshold' (meaning all record pairs with a weight
+       less then this threshold are not printed or saved).
+
+       In future versions, it will be possible to compile an output data set.
+
+       A histogram can be saved or printed by setting the argument
+       'output_histogram' to 'True' or to a file name.
 
        It is also possible to apply a one-to-one assignment procedure by
        setting the argument 'output_assignment' to 'one2one'.
@@ -338,18 +973,22 @@ class Project:
     self.number_records_b =   None   # Number of records to process in the
                                      # second data set (B)
 
-    self.output_print =     False    # Flag, set to True or False (default) if
-                                     # record pairs should be printed
-    self.output_histogram = False    # Flag, set to True or False (default) if 
-                                     # a histogram of weights should be printed
-    self.output_file =      None     # Set to a file name if results are to be
-                                     # saved
-    self.output_threshold = None     # Set to a weight threshold (only record
-                                     # pairs with weights equal to or above
-                                     # will be saved and or printed)
-    self.output_assignment = None    # Set to 'one2one' if one-to-one
-                                     # assignment should be forced
-                                     # (default: None)
+    self.output_histogram = False         # Set to True, a file name or False
+                                          # (default) if a histogram of weights
+                                          # should be printed or saved
+    self.output_rec_pair_details = False  # Set to True, a file name or False
+                                          # (default) if record pairs should
+                                          # be printed or saved in details
+    self.output_rec_pair_weights = False  # Set to True, a file name or False
+                                          # (default) if record pairs should
+                                          # be printed or saved with weights
+    self.output_threshold = None          # Set to a weight threshold (only
+                                          # record pairs with weights equal to
+                                          # or above will be saved and or
+                                          # printed)
+    self.output_assignment = None         # Set to 'one2one' if one-to-one
+                                          # assignment should be forced
+                                          # (default: None)
 
     for (keyword, value) in kwargs.items():
       if (keyword == 'input_dataset_a'):
@@ -378,12 +1017,12 @@ class Project:
 
       elif (keyword == 'first_record_a'):
         if (not isinstance(value, int)) or (value < 0):
-          print 'error:Argument "first_record_a" is not an integer number'
+          print 'error:Argument "first_record_a" is not a valid integer number'
           raise Exception
         self.first_record_a = value
       elif (keyword == 'first_record_b'):
         if (not isinstance(value, int)) or (value < 0):
-          print 'error:Argument "first_record_b" is not an integer number'
+          print 'error:Argument "first_record_b" is not a valid integer number'
           raise Exception
         self.first_record_b = value
       elif (keyword == 'number_records_a'):
@@ -399,22 +1038,24 @@ class Project:
           raise Exception
         self.number_records_b = value
 
-      elif (keyword == 'output_print'):
-        if (value not in [True, False]):
-          print 'error:Argument "output_print" must be "True" or "False"'
+      elif (keyword == 'output_rec_pair_details'):
+        if (not isinstance(value, str)) and (value not in [True, False]):
+          print 'error:Argument "output_rec_pair_details" must be ' + \
+                'a file name or "True" or "False"'
           raise Exception
-        self.output_print = value
+        self.output_rec_pair_details = value
+      elif (keyword == 'output_rec_pair_weights'):
+        if (not isinstance(value, str)) and (value not in [True, False]):
+          print 'error:Argument "output_rec_pair_weights" must be ' + \
+                'a file name or "True" or "False"'
+          raise Exception
+        self.output_rec_pair_weights = value
       elif (keyword == 'output_histogram'):
-        if (value not in [True, False]):
-          print 'error:Argument "output_histogram" must be "True" or "False"'
+        if (not isinstance(value, str)) and (value not in [True, False]):
+          print 'error:Argument "output_histogram" must be ' + \
+                'a file name or "True" or "False"'
           raise Exception
         self.output_histogram = value
-      elif (keyword == 'output_file'):
-        if (not isinstance(value, str)) or (value == ''):
-          print 'error:Argument "output_file" is not a valid string: %s' % \
-                (str(value))
-          raise Exception
-        self.output_file = value
       elif (keyword == 'output_threshold'):
         if (not (isinstance(value, int) or isinstance(value, float))):
           print 'error:Argument "output_threshold" is not a number: %s' % \
@@ -445,18 +1086,47 @@ class Project:
     if (self.tmp_dataset_a == None):
       print 'error:Temporary data set A is not defined'
       raise Exception
+    elif (self.tmp_dataset_a.dataset_type not in ['SHELVE', 'MEMORY']):
+      print 'error:Temporary data set A must be a random access data set' + \
+            ' (either Shelve or Memory)'
+      raise Exception
+    if (self.tmp_dataset_a.access_mode not in ['write','append','readwrite']):
+      print 'error:Temporary data set A must be initialised in one of the ' + \
+            'access  modes: "write", "append", or "readwrite"'
+      raise Exception
+
     if (self.tmp_dataset_b == None):
       print 'error:Temporary data set B is not defined'
       raise Exception
+    elif (self.tmp_dataset_b.dataset_type not in ['SHELVE', 'MEMORY']):
+      print 'error:Temporary data set B must be a random access data set' + \
+            ' (either Shelve or Memory)'
+      raise Exception
+    if (self.tmp_dataset_b.access_mode not in ['write','append','readwrite']):
+      print 'error:Temporary data set B must be initialised in one of the ' + \
+            'access  modes: "write", "append", or "readwrite"'
+      raise Exception
+
+    # Check if there are file names for the temporary data sets and - - - - - -
+    # if they differ
+    #
+    tmp_file_name_a = getattr(self.tmp_dataset_a, 'file_name', None)
+    tmp_file_name_b = getattr(self.tmp_dataset_b, 'file_name', None)
+    if (tmp_file_name_a != None) and (tmp_file_name_b != None):
+      if (tmp_file_name_a == tmp_file_name_b):
+        print 'error:The same file names for both temporary data sets'
+        raise Exception
 
 #    if (self.output_dataset == None):
 #      print 'error:Output data set is not defined'
 #      raise Exception
 
-    # Make sure either output_print is True or the output_file is defined
+    # Make sure at least one output is defined
     #
-    if (self.output_print == False) and (self.output_file == None):
-      print 'error:No ouput of results (record pairs/results file) is defined.'
+    if (self.output_rec_pair_weights == False) and \
+       (self.output_rec_pair_details == False) and \
+       (self.output_histogram == False):
+      print 'error:No ouput of results is defined.'
       raise Exception
     #
     # Code above to be removed once output data set functionality implemented
@@ -466,13 +1136,17 @@ class Project:
     if (self.first_record_b == None):
       self.first_record_b = 0  # Take default first record in data set
 
-    if (self.number_records_a == None):
-      self.number_records_a = input_dataset_a.num_records  # Take all records
-    if (self.number_records_b == None):
-      self.number_records_b = input_dataset_b.num_records  # Take all records
+    if (self.number_records_a == None):  # Take all records
+      self.number_records_a = self.input_dataset_a.num_records
+    if (self.number_records_b == None):  # Take all records
+      self.number_records_b = self.input_dataset_b.num_records
 
     if (self.rec_comparator == None):
       print 'error:No record comparator defined'
+      raise Exception
+    if (self.rec_comparator.dataset_a != self.tmp_dataset_a) or \
+       (self.rec_comparator.dataset_b != self.tmp_dataset_b):
+      print 'error:Illegal data set definition in record comparator'
       raise Exception
 
     if (self.blocking_index_a == None):
@@ -485,225 +1159,218 @@ class Project:
     if (self.classifier == None):
       print 'error:No classifier defined'
       raise Exception
-
-    if (self.rec_standardiser_a != None):
-      if (self.rec_standardiser_a.input_dataset != self.input_dataset_a):
-        print 'error:Illegal input data set definition in record '+ \
-              'standardiser A: %s (should be: %s)' % \
-              (str(self.rec_standardiser_a.input_dataset.name), \
-               str(self.input_dataset_a.name))
-        raise Exception
-      if (self.rec_standardiser_a.output_dataset != self.tmp_dataset_a):
-        print 'error:Illegal output data set definition in record '+ \
-              'standardiser A: %s (should be: %s)' % \
-              (str(self.rec_standardiser_a.output_dataset.name), \
-               str(self.tmp_dataset_a.name))
-        raise Exception
-
-    else:  # No standardiser for data set A defined, so field names in input
-           # and temporary data sets must be the same
-      input_field_name_list = self.input_dataset_a.fields.keys()
-      input_field_name_list.sort()
-      tmp_field_name_list = self.tmp_dataset_a.fields.keys()
-      tmp_field_name_list.sort()
-
-      if (input_field_name_list != tmp_field_name_list):
-        print 'error:Field names differ in input and temporary data sets ' + \
-              '(with no record standardiser for data set A defined)'
-
-    if (self.rec_standardiser_b != None):
-      if (self.rec_standardiser_b.input_dataset != self.input_dataset_b):
-        print 'error:Illegal input data set definition in record '+ \
-              'standardiser B: %s (should be: %s)' % \
-              (str(self.rec_standardiser_b.input_dataset.name), \
-               str(self.input_dataset_b.name))
-        raise Exception
-      if (self.rec_standardiser_b.output_dataset != self.tmp_dataset_b):
-        print 'error:Illegal output data set definition in record '+ \
-              'standardiser B: %s (should be: %s)' % \
-              (str(self.rec_standardiser_b.output_dataset.name), \
-               str(self.tmp_dataset_b.name))
-        raise Exception
-
-    else:  # No standardiser for data set B defined, so field names in input
-           # and temporary data sets must be the same
-      input_field_name_list = self.input_dataset_b.fields.keys()
-      input_field_name_list.sort()
-      tmp_field_name_list = self.tmp_dataset_b.fields.keys()
-      tmp_field_name_list.sort()
-
-      if (input_field_name_list != tmp_field_name_list):
-        print 'error:Field names differ in input and temporary data sets ' + \
-              '(with no record standardiser for data set B defined)'
-
-    if (self.blocking_index_a.dataset != self.tmp_dataset_a):
-      print 'error:Illegal data set definition in blocking index A'
-      raise Exception
-    if (self.blocking_index_b.dataset != self.tmp_dataset_b):
-      print 'error:Illegal data set definition in blocking index B'
-      raise Exception
-
-    if (self.rec_comparator.dataset_a != self.tmp_dataset_a) or \
-       (self.rec_comparator.dataset_b != self.tmp_dataset_b):
-      print 'error:Illegal data set definition in record comparator'
-      raise Exception
-
     if (self.classifier.dataset_a != self.tmp_dataset_a) or \
        (self.classifier.dataset_b != self.tmp_dataset_b):
       print 'error:Illegal data set definition in classifier'
       raise Exception
 
+#    if (self.rec_standardiser_a != None):
+#      if (self.rec_standardiser_a.input_dataset != self.input_dataset_a):
+#        print 'error:Illegal input data set definition in record '+ \
+#              'standardiser A: %s (should be: %s)' % \
+#              (str(self.rec_standardiser_a.input_dataset.name), \
+#               str(self.input_dataset_a.name))
+#        raise Exception
+#      if (self.rec_standardiser_a.output_dataset != self.tmp_dataset_a):
+#        print 'error:Illegal output data set definition in record '+ \
+#              'standardiser A: %s (should be: %s)' % \
+#              (str(self.rec_standardiser_a.output_dataset.name), \
+#               str(self.tmp_dataset_a.name))
+#        raise Exception
+
+#    else:  # No standardiser for data set A defined, so field names in input
+#           # and temporary data sets must be the same
+#      input_field_name_list = self.input_dataset_a.fields.keys()
+#      input_field_name_list.sort()
+#      tmp_field_name_list = self.tmp_dataset_a.fields.keys()
+#      tmp_field_name_list.sort()
+#
+#      if (input_field_name_list != tmp_field_name_list):
+#        print 'error:Field names differ in input and temporary data sets ' + \
+#              '(with no record standardiser for data set A defined)'
+#
+#    if (self.rec_standardiser_b != None):
+#      if (self.rec_standardiser_b.input_dataset != self.input_dataset_b):
+#        print 'error:Illegal input data set definition in record '+ \
+#              'standardiser B: %s (should be: %s)' % \
+#              (str(self.rec_standardiser_b.input_dataset.name), \
+#               str(self.input_dataset_b.name))
+#        raise Exception
+#      if (self.rec_standardiser_b.output_dataset != self.tmp_dataset_b):
+#        print 'error:Illegal output data set definition in record '+ \
+#              'standardiser B: %s (should be: %s)' % \
+#              (str(self.rec_standardiser_b.output_dataset.name), \
+#               str(self.tmp_dataset_b.name))
+#        raise Exception
+#
+#    else:  # No standardiser for data set B defined, so field names in input
+#           # and temporary data sets must be the same
+#      input_field_name_list = self.input_dataset_b.fields.keys()
+#      input_field_name_list.sort()
+#      tmp_field_name_list = self.tmp_dataset_b.fields.keys()
+#      tmp_field_name_list.sort()
+#
+#      if (input_field_name_list != tmp_field_name_list):
+#        print 'error:Field names differ in input and temporary data sets ' + \
+#              '(with no record standardiser for data set B defined)'
+#
+#    if (self.blocking_index_a.dataset != self.tmp_dataset_a):
+#      print 'error:Illegal data set definition in blocking index A'
+#      raise Exception
+#    if (self.blocking_index_b.dataset != self.tmp_dataset_b):
+#      print 'error:Illegal data set definition in blocking index B'
+#      raise Exception
+
     total_time = time.time()  # Get current time
 
     print '1:'
-    print '1:*** Link data set: %s with data set: %s ***' % \
-          (self.input_dataset_a.name, self.input_dataset_b.name)
+    print '1:***** Link data set: %s (type "%s") with data set: %s ' % \
+           (self.input_dataset_a.name, self.input_dataset_a.dataset_type, \
+           self.input_dataset_b.name) + '(type "%s")' % \
+           (self.input_dataset_b.dataset_type)
+    print '1:*****   Temporary data set A: "%s" (type "%s")' % \
+          (self.tmp_dataset_a.name, self.tmp_dataset_a.dataset_type)
+    print '1:*****   Temporary data set B: "%s" (type "%s")' % \
+          (self.tmp_dataset_b.name, self.tmp_dataset_b.dataset_type)
     print '1:'
-
+    print '1:Step 1: Loading, standardisation and indexing'
+    print '1:-------'
     print '1:'
-    print '1:  Step 1: Load and standardise records, build blocking indexes'
 
     step_1_time = time.time()  # Get current time
-    step_1_comm_time = 0.0  # Time for communication in step 1
 
-    print '1:    Step 1a: Process data set A (%s)' % \
-          (self.input_dataset_a.name)
-    print '1:'
-
-    # Do cleaning and standardisation for data set A  - - - - - - - - - - - - -
+    # Call the main standardisation routine for data set A  - - - - - - - - - -
     #
-    input_rec_counter = self.first_record_a  # Current record pointer
-
-    block_cnt = 0  # A round robin block counter, used for parallelism
-
-    # Load records in a blocked fashion - - - - - - - - - - - - - - - - - - - -
-
-    while (input_rec_counter < (self.first_record_a + self.number_records_a)):
-
-      block_size = min(self.block_size,
-               ((self.first_record_a + self.number_records_a) - \
-                input_rec_counter))
-
-      # Distribute blocks equally to all processors
-      #
-      if ((block_cnt % parallel.size()) == parallel.rank()):
-
-        # Load original records from input data set
-        #
-        in_recs = self.input_dataset_a.read_records(input_rec_counter,
-                                                  block_size)
-        print '1:    Loaded records %i to %i' % \
-              (input_rec_counter, input_rec_counter+block_size)
-
-        # Standardise them if a standardiser is defined
-        #
-        if (self.rec_standardiser_a != None):
-          clean_recs = self.rec_standardiser_a.standardise_block(in_recs)
-          print '1:    Standardised records %i to %i' % \
-                (input_rec_counter, input_rec_counter+block_size)
-        else:
-          clean_recs = in_recs  # Take the original records directly
-
-        # Store records in temporary data set
-        #
-        self.tmp_dataset_a.write_records(clean_recs)
-
-        # Insert records into the blocking index
-        #
-        self.blocking_index_a.build(clean_recs)
-
-        # If Febrl is run in parallel, send cleaned records to process 0
-        #
-        if (parallel.rank() > 0):
-          tmp_time = time.time()
-          parallel.send(clean_recs, 0)
-          step_1_comm_time += (time.time() - tmp_time)
-
-      # If Febrl is run in parallel, process 0 receives cleaned records
-      #
-      if (parallel.rank() == 0) and (block_cnt % parallel.size() != 0):
-
-        p = (block_cnt % parallel.size())  # Process number to receive from
-        tmp_time = time.time()
-        tmp_recs = parallel.receive(p)
-        step_1_comm_time += (time.time() - tmp_time)
-
-        # Store the received records into the temporary data set
-        #
-        self.tmp_dataset_a.write_records(tmp_recs)
-
-      input_rec_counter += block_size  # Increment current record pointer
-      block_cnt += 1
+    [p, step_1_comm_time] = do_load_standard_indexing(self.input_dataset_a,
+                                                      self.tmp_dataset_a,
+                                                      self.rec_standardiser_a,
+                                                      self.blocking_index_a,
+                                                      self.first_record_a,
+                                                      self.number_records_a,
+                                                      self.block_size)
 
     # If Febrl is run in parallel, collect blocking index in process 0  - - - -
     #
     if (parallel.rank() == 0):
       for p in range(1, parallel.size()):
         tmp_time = time.time()
-        tmp_index = parallel.receive(p)
+        tmp_indexes = parallel.receive(p)
         step_1_comm_time += (time.time() - tmp_time)
-        self.blocking_index_a.merge(tmp_index)
-        print '1:  Received index from process %i' % (p)
+        print '1:    Received index A from process %i' % (p)
 
-    else:
+        self.blocking_index_a.merge(tmp_indexes)
+
+    else:  # Send index to process 0
       tmp_time = time.time()
-      parallel.send(self.blocking_index_a, 0) # Send local index to process 0
+      parallel.send(self.blocking_index_a.index, 0) # Send indexes to process 0
       step_1_comm_time += (time.time() - tmp_time)
-      print '1:  Sent index to process 0'
+      print '1:    Sent index A to process 0'
 
-    # Compact the blocking index on process 0 - - - - - - - - - - - - - - - - -
+    # If run in parallel, broadcast the blocking index from process 0 - - - - -
+    #
+    if (parallel.size() > 1):
+      if (parallel.rank() == 0):
+        for p in range(1, parallel.size()):
+          tmp_time = time.time()
+          parallel.send(self.blocking_index_a.index, p)
+          step_1_comm_time += (time.time() - tmp_time)
+          print '1:    Sent index A to process %i' % (p)
+
+      else:
+        tmp_time = time.time()
+        tmp_indexes = parallel.receive(0)
+        step_1_comm_time += (time.time() - tmp_time)
+        print '1:    Received index A from process 0'
+
+        self.blocking_index_a.merge(tmp_indexes)
+
+    # Compact the blocking index  - - - - - - - - - - - - - - - - - - - - - - -
+    #
+    self.blocking_index_a.compact()
+
+    print '1:'
+
+    # Call the main standardisation routine for data set B  - - - - - - - - - -
+    #
+    [p, tmp_time] = do_load_standard_indexing(self.input_dataset_b,
+                                              self.tmp_dataset_b,
+                                              self.rec_standardiser_b,
+                                              self.blocking_index_b,
+                                              self.first_record_b,
+                                              self.number_records_b,
+                                              self.block_size)
+    step_1_comm_time += tmp_time
+
+    # If Febrl is run in parallel, collect blocking index in process 0  - - - -
     #
     if (parallel.rank() == 0):
-      self.blocking_index_a.compact()
+      for p in range(1, parallel.size()):
+        tmp_time = time.time()
+        tmp_indexes = parallel.receive(p)
+        step_1_comm_time += (time.time() - tmp_time)
+        print '1:    Received index B from process %i' % (p)
 
-    # If run in parallel, broadcast the index from process 0  - - - - - - - - -
+        self.blocking_index_b.merge(tmp_indexes)
+
+    else:  # Send index to process 0
+      tmp_time = time.time()
+      parallel.send(self.blocking_index_b.index, 0) # Send indexes to process 0
+      step_1_comm_time += (time.time() - tmp_time)
+      print '1:    Sent index B to process 0'
+
+    # If run in parallel, broadcast the blocking index from process 0 - - - - -
     #
     if (parallel.size() > 1):
       if (parallel.rank() == 0):
         for p in range(1, parallel.size()):
           tmp_time = time.time()
-          parallel.send(self.blocking_index_a, p)
+          parallel.send(self.blocking_index_b.index, p)
           step_1_comm_time += (time.time() - tmp_time)
-          print '1:    Sent compacted index to process %i' % (p)
+          print '1:    Sent index B to process %i' % (p)
 
       else:
         tmp_time = time.time()
-        self.blocking_index_a = parallel.receive(0)
+        tmp_indexes = parallel.receive(0)
         step_1_comm_time += (time.time() - tmp_time)
-        print '1:    Received compacted index from process 0'
+        print '1:    Received index B from process 0'
 
-    # If run in parallel temporary data set needs to be sent to all processes -
+        self.blocking_index_b.merge(tmp_indexes)
+
+    # Compact the blocking index  - - - - - - - - - - - - - - - - - - - - - - -
     #
-    if (parallel.size() > 1):
-      if (parallel.rank() == 0):
-        for p in range(1, parallel.size()):
-          tmp_time = time.time()
-          parallel.send(self.tmp_dataset_a, p)
-          step_1_comm_time += (time.time() - tmp_time)
-          print '1:    Sent temporary data set %i' % (p)
+    self.blocking_index_b.compact()
 
-      else:
-        tmp_time = time.time()
-        self.tmp_dataset_a = parallel.receive(0)
-        step_1_comm_time += (time.time() - tmp_time)
-        print '1:    Received temporary data set from process 0'
+    step_1_time = time.time() - step_1_time  # Calculate time for step 1
+    step_1_time_string = output.time_string(step_1_time)
+
+    print '1:'
+    print '1:Step 1 finished in %s' % (step_1_time_string)
+
+    # End of step 1 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    #
+    parallel.Barrier()  # Make sure all processes are here
+
+    # Now re-initialise the temporary data sets in read access mode only  - - -
+    #
+    self.tmp_dataset_a.re_initialise('read')
+    self.tmp_dataset_b.re_initialise('read')
 
     #################### START PARALLEL TEST CODE #############################
     # Save temporary data sets and indexes to files (on all processes)
     #
     if (SAVE_PARALLEL_TEST_FILES == True):
-      f = open('tmp_data_set_a-link-'+str(parallel.rank())+'-'+ \
-               str(parallel.size()),'w')
-      tmp_list = self.tmp_dataset_a.dict.keys()
-      tmp_list.sort()
+      #f = open('tmp_data_set_a-link-'+str(parallel.rank())+'-'+ \
+      #         str(parallel.size()),'w')
+      #tmp_list = self.tmp_dataset_a.dict.keys()
+      #tmp_list.sort()
 
-      for r in tmp_list:
-        rec = self.tmp_dataset_a.dict[r]
-        rec_items = rec.items()
-        rec_items.sort()
-        rec = str(r)+': '+str(rec_items)
-        f.write(rec+os.linesep)
-      f.close()
+      #for r in tmp_list:
+      #  rec = self.tmp_dataset_a.dict[r]
+      #  rec_items = rec.items()
+      #  rec_items.sort()
+      #  rec = str(r)+': '+str(rec_items)
+      #  f.write(rec+os.linesep)
+      #f.close()
 
       f = open('indexes_a-link-'+str(parallel.rank())+'-'+ \
                str(parallel.size()),'w')
@@ -719,154 +1386,6 @@ class Project:
 
           ii = str(i)+'_'+str(bi)+': '+str(ind_list)
           f.write(ii+os.linesep)
-      f.close()
-
-    #################### END PARALLEL TEST CODE ###############################
-
-    if (parallel.size() > 1):
-      parallel.Barrier()  # Make sure all processes are here
-
-    # Do cleaning and standardisation for data set B  - - - - - - - - - - - - -
-    #
-    print '1:'
-    print '1:    Step 1b: Process data set B (%s)' % \
-          (self.input_dataset_b.name)
-    print '1:'
-
-    input_rec_counter = self.first_record_b  # Current record pointer
-
-    block_cnt = 0  # A round robin block counter, used for parallelism
-
-    # Load records in a blocked fashion - - - - - - - - - - - - - - - - - - - -
-
-    while (input_rec_counter < (self.first_record_b + self.number_records_b)):
-
-      block_size = min(self.block_size,
-               ((self.first_record_b + self.number_records_b) - \
-                input_rec_counter))
-
-      # Distribute blocks equally to all processors
-      #
-      if ((block_cnt % parallel.size()) == parallel.rank()):
-
-        # Load original records from input data set
-        #
-        in_recs = self.input_dataset_b.read_records(input_rec_counter,
-                                                  block_size)
-        print '1:    Loaded records %i to %i' % \
-              (input_rec_counter, input_rec_counter+block_size)
-
-        # Standardise them if a standardiser is defined
-        #
-        if (self.rec_standardiser_b != None):
-          clean_recs = self.rec_standardiser_b.standardise_block(in_recs)
-          print '1:    Standardised records %i to %i' % \
-                (input_rec_counter, input_rec_counter+block_size)
-        else:
-          clean_recs = in_recs  # Take the original records directly
-
-        # Store records in temporary data set
-        #
-        self.tmp_dataset_b.write_records(clean_recs)
-
-        # Insert records into the blocking index
-        #
-        self.blocking_index_b.build(clean_recs)
-
-        # If Febrl is run in parallel, send cleaned records to process 0
-        #
-        if (parallel.rank() > 0):
-          tmp_time = time.time()
-          parallel.send(clean_recs, 0)
-          step_1_comm_time += (time.time() - tmp_time)
-
-      # If Febrl is run in parallel, process 0 receives cleaned records
-      #
-      if (parallel.rank() == 0) and (block_cnt % parallel.size() != 0):
-
-        p = (block_cnt % parallel.size())  # Process number to receive from
-        tmp_time = time.time()
-        tmp_recs = parallel.receive(p)
-        step_1_comm_time += (time.time() - tmp_time)
-
-        # Store the received records into the temporary data set
-        #
-        self.tmp_dataset_b.write_records(tmp_recs)
-
-      input_rec_counter += block_size  # Increment current record pointer
-
-      block_cnt += 1
-
-    # If Febrl is run in parallel, collect blocking index in process 0  - - - -
-    #
-    if (parallel.rank() == 0):
-      for p in range(1, parallel.size()):
-        tmp_time = time.time()
-        tmp_index = parallel.receive(p)
-        step_1_comm_time += (time.time() - tmp_time)
-        self.blocking_index_b.merge(tmp_index)
-        print '1:  Received index from process %i' % (p)
-
-    else:
-      tmp_time = time.time()
-      parallel.send(self.blocking_index_b, 0) # Send local index to process 0
-      step_1_comm_time += (time.time() - tmp_time)
-      print '1:  Sent index to process 0'
-
-    # Compact the blocking index on process 0 - - - - - - - - - - - - - - - - -
-    #
-    if (parallel.rank() == 0):
-      self.blocking_index_b.compact()
-
-    # If run in parallel, broadcast the index from process 0  - - - - - - - - -
-    #
-    if (parallel.size() > 1):
-      if (parallel.rank() == 0):
-        for p in range(1, parallel.size()):
-          tmp_time = time.time()
-          parallel.send(self.blocking_index_b, p)
-          step_1_comm_time += (time.time() - tmp_time)
-          print '1:    Sent compacted index to process %i' % (p)
-
-      else:
-        tmp_time = time.time()
-        self.blocking_index_b = parallel.receive(0)
-        step_1_comm_time += (time.time() - tmp_time)
-        print '1:    Received compacted index from process 0'
-
-    # If run in parallel temporary data set needs to be sent to all processes -
-    #
-    if (parallel.size() > 1):
-      if (parallel.rank() == 0):
-        for p in range(1, parallel.size()):
-          tmp_time = time.time()
-          parallel.send(self.tmp_dataset_b, p)
-          step_1_comm_time += (time.time() - tmp_time)
-          print '1:    Sent temporary data set %i' % (p)
-
-      else:
-        tmp_time = time.time()
-        self.tmp_dataset_b = parallel.receive(0)
-        step_1_comm_time += (time.time() - tmp_time)
-        print '1:    Received temporary data set from process 0'
-
-    step_1_time = time.time() - step_1_time  # Calculate time for step 1
-
-    #################### START PARALLEL TEST CODE #############################
-    # Save temporary data sets and indexes to files (on all processes)
-    #
-    if (SAVE_PARALLEL_TEST_FILES == True):
-      f = open('tmp_data_set_b-link-'+str(parallel.rank())+'-'+ \
-               str(parallel.size()),'w')
-      tmp_list = self.tmp_dataset_b.dict.keys()
-      tmp_list.sort()
-
-      for r in tmp_list:
-        rec = self.tmp_dataset_b.dict[r]
-        rec_items = rec.items()
-        rec_items.sort()
-        rec = str(r)+': '+str(rec_items)
-        f.write(rec+os.linesep)
       f.close()
 
       f = open('indexes_b-link-'+str(parallel.rank())+'-'+ \
@@ -887,157 +1406,83 @@ class Project:
 
     #################### END PARALLEL TEST CODE ###############################
 
-    # End of step 1 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-    #
-    if (parallel.size() > 1):
-      parallel.Barrier()  # Make sure all processes are here
-
     print '1:'
-    print '1:  Step 2: Perform linkage within blocks'
+    print '1:Step 2: Perform linkage within blocks'
+    print '1:-------'
+    print '1:'
 
     step_2_time = time.time()  # Get current time
-    step_2_comm_time = 0.0  # Time for communication in step 2
+    step_2_comm_time = 0.0
 
     # Get the record pairs which have to be compared  - - - - - - - - - - - - -
     #
     tmp_time = time.time()
-    rec_pair_list = indexing.linkage_rec_pairs(self.blocking_index_a,
-                                               self.blocking_index_b)
+    [rec_pair_dict, rec_pair_cnt] = \
+           indexing.linkage_rec_pairs(self.blocking_index_a,
+                                      self.blocking_index_b)
+    rec_pair_time = time.time() - tmp_time
+    rec_pair_time_string = output.time_string(rec_pair_time)
 
-    print '1:    Built record pair list (time used %.2f sec)' % \
-          (time.time()-tmp_time)
+    print '1:'
+    print '1:  Built record pair dictionary with %i entries in %s' % \
+          (rec_pair_cnt, rec_pair_time_string)
 
-    rec_pair_list.sort()
-
-#    if (parallel.size() > 1) or (DO_PARALLEL_TEST == True) or \
-#       (SAVE_PARALLEL_TEST_FILES == True):
-#      rec_pair_list.sort()  # Needed for parallel runs only because of round
-#                            # robin fashion of work distribution (and list can
-#                            # have different sequence on different processes
-
-    #################### START PARALLEL TEST CODE #############################
-    # Check if the rec_pair_list are the same on all processes
+    # And do the comparisons of record pairs into classifer - - - - - - - - - -
     #
-    if (parallel.size() > 1) and (DO_PARALLEL_TEST == True):
-      if (parallel.rank() == 0):
+    [p] = do_comparison(self.tmp_dataset_a, self.tmp_dataset_b,
+                        self.rec_comparator, self.classifier,
+                        rec_pair_dict, rec_pair_cnt, self.block_size)
 
-        for p in range(1, parallel.size()):
-          tmp_list = parallel.receive(p)
-          if (len(tmp_list) != len(rec_pair_list)):
-            print 'warning:Record pair lists have differnt length on ' + \
-                  'process 0 (%i) and %i (%i)' % \
-                  (len(rec_pair_list), p, len(tmp_list))
-
-          for i in range(len(rec_pair_list)):
-            if (rec_pair_list[i] != tmp_list[i]):  # Element differs
-              print 'warning:Record pair lists differ in position %i' % (i) + \
-                    ' on process 0 (%s) and %i (%s)' % \
-                    (p, rec_pair_list[i], tmp_list[i])
-      else:
-        parallel.send(rec_pair_list,0)
-
-      parallel.Barrier()
-
-    # Save record pair lists to files (all processes)
-    #
-    if (SAVE_PARALLEL_TEST_FILES == True):
-      f = open('rec_pair_list-link-'+str(parallel.rank())+'-'+ \
-               str(parallel.size()),'w')
-      for r in rec_pair_list:
-        f.write(r+os.linesep)
-      f.close()
-
-    #################### END PARALLEL TEST CODE ###############################
-
-    weight_vector_dict = {}  # Dictionary with the comparison vectors
-
-    compare_time =  0.0
-    classify_time = 0.0
-
-    num_rec_pairs = len(rec_pair_list)
-    rec_pair_cnt = 0  # Loop counter
-
-    # Compare records, and distribute comparisons equally to all processes  - -
-    #
-    for rec_pair in rec_pair_list:
-
-      if ((rec_pair_cnt % parallel.size()) == parallel.rank()):
-
-        [rec_num_a,rec_num_b] = rec_pair.split('_')
-        print '2:      Compare records %s with %s' % (rec_num_a, rec_num_b)
-
-        # Read the records from the data set
-        #
-        rec_a = self.tmp_dataset_a.read_record(int(rec_num_a))
-        rec_b = self.tmp_dataset_b.read_record(int(rec_num_b))
-
-        # Compare the two records
-        #
-        tmp_time = time.time()
-        w_vector = self.rec_comparator.compare(rec_a, rec_b)
-        compare_time += (time.time() - tmp_time)
-
-        # Save the weight vector in a dictionary (used later for output)
-        #
-        if (weight_vector_dict.has_key(rec_pair)):
-          print 'warning:This should never happen: Record pair %s ' % \
-                (rec_pair) + ' already in weight vector dictionary'
-        weight_vector_dict[rec_pair] = w_vector
-
-        tmp_time = time.time()
-        self.classifier.classify(w_vector)  # Classify the weight vector
-        classify_time += (time.time() - tmp_time)
-
-      rec_pair_cnt += 1
-
-      # Progress report every 10 per cent
-      #
-      if (rec_pair_cnt > 0) and ((rec_pair_cnt % int(num_rec_pairs/10)) == 0):
-        print '1:    %i/%i record pairs compared' % \
-              (rec_pair_cnt, num_rec_pairs)
-        print '1:      Average comparison time:     %.6f' % \
-              (compare_time/rec_pair_cnt)
-        print '1:      Average classification time: %.6f' % \
-              (classify_time/rec_pair_cnt)
-
-    # Now gather classifiers on process 0 and merge - - - - - - - - - - - - - -
+    # Now gather classifier results on process 0 and merge  - - - - - - - - - -
     #
     if (parallel.size() > 1):
       if (parallel.rank() == 0):
         for p in range(1, parallel.size()):
           tmp_time = time.time()
-          tmp_classifier = parallel.receive(p)
+          tmp_classifier_results = parallel.receive(p)
           step_2_comm_time += (time.time() - tmp_time)
-          self.classifier.merge(tmp_classifier)
-          print '1:  Received classifier from process %i and merged it' % (p)
+          print '1:    Received classifier from process %i and merged it' % (p)
+
+          self.classifier.merge(tmp_classifier_results)
 
       else:
         tmp_time = time.time()
-        parallel.send(self.classifier, 0) # Send local classifier to process 0
+        parallel.send(self.classifier.results, 0) # Send classifier results to
+                                                  # process 0
         step_2_comm_time += (time.time() - tmp_time)
-        print '1:  Sent classifier to process 0'
+        print '1:    Sent classifier to process 0'
 
-    # Also gather weight vectors on process 0 and merge - - - - - - - - - - - -
+    # If run in parallel, broadcast the classifier results from process 0 - - -
     #
     if (parallel.size() > 1):
       if (parallel.rank() == 0):
         for p in range(1, parallel.size()):
           tmp_time = time.time()
-          tmp_weight_vector_dict = parallel.receive(p)
+          parallel.send(self.classifier.results, p)
           step_2_comm_time += (time.time() - tmp_time)
-          weight_vector_dict.update(tmp_weight_vector_dict)
-          print '1:  Received weight vectors from process %i' % (p)
+          print '1:    Sent classifier to process %i' % (p)
 
       else:
         tmp_time = time.time()
-        parallel.send(weight_vector_dict, 0) # Send local weight vectors
+        self.classifier.results = parallel.receive(0)
         step_2_comm_time += (time.time() - tmp_time)
-        print '1:  Sent weight vectors to process 0'
+        print '1:    Received classifier from process 0'
 
     #################### START PARALLEL TEST CODE #############################
     # Save classifiers and weight vectors to files (only process 0)
     #
-    if (SAVE_PARALLEL_TEST_FILES == True) and (parallel.rank() == 0):
+    if (SAVE_PARALLEL_TEST_FILES == True):
+      tmp_list = rec_pair_dict.keys()
+      tmp_list.sort()
+      f = open('rec-pair-dict-link-'+str(parallel.rank())+'-'+ \
+               str(parallel.size()),'w')
+      for rp in tmp_list:
+        rec_list = rec_pair_dict[rp].items()
+        rec_list.sort()
+        r = str(rp)+': '+str(rec_list)
+        f.write(r+os.linesep)
+      f.close()
+
       tmp_list = self.classifier.results.keys()
       tmp_list.sort()
       f = open('classifier_results_dict-link-'+str(parallel.rank())+'-'+ \
@@ -1049,668 +1494,122 @@ class Project:
         f.write(ce+os.linesep)
       f.close()
 
-      tmp_list = weight_vector_dict.keys()
-      tmp_list.sort()
-      f = open('weight_vector_dict-link-'+str(parallel.rank())+'-'+ \
-               str(parallel.size()),'w')
-      for v in tmp_list:
-        wv = v+': '+str(weight_vector_dict[v])
-        f.write(wv+os.linesep)
-      f.close()
-
     #################### END PARALLEL TEST CODE ###############################
 
-    print '1:Linkage done, totally %i comparisons' % (num_rec_pairs)
-
     step_2_time = time.time() - step_2_time  # Calculate time for step 2
+    step_2_time_string = output.time_string(step_2_time)
+
+    print '1:'
+    print '1:Step 2 (linkage) finished in %s' % (step_2_time_string)
+    print '1:  Totally %i record pair comparisons' % (rec_pair_cnt)
 
     # Output the results  - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-    if (parallel.rank() == 0):  # Only processor 0 prints results
+    print '1:'
+    print '1:Step 3: Output and assignment procedures'
+    print '1:-------'
+    print '1:'
 
-      # Get the results dictionary with all the record pairs and their weights
+    step_3_time = time.time()  # Get current time
+
+    # Get the results dictionary with all the record pairs and their weights
+    #
+    results_dict = self.classifier.results
+
+    if (results_dict == {}):
+      print 'warning:Results dictionary empty'
+
+    else:  # There are results
+
+      # Do assignment restrictions if they are defined  - - - - - - - - - - - -
       #
-      results_dict = self.classifier.results
-
-      if (self.output_histogram == True):  # Print a weights histogram
-
-        output.print_histogram(results_dict)
-
       if (self.output_assignment != None):  # An output assignment is defined
 
         if (self.output_assignment == 'one2one'):
 
           # Do a one-to-one assignment on the classifier results dict
           #
-          o2o_results_dict = lap.do_lap('lapmod', results_dict, \
+          o2o_results_dict = lap.do_lap('auction', results_dict, \
                                         'linkage', self.output_threshold)
-      else:  # No one-to-one assignment, set o2o result to None
+      else:  # No one-to-one assignment, set one2one result to None
         o2o_results_dict = None
 
-      if (self.output_print == True):  # Print resulting record pairs
+      #################### START PARALLEL TEST CODE ###########################
 
-        output.print_record_pairs(self.tmp_dataset_a, self.tmp_dataset_b, \
+      if (SAVE_PARALLEL_TEST_FILES == True):
+        tmp_list = o2o_results_dict.items()
+        tmp_list.sort()
+        f = open('one2one-link-'+str(parallel.rank())+'-'+ \
+                 str(parallel.size()),'w')
+        for c in tmp_list:
+          f.write(str(c)+os.linesep)
+        f.close()
+
+      #################### END PARALLEL TEST CODE #############################
+
+      if (parallel.rank() == 0):  # Only processor 0 prints results
+
+        # Print or save weights histogram - - - - - - - - - - - - - - - - - - -
+        #
+        if (self.output_histogram == True):
+          output.histogram(results_dict)
+        elif (self.output_histogram != False):
+          output.histogram(results_dict, self.output_histogram)
+
+        # Print or save detailed record pairs - - - - - - - - - - - - - - - - -
+        #
+        if (self.output_rec_pair_details == True):
+          output.rec_pair_details(self.tmp_dataset_a, self.tmp_dataset_b, \
                                   results_dict, o2o_results_dict, \
                                   self.output_threshold)
+        elif (self.output_rec_pair_details != False):
+          output.rec_pair_details(self.tmp_dataset_a, self.tmp_dataset_b, \
+                                  results_dict, o2o_results_dict, \
+                                  self.output_threshold, \
+                                  self.output_rec_pair_details)
 
-      if (self.output_file != None):  # Save results into a file
+        # Print or save record pairs with weights - - - - - - - - - - - - - - -
+        #
+        if (self.output_rec_pair_weights == True):
+          output.rec_pair_weights(self.tmp_dataset_a.name, \
+                                  self.tmp_dataset_b.name, \
+                                  results_dict, o2o_results_dict, \
+                                  self.output_threshold)
+        elif (self.output_rec_pair_weights != False):
+          output.rec_pair_weights(self.tmp_dataset_a.name, \
+                                  self.tmp_dataset_b.name, \
+                                  results_dict, o2o_results_dict, \
+                                  self.output_threshold, \
+                                  self.output_rec_pair_weights)
 
-        output.save(self.tmp_dataset_a.name, self.tmp_dataset_b.name, \
-                    self.output_file, results_dict, o2o_results_dict, \
-                    self.output_threshold)
- 
-    print '1:Done.'
+    step_3_time = time.time() - step_3_time  # Calculate time for step 3
+    step_3_time_string = output.time_string(step_3_time)
 
-    total_time = time.time() - total_time  # Calculate total time
+    print '1:'
+    print '1:Step 3 (output and assignments) finished in %s' % \
+          (step_3_time_string)
+    print '1:'
 
     parallel.Barrier()  # Wait here for all processes - - - - - - - - - - - - -
 
-    print '1:Total time needed for linkage of %i' % (self.number_records_a) + \
-          ' records with %i records: %.3f' % \
-          (self.number_records_b, total_time) 
-
-    print '1:  Time for step 1: %.3f' % (step_1_time)
-    print '1:  Time for step 2: %.3f' % (step_2_time)
-    print '1:  Time for communication in step 1: %.3f' % (step_1_comm_time)
-    print '1:  Time for communication in step 2: %.3f' % (step_2_comm_time)
-
-    parallel.Finalize()
-
-  # ---------------------------------------------------------------------------
-
-  def deduplicate(self, **kwargs):
-    """Deduplicate the given data set using the defined record standardiser,
-       record comparators, blocking indexes and classifiers.
-
-       Records are loaded block wise from the input data set, then standardised
-       (if the record standardiser is defined, otherwise the input data set is
-       directly deduplicated), linked and the results are printed and/or saved
-       into the result file.
-
-       If the argument 'first_record' is not given, it is assumed to be the
-       first record in the data set (i.e. record number 0).
-       Similarly, if the argument 'number_records' is not given, it is assumed
-       to be all records in the input data set.
-
-       Currently, the output can be a printed list of record pairs (if the
-       argument 'output_print' is set to 'True' and/or a text file with the
-       linked record numbers, if the argument 'output_file' is set to a file
-       name). The output can be filtered by setting the 'output_threshold'
-       (meaning all record pairs with a weight less then this threshold are not
-       printed or saved).
-       If future versions, it will be possible to compile an output data set.
-
-       A histogram can be printed by setting the argument 'output_histogram' to
-       'True'.
-
-       It is also possible to apply a one-to-one assignment procedure by
-       setting the argument 'output_assignment' to 'one2one'.
-    """
-
-    self.input_dataset =    None   # A reference ot the (raw) input data set
-    self.tmp_dataset =      None   # A reference to a temporary (random access)
-                                   # data set
-#    self.output_dataset =   None   # A reference to the output data set
-
-    self.rec_standardiser = None   # Reference to a record standardiser
-    self.rec_comparator =   None   # Reference to a record comparator
-    self.blocking_index =   None   # Reference to a blocking index
-    self.classifier =       None   # Reference to a weight vector classifier
-
-    self.first_record =     None   # Number of the first record to process
-    self.number_records =   None   # Number of records to process
-
-    self.output_print =     False  # Flag, set to True or False (default) if
-                                   # record pairs should be printed
-    self.output_histogram = False  # Flag, set to True or False (default) if a
-                                   # histogram of weights should be printed
-    self.output_file =      None   # Set to a file name if results are to be
-                                   # saved
-    self.output_threshold = None   # Set to a weight threshold (only record
-                                   # pairs with weights equal to or above will
-                                   # be saved and or printed)
-    self.output_assignment = None  # Set to 'one2one' if one-to-one assignment
-                                   # should be forced (default: None)
-
-    for (keyword, value) in kwargs.items():
-      if (keyword == 'input_dataset'):
-        self.input_dataset = value
-      elif (keyword == 'tmp_dataset'):
-        self.tmp_dataset = value
-#      elif (keyword == 'output_dataset'):
-#        self.output_dataset = value
-
-      elif (keyword == 'rec_standardiser'):
-        self.rec_standardiser = value
-      elif (keyword == 'rec_comparator'):
-        self.rec_comparator = value
-      elif (keyword == 'blocking_index'):
-        self.blocking_index = value
-      elif (keyword == 'classifier'):
-        self.classifier = value
-
-      elif (keyword == 'first_record'):
-        if (not isinstance(value, int)) or (value < 0):
-          print 'error:Argument "first_record" is not an integer number'
-          raise Exception
-        self.first_record = value
-      elif (keyword == 'number_records'):
-        if (not isinstance(value, int)) or (value <= 0):
-          print 'error:Argument "number_records" is not a positive integer '+ \
-                'number'
-          raise Exception
-        self.number_records = value
-
-      elif (keyword == 'output_print'):
-        if (value not in [True, False]):
-          print 'error:Argument "output_print" must be "True" or "False"'
-          raise Exception
-        self.output_print = value
-      elif (keyword == 'output_histogram'):
-        if (value not in [True, False]):
-          print 'error:Argument "output_histogram" must be "True" or "False"'
-          raise Exception
-        self.output_histogram = value
-      elif (keyword == 'output_file'):
-        if (not isinstance(value, str)) or (value == ''):
-          print 'error:Argument "output_file" is not a valid string: %s' % \
-                (str(value))
-          raise Exception
-        self.output_file = value
-      elif (keyword == 'output_threshold'):
-        if (not (isinstance(value, int) or isinstance(value, float))):
-          print 'error:Argument "output_threshold" is not a number: %s' % \
-                (str(value))
-        self.output_threshold = value
-      elif (keyword == 'output_assignment'):
-        if (value not in ['one2one', None]):
-          print 'error:Illegal value for argument "output_assignment": %s' % \
-                (str(value))
-          raise Exception
-        else:
-          self.output_assignment = value
-
-      else:
-        print 'error:Illegal constructor argument keyword: "%s"' % \
-              (str(keyword))
-        raise Exception
-
-    # Check if the needed attributes are set  - - - - - - - - - - - - - - - - -
-    #
-    if (self.input_dataset == None):
-      print 'error:Input data set is not defined'
-      raise Exception
-
-    if (self.tmp_dataset == None):
-      print 'error:Temporary data set is not defined'
-      raise Exception
-
-#    if (self.output_dataset == None):
-#      print 'error:Output data set is not defined'
-#      raise Exception
-
-    # Make sure either output_print is True or the output_file is defined
-    #
-    if (self.output_print == False) and (self.output_file == None):
-      print 'error:No ouput of results (record pairs/results file) is defined.'
-      raise Exception
-    #
-    # Code above to be removed once output data set functionality implemented
-
-    if (self.first_record == None):
-      self.first_record = 0  # Take default first record in data set
-
-    if (self.number_records == None):
-      self.number_records = input_dataset.num_records  # Process all records
-
-    if (self.rec_comparator == None):
-      print 'error:No record comparator defined'
-      raise Exception
-
-    if (self.blocking_index == None):
-      print 'error:No blocking index defined'
-      raise Exception
-
-    if (self.classifier == None):
-      print 'error:No classifier defined'
-      raise Exception
-
-    if (self.rec_standardiser != None):
-      if (self.rec_standardiser.input_dataset != self.input_dataset):
-        print 'error:Illegal input data set definition in record '+ \
-              'standardiser: %s (should be: %s)' % \
-              (str(self.rec_standardiser.input_dataset.name), \
-               str(self.input_dataset.name))
-        raise Exception
-      if (self.rec_standardiser.output_dataset != self.tmp_dataset):
-        print 'error:Illegal output data set definition in record '+ \
-              'standardiser: %s (should be: %s)' % \
-              (str(self.rec_standardiser.output_dataset.name), \
-               str(self.tmp_dataset.name))
-        raise Exception
-
-    else:  # No standardiser for data set defined, so field names in input
-           # and temporary data sets must be the same
-      input_field_name_list = self.input_dataset.fields.keys()
-      input_field_name_list.sort()
-      tmp_field_name_list = self.tmp_dataset.fields.keys()
-      tmp_field_name_list.sort()
-
-      if (input_field_name_list != tmp_field_name_list):
-        print 'error:Field names differ in input and temporary data sets ' + \
-              '(with no record standardiser defined)'
-
-    if (self.blocking_index.dataset != self.tmp_dataset):
-      print 'error:Illegal data set definition in blocking index'
-      raise Exception
-
-    if (self.rec_comparator.dataset_a != self.tmp_dataset) or \
-       (self.rec_comparator.dataset_b != self.tmp_dataset):
-      print 'error:Illegal data set definition in record comparator'
-      raise Exception
-
-    if (self.classifier.dataset_a != self.tmp_dataset) or \
-       (self.classifier.dataset_b != self.tmp_dataset):
-      print 'error:Illegal data set definition in classifier'
-      raise Exception
-
-    total_time = time.time()  # Get current time
-
-    print '1:'
-    print '1:*** Deduplicate data set: %s ***' % (self.input_dataset.name)
-    print '1:'
-
-    print '1:'
-    print '1:  Step 1: Load and standardise records, build blocking indexes'
-
-    step_1_time = time.time()  # Get current time
-    step_1_comm_time = 0.0  # Time for communication in step 1
-
-    input_rec_counter = self.first_record  # Current record pointer
-
-    block_cnt = 0  # A round robin block counter, used for parallelism
-
-    # Load records in a blocked fashion - - - - - - - - - - - - - - - - - - - -
-
-    while (input_rec_counter < (self.first_record + self.number_records)):
-
-      block_size = min(self.block_size,
-               ((self.first_record + self.number_records) - input_rec_counter))
-
-      # Distribute blocks equally to all processors
-      #
-      if ((block_cnt % parallel.size()) == parallel.rank()):
-
-        # Load original records from input data set
-        #
-        in_recs = self.input_dataset.read_records(input_rec_counter,
-                                                  block_size)
-        print '1:    Loaded records %i to %i' % \
-              (input_rec_counter, input_rec_counter+block_size)
-
-        # Standardise them if a standardiser is defined
-        #
-        if (self.rec_standardiser != None):
-          clean_recs = self.rec_standardiser.standardise_block(in_recs)
-          print '1:    Standardised records %i to %i' % \
-                (input_rec_counter, input_rec_counter+block_size)
-        else:
-          clean_recs = in_recs  # Take the original records directly
-
-        # Store records in temporary data set
-        #
-        self.tmp_dataset.write_records(clean_recs)
-
-        # Insert records into the blocking index
-        #
-        self.blocking_index.build(clean_recs)
-
-        # If Febrl is run in parallel, send cleaned records to process 0
-        #
-        if (parallel.rank() > 0):
-          tmp_time = time.time()
-          parallel.send(clean_recs, 0)
-          step_1_comm_time += (time.time() - tmp_time)
-
-      # If Febrl is run in parallel, process 0 receives cleaned records
-      #
-      if (parallel.rank() == 0) and (block_cnt % parallel.size() != 0):
-
-        p = (block_cnt % parallel.size())  # Process number to receive from
-        tmp_time = time.time()
-        tmp_recs = parallel.receive(p)
-        step_1_comm_time += (time.time() - tmp_time)
-
-        # Store the received records into the temporary data set
-        #
-        self.tmp_dataset.write_records(tmp_recs)
-
-      input_rec_counter += block_size  # Increment current record pointer
-      block_cnt += 1
-
-    # If Febrl is run in parallel, collect blocking index in process 0  - - - -
-    #
-    if (parallel.rank() == 0):
-      for p in range(1, parallel.size()):
-        tmp_time = time.time()
-        tmp_index = parallel.receive(p)
-        step_1_comm_time += (time.time() - tmp_time)
-        self.blocking_index.merge(tmp_index)
-        print '1:  Received index from process %i' % (p)
-
-    else:
-      tmp_time = time.time()
-      parallel.send(self.blocking_index, 0) # Send local index to process 0
-      step_1_comm_time += (time.time() - tmp_time)
-      print '1:  Sent index to process 0'
-
-    # Compact the blocking index on process 0 - - - - - - - - - - - - - - - - -
-    #
-    if (parallel.rank() == 0):
-      self.blocking_index.compact()
-
-    # If run in parallel, broadcast the index from process 0  - - - - - - - - -
-    #
-    if (parallel.size() > 1):
-      if (parallel.rank() == 0):
-        for p in range(1, parallel.size()):
-          tmp_time = time.time()
-          parallel.send(self.blocking_index, p)
-          step_1_comm_time += (time.time() - tmp_time)
-          print '1:    Sent compacted index to process %i' % (p)
-
-      else:
-        tmp_time = time.time()
-        self.blocking_index = parallel.receive(0)
-        step_1_comm_time += (time.time() - tmp_time)
-        print '1:    Received compacted index from process 0'
-
-    # If run in parallel temporary data set needs to be sent to all processes -
-    #
-    if (parallel.size() > 1):
-      if (parallel.rank() == 0):
-        for p in range(1, parallel.size()):
-          tmp_time = time.time()
-          parallel.send(self.tmp_dataset, p)
-          step_1_comm_time += (time.time() - tmp_time)
-          print '1:    Sent temporary data set %i' % (p)
-
-      else:
-        tmp_time = time.time()
-        self.tmp_dataset = parallel.receive(0)
-        step_1_comm_time += (time.time() - tmp_time)
-        print '1:    Received temporary data set from process 0'
-
-    step_1_time = time.time() - step_1_time  # Calculate time for step 1
-
-    #################### START PARALLEL TEST CODE #############################
-    # Save temporary data sets and indexes to files (on all processes)
-    #
-    if (SAVE_PARALLEL_TEST_FILES == True):
-      f = open('tmp_data_set-dedup-'+str(parallel.rank())+'-'+ \
-               str(parallel.size()),'w')
-      tmp_list = self.tmp_dataset.dict.keys()
-      tmp_list.sort()
-
-      for r in tmp_list:
-        rec = self.tmp_dataset.dict[r]
-        rec_items = rec.items()
-        rec_items.sort()
-        rec = str(r)+': '+str(rec_items)
-        f.write(rec+os.linesep)
-      f.close()
-
-      f = open('indexes-dedup-'+str(parallel.rank())+'-'+ \
-               str(parallel.size()),'w')
-
-      for i in range (self.blocking_index.num_indexes):
-        tmp_index = self.blocking_index.index[i].keys()
-        tmp_index.sort()
-
-        for bi in tmp_index:
-          ind = self.blocking_index.index[i][bi]
-          ind_list = ind.items()
-          ind_list.sort()
-
-          ii = str(i)+'_'+str(bi)+': '+str(ind_list)
-          f.write(ii+os.linesep)
-      f.close()
-
-    #################### END PARALLEL TEST CODE ###############################
-
-    # End of step 1 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-    #
-    if (parallel.size() > 1):
-      parallel.Barrier()  # Make sure all processes are here
-
-    print '1:'
-    print '1:  Step 2: Perform deduplication within blocks'
-
-    step_2_time = time.time()  # Get current time
-    step_2_comm_time = 0.0  # Time for communication in step 2
-
-    # Get the record pairs which have to be compared  - - - - - - - - - - - - -
-    #
-    tmp_time = time.time()
-    rec_pair_list = indexing.deduplication_rec_pairs(self.blocking_index)
-
-    print '1:    Built record pair list (time used %.2f sec)' % \
-          (time.time()-tmp_time)
-
-    rec_pair_list.sort()
-
-#    if (parallel.size() > 1) or (DO_PARALLEL_TEST == True) or \
-#       (SAVE_PARALLEL_TEST_FILES == True):
-#      rec_pair_list.sort()  # Needed for parallel runs only because of round
-#                            # robin fashion of work distribution (and list can
-#                            # have different sequence on different processes
-
-    #################### START PARALLEL TEST CODE #############################
-    # Check if the rec_pair_list are the same on all processes
-    #
-    if (parallel.size() > 1) and (DO_PARALLEL_TEST == True):
-      if (parallel.rank() == 0):
-
-        for p in range(1, parallel.size()):
-          tmp_list = parallel.receive(p)
-          if (len(tmp_list) != len(rec_pair_list)):
-            print 'warning:Record pair lists have differnt length on ' + \
-                  'process 0 (%i) and %i (%i)' % \
-                  (len(rec_pair_list), p, len(tmp_list))
-
-          for i in range(len(rec_pair_list)):
-            if (rec_pair_list[i] != tmp_list[i]):  # Element differs
-              print 'warning:Record pair lists differ in position %i' % (i) + \
-                    ' on process 0 (%s) and %i (%s)' % \
-                    (p, rec_pair_list[i], tmp_list[i])
-      else:
-        parallel.send(rec_pair_list,0)
-
-      parallel.Barrier()
-
-    # Save record pair lists to files (all processes)
-    #
-    if (SAVE_PARALLEL_TEST_FILES == True):
-      f = open('rec_pair_list-dedup-'+str(parallel.rank())+'-'+ \
-               str(parallel.size()),'w')
-      for r in rec_pair_list:
-        f.write(r+os.linesep)
-      f.close()
-
-    #################### END PARALLEL TEST CODE ###############################
-
-    weight_vector_dict = {}  # Dictionary with the comparison vectors
-
-    compare_time =  0.0
-    classify_time = 0.0
-
-    num_rec_pairs = len(rec_pair_list)
-    rec_pair_cnt = 0  # Loop counter
-
-    # Compare records, and distribute comparisons equally to all processes  - -
-    #
-    for rec_pair in rec_pair_list:
-
-      if ((rec_pair_cnt % parallel.size()) == parallel.rank()):
-
-        [rec_num_a,rec_num_b] = rec_pair.split('_')
-        print '2:      Compare records %s with %s' % (rec_num_a, rec_num_b)
-
-        # Read the records from the data set
-        #
-        rec_a = self.tmp_dataset.read_record(int(rec_num_a))
-        rec_b = self.tmp_dataset.read_record(int(rec_num_b))
-
-        #print '1: -------------------------------'  ########
-        #print '1: record_a: %s' % (str(rec_a))      ########
-        #print '1: record_b: %s' % (str(rec_b))      ########
-
-        # Compare the two records
-        #
-        tmp_time = time.time()
-        w_vector = self.rec_comparator.compare(rec_a, rec_b)
-        compare_time += (time.time() - tmp_time)
-
-        #print '1: weight vector: %s' % (str(w_vector))   ######
-        #print '1: -------------------------------'       ######
-
-        # Save the weight vector in a dictionary (used later for output)
-        #
-        if (weight_vector_dict.has_key(rec_pair)):
-          print 'warning:This should never happen: Record pair %s ' % \
-                (rec_pair) + ' already in weight vector dictionary'
-        weight_vector_dict[rec_pair] = w_vector
-
-        tmp_time = time.time()
-        self.classifier.classify(w_vector)  # Classify the weight vector
-        classify_time += (time.time() - tmp_time)
-
-      rec_pair_cnt += 1
-
-      # Progress report every 10 per cent
-      #
-      if (rec_pair_cnt > 0) and ((rec_pair_cnt % int(num_rec_pairs/10)) == 0):
-        print '1:    %i/%i record pairs compared' % \
-              (rec_pair_cnt, num_rec_pairs)
-        print '1:      Average comparison time:     %.6f' % \
-              (compare_time/rec_pair_cnt)
-        print '1:      Average classification time: %.6f' % \
-              (classify_time/rec_pair_cnt)
-
-    # Now gather classifiers on process 0 and merge - - - - - - - - - - - - - -
-    #
-    if (parallel.size() > 1):
-      if (parallel.rank() == 0):
-        for p in range(1, parallel.size()):
-          tmp_time = time.time()
-          tmp_classifier = parallel.receive(p)
-          step_2_comm_time += (time.time() - tmp_time)
-          self.classifier.merge(tmp_classifier)
-          print '1:  Received classifier from process %i and merged it' % (p)
-
-      else:
-        tmp_time = time.time()
-        parallel.send(self.classifier, 0) # Send local classifier to process 0
-        step_2_comm_time += (time.time() - tmp_time)
-        print '1:  Sent classifier to process 0'
-
-    # Also gather weight vectors on process 0 and merge - - - - - - - - - - - -
-    #
-    if (parallel.size() > 1):
-      if (parallel.rank() == 0):
-        for p in range(1, parallel.size()):
-          tmp_time = time.time()
-          tmp_weight_vector_dict = parallel.receive(p)
-          step_2_comm_time += (time.time() - tmp_time)
-          weight_vector_dict.update(tmp_weight_vector_dict)
-          print '1:  Received weight vectors from process %i' % (p)
-
-      else:
-        tmp_time = time.time()
-        parallel.send(weight_vector_dict, 0) # Send local weight vectors
-        step_2_comm_time += (time.time() - tmp_time)
-        print '1:  Sent weight vectors to process 0'
-
-    #################### START PARALLEL TEST CODE #############################
-    # Save classifiers and weight vectors to files (only process 0)
-    #
-    if (SAVE_PARALLEL_TEST_FILES == True) and (parallel.rank() == 0):
-      tmp_list = self.classifier.results.keys()
-      tmp_list.sort()
-      f = open('classifier_results_dict-dedup-'+str(parallel.rank())+'-'+ \
-               str(parallel.size()),'w')
-      for c in tmp_list:
-        res = self.classifier.results[c].items()
-        res.sort()
-        ce = str(c)+': '+str(res)
-        f.write(ce+os.linesep)
-      f.close()
-
-      tmp_list = weight_vector_dict.keys()
-      tmp_list.sort()
-      f = open('weight_vector_dict-dedup-'+str(parallel.rank())+'-'+ \
-               str(parallel.size()),'w')
-      for v in tmp_list:
-        wv = v+': '+str(weight_vector_dict[v])
-        f.write(wv+os.linesep)
-      f.close()
-
-    #################### END PARALLEL TEST CODE ###############################
-
-    print '1:Deduplication done, totally %i comparisons' % (num_rec_pairs)
-
-    step_2_time = time.time() - step_2_time  # Calculate time for step 2
-
-    # Output the results  - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
-    if (parallel.rank() == 0):  # Only processor 0 prints results
-
-      # Get the results dictionary with all the record pairs and their weights
-      #
-      results_dict = self.classifier.results
-
-      if (self.output_histogram == True):  # Print a weights histogram
-
-        output.print_histogram(results_dict)
-
-      if (self.output_assignment != None):  # An output assignment is defined
-
-        if (self.output_assignment == 'one2one'):
-
-          # Do a one-to-one assignment on the classifier results dict
-          #
-          o2o_results_dict = lap.do_lap('lapmod', results_dict, \
-                                        'deduplication', self.output_threshold)
-      else:  # No one-to-one assignment, set o2o result to None
-        o2o_results_dict = None
-
-      if (self.output_print == True):  # Print resulting record pairs
-
-        output.print_record_pairs(self.tmp_dataset, self.tmp_dataset, \
-                                  results_dict, o2o_results_dict, \
-                                  self.output_threshold)
-
-      if (self.output_file != None):  # Save results into a file
-
-        output.save(self.tmp_dataset.name, self.tmp_dataset.name, \
-                    self.output_file, results_dict, o2o_results_dict, \
-                    self.output_threshold)
-
-    print '1:Done.'
-
     total_time = time.time() - total_time  # Calculate total time
 
-    parallel.Barrier()  # Wait here for all processes - - - - - - - - - - - - -
+    total_time_string =       output.time_string(total_time)
+    step_1_comm_time_string = output.time_string(step_1_comm_time)
+    step_2_comm_time_string = output.time_string(step_2_comm_time)
 
-    print '1:Total time needed for deduplication of %i records: %.3f' % \
-          (self.number_records, total_time)
-
-    print '1:  Time for step 1: %.3f' % (step_1_time)
-    print '1:  Time for step 2: %.3f' % (step_2_time)
-    print '1:  Time for communication in step 1: %.3f' % (step_1_comm_time)
-    print '1:  Time for communication in step 2: %.3f' % (step_2_comm_time)
-
-    parallel.Finalize()
+    print '1:Total time needed for linkage of %i records with %i records: %s' \
+          % (self.number_records_a, self.number_records_b, total_time_string)
+    print '1:  Time for step 1 (standardisation):       %s' % \
+          (step_1_time_string)
+    print '1:  Time for step 2 (linkage):               %s' % \
+          (step_2_time_string)
+    print '1:  Time for step 3 (assignment and output): %s' % \
+          (step_3_time_string)
+    print '1:  Time for communication in step 1: %s' % \
+          (step_1_comm_time_string)
+    print '1:  Time for communication in step 2: %s' % \
+          (step_2_comm_time_string)
 
 # =============================================================================
 
@@ -1917,52 +1816,40 @@ class ProjectLog:
     trace_list = traceback.extract_tb(trace_back)
     trace_stack_size = len(trace_list)
 
-    self.append(parallel.prompt+'#'*75)
-    self.append(parallel.prompt+'### Exception: '+str(exc_type))
-    self.append(parallel.prompt+'###   Time:       '+time_stamp)
-    self.append(parallel.prompt+'###   Message:    '+str(value))
-    self.append(parallel.prompt+'###   Trace stack:')
+    # Create a message list (one element is one line) - - - - - - - - - - - - -
+    #
+    except_msg = []
+    except_msg.append(parallel.prompt+'#'*75)
+    except_msg.append(parallel.prompt+'### Exception: '+str(exc_type))
+    except_msg.append(parallel.prompt+'###   Time:       '+time_stamp)
+    except_msg.append(parallel.prompt+'###   Message:    '+str(value))
+    except_msg.append(parallel.prompt+'###   Trace stack:')
     for lev in range(trace_stack_size):
       spc = '  '*lev
-      self.append(parallel.prompt+'###     '+spc+'-'*(67-lev*2))
-      self.append(parallel.prompt+'###     '+spc+'Module:   '+ \
+      except_msg.append(parallel.prompt+'###     '+spc+'-'*(67-lev*2))
+      except_msg.append(parallel.prompt+'###     '+spc+'Module:   '+ \
                   str(trace_list[lev][0]))
-      self.append(parallel.prompt+'###     '+spc+'Function: '+ \
+      except_msg.append(parallel.prompt+'###     '+spc+'Function: '+ \
                   str(trace_list[lev][2]))
-      self.append(parallel.prompt+'###     '+spc+'Line:     '+ \
+      except_msg.append(parallel.prompt+'###     '+spc+'Line:     '+ \
                   str(trace_list[lev][1]))
-      self.append(parallel.prompt+'###     '+spc+'Text:     '+ \
+      except_msg.append(parallel.prompt+'###     '+spc+'Text:     '+ \
                   str(trace_list[lev][3]))
-    self.append(parallel.prompt+'#'*75)
-    self.append(parallel.prompt+'### '+bug_report1)
-    self.append(parallel.prompt+'### '+bug_report2)
-    self.append(parallel.prompt+'#'*75)
-    self.flush()
+    except_msg.append(parallel.prompt+'#'*75)
+    except_msg.append(parallel.prompt+'### '+bug_report1)
+    except_msg.append(parallel.prompt+'### '+bug_report2)
+    except_msg.append(parallel.prompt+'#'*75)
 
-    sys.__stdout__.write(parallel.prompt+'#'*75+os.linesep)
-    sys.__stdout__.write(parallel.prompt+'### Exception: '+str(exc_type)+ \
-                         os.linesep)
-    sys.__stdout__.write(parallel.prompt+'###   Time:       '+time_stamp+ \
-                         os.linesep)
-    sys.__stdout__.write(parallel.prompt+'###   Message:    '+str(value)+ \
-                         os.linesep)
-    sys.__stdout__.write(parallel.prompt+'###   Trace stack:'+os.linesep)
-    for lev in range(trace_stack_size):
-      spc = '  '*lev
-      sys.__stdout__.write(parallel.prompt+'###     '+spc+'-'*(67-lev*2)+ \
-                           os.linesep)
-      sys.__stdout__.write(parallel.prompt+'###     '+spc+'Module:   '+ \
-                           str(trace_list[lev][0])+os.linesep)
-      sys.__stdout__.write(parallel.prompt+'###     '+spc+'Function: '+ \
-                           str(trace_list[lev][2])+os.linesep)
-      sys.__stdout__.write(parallel.prompt+'###     '+spc+'Line:     '+ \
-                           str(trace_list[lev][1])+os.linesep)
-      sys.__stdout__.write(parallel.prompt+'###     '+spc+'Text:     '+ \
-                           str(trace_list[lev][3])+os.linesep)
-    sys.__stdout__.write(parallel.prompt+'#'*75+os.linesep)
-    sys.__stdout__.write(parallel.prompt+'### '+bug_report1+os.linesep)
-    sys.__stdout__.write(parallel.prompt+'### '+bug_report2+os.linesep)
-    sys.__stdout__.write(parallel.prompt+'#'*75+os.linesep)
+    # Print and log the message - - - - - - - - - - - - - - - - - - - - - - - -
+    #
+    for msg_line in except_msg:
+      self.append(msg_line)
+      sys.__stdout__.write(msg_line+os.linesep)
+
+    # And flush the standard out and the log file - - - - - - - - - - - - - - -
+    #
+    self.flush()
+    sys.__stdout__.flush()
 
   # ---------------------------------------------------------------------------
 
@@ -1985,7 +1872,7 @@ class ProjectLog:
        to the end of each line.
     """
 
-    if (self.log_file != None):
+    if (self.log_file != None):  # Only if the log file is open
       if (isinstance(message, str)):
         if (len(message) > 0) and (message[-1] == os.linesep):
           self.log_file.write(message)
@@ -2038,22 +1925,34 @@ class ProjectLog:
 # =============================================================================
 
 class LogPrinter:
-  """Class that replaces sys.stdout.
+  """Class that replaces sys.stdout
 
      Each normal print statement is analysed in the 'write' method, if it
-     starts with a 'Error:', 'Warning:' or '1:', '2:', '3:', .. '9:' it will
-     also be passed to the project loger.
-     Otherwise, it will simple be given to the original standard out.
+     starts with a 'error:', 'warning:' or '1:', '2:', '3:' it will also be
+     passed to the project logger.
+     Otherwise, it will simply be given to the original standard out.
 
      For parallel runs, error and warning message will be printed (and logged)
      from all processes, but normal verbose message are printed acording to the
      value of 'printmode' ('all' or 'host') as defined in parallel.py
+
+     Messages which are neither error nor warning message, nor have a level at
+     the beginning are also printed on all processes (if Febrl is run in
+     parallel).
   """
 
   def __init__(self, project_log):
     self.project_log = project_log
 
-  def write(self, msg): # - - - - - - - - - - - - - - - - - - - - - - - - - -
+    # Now check if printing of level messages is done - - - - - - - - - - - - -
+    #
+    if ((parallel.printmode == 'host') and (parallel.rank() == 0)) or \
+       (parallel.printmode == 'all'):
+      self.level_print = True  # Do print level messages
+    else:
+      self.level_print = False  # Don't print level messages
+
+  def write(self, msg): # - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
     #if (len(msg) > 0) and (msg[-1] != os.linesep):  # Append a line separator
     #  msg += os.linesep
@@ -2065,115 +1964,368 @@ class LogPrinter:
 
     # Get message type and split message at line separators
     #
-    if (msg[:6].lower() == 'error:'):  # An error message
-      msg_type = 'error'
+    if (msg[:6].lower() == 'error:'):  # An error message - - - - - - - - - - -
+
       msg = msg[6:]
-
-    elif (msg[:8].lower() == 'warning:'):  # A warning message
-      msg_type = 'warn'
-      msg = msg[8:]
-
-    elif (msg[0].isdigit()) and (msg[1] == ':'):  # A verbose level message
-      msg_type = 'level'
-      msg_level = int(msg[0])
-      msg = msg[2:]
-
-    else:  # Other message
-      msg_type = 'other'
-
-    msg_list = msg.split(os.linesep)
-
-    if (msg_list == ['','']):  # An empty message, don't print or log it
-      return
-
-    if (msg_type == 'error'):   # - - - - - - - - - - - - - - - - - - - - - - -
+      msg_list = msg.split(os.linesep)
 
       bug_report1 = 'Please submit an error report by sending an e-mail'+ \
                     ' to the Febrl authors'
       bug_report2 = 'and attach this error message.'
 
-      self.project_log.append(parallel.prompt+'#'*75)
-      self.project_log.append(parallel.prompt+'### Error')
-      self.project_log.append(parallel.prompt+'###   Module:  '+ \
-                              call_module+', function: '+ call_function+ \
-                              ', line number: '+call_linenumber)
-      self.project_log.append(parallel.prompt+'###   Time:    '+time_stamp)
-      self.project_log.append(parallel.prompt+'###   Message: '+msg_list[0])
-      for m in msg_list[1:]:
-        self.project_log.append(parallel.prompt+'###            '+m)
-      self.project_log.append(parallel.prompt+'#'*75)
-      self.project_log.append(parallel.prompt+'### '+bug_report1)
-      self.project_log.append(parallel.prompt+'### '+bug_report2)
-      self.project_log.append(parallel.prompt+'#'*75)
-      self.project_log.flush()
+      error_msg = []  # Create a message list (one element is one line)
 
-      sys.__stdout__.write(parallel.prompt+'#'*75+os.linesep)
-      sys.__stdout__.write(parallel.prompt+'### Error'+os.linesep)
-      sys.__stdout__.write(parallel.prompt+'###   Module:  '+call_module+ \
-                           ', function: '+call_function+', line number: '+ \
-                           call_linenumber+os.linesep)
-      sys.__stdout__.write(parallel.prompt+'###   Time:    '+time_stamp+ \
-                           os.linesep)
-      sys.__stdout__.write(parallel.prompt+'###   Message: '+msg_list[0]+ \
-                           os.linesep)
-      for m in msg_list[1:]:
-        self.project_log.append(parallel.prompt+'###            '+m+os.linesep)
-      sys.__stdout__.write(parallel.prompt+'#'*75+os.linesep)
-      sys.__stdout__.write(parallel.prompt+'### '+bug_report1+os.linesep)
-      sys.__stdout__.write(parallel.prompt+'### '+bug_report2+os.linesep)
-      sys.__stdout__.write(parallel.prompt+'#'*75+os.linesep)
+      error_msg.append(parallel.prompt+'#'*75)
+      error_msg.append(parallel.prompt+'### Error')
+      error_msg.append(parallel.prompt+'###   Module:  '+ call_module + \
+                       ', function: ' + call_function + ', line number: ' + \
+                       call_linenumber)
+      error_msg.append(parallel.prompt+'###   Time:    '+time_stamp)
+      error_msg.append(parallel.prompt+'###   Message: '+msg_list[0])
+      for msg_line in msg_list[1:]:
+        error_msg.append(parallel.prompt+'###            '+msg_line)
+      error_msg.append(parallel.prompt+'#'*75)
+      error_msg.append(parallel.prompt+'### '+bug_report1)
+      error_msg.append(parallel.prompt+'### '+bug_report2)
+      error_msg.append(parallel.prompt+'#'*75)
 
-    elif (msg_type == 'warn'):
+      for msg_line in error_msg:  # Print and log the message
+        self.project_log.append(msg_line)
+        sys.__stdout__.write(msg_line+os.linesep)
+
+      self.project_log.flush()  # And flush the standard out and the log file
+      sys.__stdout__.flush()
+
+    elif (msg[:8].lower() == 'warning:'):  # A warning message  - - - - - - - -
+
       if (self.project_log.no_warnings == False):
-        self.project_log.append(parallel.prompt)
-        self.project_log.append(parallel.prompt+'### Warning')
-        self.project_log.append(parallel.prompt+'###   Module:  '+ \
-                                call_module+', function: '+ \
-                                call_function+', line number: '+ \
-                                call_linenumber)
-        self.project_log.append(parallel.prompt+'###   Time:    '+time_stamp)
-        self.project_log.append(parallel.prompt+'###   Message: '+msg_list[0])
-        for m in msg_list[1:]:
-          self.project_log.append(parallel.prompt+'###            '+m)
-        self.project_log.flush()
 
-        sys.__stdout__.write(parallel.prompt+os.linesep)
-        sys.__stdout__.write(parallel.prompt+'### Warning'+os.linesep)
-        sys.__stdout__.write(parallel.prompt+'###   Module:  '+call_module+ \
-                             ', function: '+call_function+', line number: '+ \
-                             call_linenumber+os.linesep)
-        sys.__stdout__.write(parallel.prompt+'###   Time:    '+time_stamp+ \
-                             os.linesep)
-        sys.__stdout__.write(parallel.prompt+'###   Message: '+msg_list[0]+ \
-                             os.linesep)
-        for m in msg_list[1:]:
-          self.project_log.append(parallel.prompt+'###            '+m+ \
-                                  os.linesep)
-      else:
-        pass  # Don't print if 'no warn' flag is set
+        msg = msg[8:]
+        msg_list = msg.split(os.linesep)
 
-    elif (msg_type == 'level') and (msg_level in [1,2,3]):  # A 'level' message
+        warn_msg = []  # Create a message list (one element is one line)
 
-      # Check if Febrl runs in parallel and adjust printing accordingly
-      #
-      if ((parallel.printmode == 'host') and (parallel.rank() == 0)) or \
-          (parallel.printmode == 'all'):
+        warn_msg.append(parallel.prompt)
+        warn_msg.append(parallel.prompt+'### Warning')
+        warn_msg.append(parallel.prompt+'###   Module:  '+  call_module + \
+                        ', function: ' + call_function + ', line number: ' + \
+                        call_linenumber)
+        warn_msg.append(parallel.prompt+'###   Time:    '+time_stamp)
+        warn_msg.append(parallel.prompt+'###   Message: '+msg_list[0])
+        for msg_line in msg_list[1:]:
+          warn_msg.append(parallel.prompt+'###            '+msg_line)
 
+      for msg_line in warn_msg:  # Print and log the message
+        self.project_log.append(msg_line)
+        sys.__stdout__.write(msg_line+os.linesep)
+
+      self.project_log.flush()  # And flush the standard out and the log file
+      sys.__stdout__.flush()
+
+    # A verbose level message - - - - - - - - - - - - - - - - - - - - - - - - -
+    #
+    elif (msg[0] in '123') and (len(msg) >= 2) and (msg[1] == ':'): 
+
+      if (self.level_print == True):
+
+        msg_level = int(msg[0])
+        msg = msg[2:]
+        msg_list = msg.split(os.linesep)
+
+        # Check if the level of the message is good for printing and/or logging
+        #
         if (msg_level <= self.project_log.log_level):
-          for m in msg_list:
-            self.project_log.append(parallel.prompt+m)
+          for msg_line in msg_list:
+            self.project_log.append(parallel.prompt+msg_line)
           self.project_log.flush()
 
         if (msg_level <= self.project_log.verbose_level):
-          for m in msg_list:
-            sys.__stdout__.write(parallel.prompt+m+os.linesep)
+          for msg_line in msg_list:
+            sys.__stdout__.write(parallel.prompt+msg_line+os.linesep)
+          sys.__stdout__.flush()
 
-    else:  # Print 'normal' print commands
-      if (msg_list != [os.linesep]) and (msg_list != ['']): 
+    else:  # Print 'normal' print commands  - - - - - - - - - - - - - - - - - -
 
-        if ((parallel.printmode == 'host') and (parallel.rank() == 0)) or \
-            (parallel.printmode == 'all'):
-          for m in msg_list:
-            sys.__stdout__.write(parallel.prompt+m+os.linesep)
+      msg_list = msg.split(os.linesep)
+
+      for msg_line in msg_list:
+
+        if ((len(msg_line) == 1) and (ord(msg_line) != 10)) or \
+            (len(msg_line) > 1):
+          if (sys.platform[:3] == 'win'): # No line separator needed on Windows
+            sys.__stdout__.write(parallel.prompt+msg_line)
+          else:
+            sys.__stdout__.write(parallel.prompt+msg_line+os.linesep)
+      sys.__stdout__.flush()
+
+# =============================================================================
+# The following are the main routines for standardisation and record linkage as
+# used withing the project methods 'standardise', 'deduplicate' and 'link'
+
+def do_load_standard_indexing(input_dataset, output_dataset,
+                              record_standardiser, blocking_index,
+                              first_record, number_records,
+                              febrl_block_size):
+
+  """The main routine that does the loading of records from the input data set
+     into the output data set, if a record standardsier is given these records
+     are cleaned and standardised, and if a blocking index is given such a
+     index will be built and returned as well.
+
+     If no standardisation is needed the argument 'record_standardiser' has to
+     be set to None, and if no indexing is needed the 'blocking_index' argument
+     has to be set to None.
+
+     The output dataset must not be a Memory based data set. And of course the
+     output data set must be initialised in access mode "write", "append" or
+     "readwrite".
+
+     If run in parallel, all processes will open the input data set and read
+     records from it (and clean and standardised them), and the processed
+     records will then be sent to process 0 (the host process) and saved into
+     the output data set.
+  """
+
+  # Check if the given record numbers are valid - - - - - - - - - - - - - - - -
+  #
+  last_record = first_record + number_records
+
+  if (first_record < 0) or (last_record > input_dataset.num_records):
+    print 'error:Record range too large: (%i,%i)' % \
+          (first_record, last_record)
+    raise Exception
+
+  # Check if the data sets are set correctly within the record standardiser - -
+  #
+  if (record_standardiser != None):
+    if (record_standardiser.input_dataset != input_dataset):
+      print 'error:Illegal input data set definition in record '+ \
+            'standardiser: %s (should be: %s)' % \
+            (str(record_standardiser.input_dataset.name), \
+            str(input_dataset.name))
+      raise Exception
+    if (record_standardiser.output_dataset != output_dataset):
+      print 'error:Illegal output data set definition in record '+ \
+            'standardiser: %s (should be: %s)' % \
+            (str(record_standardiser.output_dataset.name), \
+             str(output_dataset.name))
+      raise Exception
+
+  else:
+    # If no record standardiser for the data set is defined, the field names in
+    # the input and the output data sets must be the same
+    #
+    input_field_name_list = input_dataset.fields.keys()
+    input_field_name_list.sort()
+    output_field_name_list = output_dataset.fields.keys()
+    output_field_name_list.sort()
+
+    if (input_field_name_list != output_field_name_list):
+      print 'error:Field names differ in input and output data sets ' + \
+            '(with no record standardiser defined)'
+      raise Exception
+
+  # Check if the data set defined in the blocking index (if defined) is correct
+  #
+  if (blocking_index != None):
+    if (blocking_index.dataset != output_dataset):
+      print 'error:Illegal data set definition in blocking index'
+      raise Exception
+
+  if (record_standardiser != None) and (blocking_index != None):
+    do_string = 'Load, standardise and index records'
+  elif (record_standardiser != None):
+    do_string = 'Load and standardise records'
+  elif (blocking_index != None):
+    do_string = 'Load and index records'
+  else:
+    do_string = 'Load records'
+  print '1:'
+  print '1:  %s, write them into output data set' % (do_string)
+  print '1:    First record: %i' % (first_record)
+  print '1:    Last record:  %i' % (last_record-1)
+  print '1:'
+
+  start_time = time.time()  # Get current time
+  comm_time  = 0.0          # Communication time
+
+  input_rec_counter = first_record  # Current record pointer
+
+  block_cnt = 0  # A round robin block counter, used for parallelism
+
+  # Load records in a blocked fashion - - - - - - - - - - - - - - - - - - - - -
+
+  while (input_rec_counter < last_record):
+
+    block_size = min(febrl_block_size, (last_record - input_rec_counter))
+
+    # Distribute blocks equally to all processors
+    #
+    if ((block_cnt % parallel.size()) == parallel.rank()):
+
+      # Load original records from input data set
+      #
+      input_recs = input_dataset.read_records(input_rec_counter, block_size)
+      print '1:    Loaded records %i to %i' % \
+              (input_rec_counter, input_rec_counter+block_size)
+
+      # Standardise them if a standardiser is defined - - - - - - - - - - - - -
+      #
+      if (record_standardiser != None):
+        clean_recs = record_standardiser.standardise_block(input_recs)
+        print '1:      Standardised records %i to %i' % \
+              (input_rec_counter, input_rec_counter+block_size)
+      else:
+        clean_recs = input_recs  # Take the original records directly
+
+      # Insert records into the blocking index if blocking index is defined - -
+      #
+      if (blocking_index != None):
+        blocking_index.build(clean_recs)
+
+      # If Febrl is run in parallel, send cleaned records to process 0
+      #
+      if (parallel.rank() > 0):
+        tmp_time = time.time()
+        parallel.send(clean_recs, 0)
+        comm_time += (time.time() - tmp_time)
+
+      else:  # Process 0, store standardised records
+
+        # Store records in output data set
+        #
+        output_dataset.write_records(clean_recs)
+
+    # If Febrl is run in parallel, process 0 receives cleaned records
+    #
+    if (parallel.rank() == 0) and (block_cnt % parallel.size() != 0):
+
+      p = (block_cnt % parallel.size())  # Process number to receive from
+      tmp_time = time.time()
+      tmp_recs = parallel.receive(p)
+      comm_time += (time.time() - tmp_time)
+
+      # Store records in output data set
+      #
+      output_dataset.write_records(tmp_recs)
+
+    input_rec_counter += block_size  # Increment current record pointer
+    block_cnt += 1
+
+    # Now determine timing and print progress report  - - - - - - - - - - - - -
+    #
+    if ((block_cnt % parallel.size()) == 0):
+      used_time = time.time() - start_time
+      recs_done = input_rec_counter - first_record
+      perc_done = 100.0 * recs_done / number_records
+      rec_time  = used_time / recs_done
+      todo_time = (number_records - recs_done) * rec_time
+
+      used_time_string = output.time_string(used_time)
+      todo_time_string = output.time_string(todo_time)
+      rec_time_string  = output.time_string(rec_time)
+
+      print '1:      Processed %.1f%% of records in %s (%s per record)' % \
+            (perc_done, used_time_string, rec_time_string)
+      print '1:        Estimated %s until finished' % (todo_time_string)
+
+  # End of standardisation  - - - - - - - - - - - - - - - - - - - - - - - - - -
+  #
+  parallel.Barrier()  # Make sure all processes are here
+
+  total_time = time.time() - start_time  # Calculate total time
+  total_time_string = output.time_string(total_time)
+  print '1:  Total time needed for standardisation of %i records: %s' % \
+        (number_records, total_time_string)
+
+  if (parallel.size() > 1):
+    comm_time_string = output.time_string(comm_time)
+    print '1:    Time for communication: %s' % (comm_time_string)
+
+  return [total_time, comm_time]
+
+# =============================================================================
+
+def do_comparison(dataset_a, dataset_b, record_comparator, classifier,
+                  record_pair_dict, num_rec_pairs, febrl_block_size):
+  """The main routine that does the comparison of record pairs given in the
+     record pair list and the two data sets using the given record comparator.
+     The resulting weight vectors are then inserted into the given classifier.
+  """
+
+  start_time =    time.time()  # Get current time
+  compare_time =  0.0          # Comparison time
+  classify_time = 0.0          # Classification time
+
+  rec_pair_cnt = 0  # Loop counter
+
+  # Compare records, and distribute comparisons equally to all processes  - - -
+  #
+  for rec_num_a in record_pair_dict:
+
+    rec_num_a_dict = record_pair_dict[rec_num_a]
+
+    rec_a = dataset_a.read_record(int(rec_num_a))  # Read the first record
+
+    for rec_num_b in rec_num_a_dict:
+
+      print '2:          Compare records %i with %i' % (rec_num_a, rec_num_b)
+
+      # Read the records from the data set
+      #
+      rec_b = dataset_b.read_record(rec_num_b)
+
+      # Compare the two records
+      #
+      tmp_time = time.time()
+      weight_vector = record_comparator.compare(rec_a, rec_b)
+      compare_time += (time.time() - tmp_time)
+
+      # And insert the weight vector into the classifier
+      #
+      tmp_time = time.time()
+      classifier.classify(weight_vector)  # Classify the weight vector
+      classify_time += (time.time() - tmp_time)
+
+      rec_pair_cnt += 1
+
+      # Now determine timing and print progress report  - - - - - - - - - - - -
+      #
+      if ((rec_pair_cnt % febrl_block_size) == 0):
+        used_time =       time.time() - start_time
+        perc_done =       100.0 * rec_pair_cnt / num_rec_pairs
+        rec_pair_time =   used_time / rec_pair_cnt
+        todo_time =       (num_rec_pairs - rec_pair_cnt) * rec_pair_time
+        avrg_comp_time =  (compare_time / rec_pair_cnt)
+        avrg_class_time = (classify_time / rec_pair_cnt)
+
+        used_time_string =       output.time_string(used_time)
+        todo_time_string =       output.time_string(todo_time)
+        rec_pair_time_string =   output.time_string(rec_pair_time)
+        avrg_comp_time_string =  output.time_string(avrg_comp_time)
+        avrg_class_time_string = output.time_string(avrg_class_time)
+
+        print '1:      Processed %.1f%% (%i/%i) of record pairs in %s' % \
+                (perc_done, rec_pair_cnt, num_rec_pairs, used_time_string) + \
+                ' (%s per record pair)' % (rec_pair_time_string)
+        print '1:        Average comparison time:     %s' % \
+              (avrg_comp_time_string)
+        print '1:        Average classification time: %s' % \
+              (avrg_class_time_string)
+        print '1:        Estimated %s until finished' % (todo_time_string)
+
+  # Print final time for record pair comparison
+  #
+  total_time =    time.time() - start_time  # Calculate total time
+  rec_pair_time = (total_time / rec_pair_cnt)
+
+  total_time_string =    output.time_string(total_time)
+  rec_pair_time_string = output.time_string(rec_pair_time)
+
+  print '1:  Total time needed for comparison and classification of ' + \
+        '%i record pairs: %s' % (rec_pair_cnt, total_time_string)
+  print '1:    (%s per record pair)' % (rec_pair_time_string)
+
+  return [total_time]
 
 # =============================================================================

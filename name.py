@@ -1,25 +1,24 @@
 # =============================================================================
 # name.py - Routines for name cleaning and standardisation.
 #
-# Freely extensible biomedical record linkage (Febrl) Version 0.2
+# Freely extensible biomedical record linkage (Febrl) Version 0.2.1
 # See http://datamining.anu.edu.au/projects/linkage.html
 #
 # =============================================================================
 # AUSTRALIAN NATIONAL UNIVERSITY OPEN SOURCE LICENSE (ANUOS LICENSE)
-# VERSION 1.0
+# VERSION 1.1
 #
-# The contents of this file are subject to the ANUOS License Version 1.0 (the
+# The contents of this file are subject to the ANUOS License Version 1.1 (the
 # "License"); you may not use this file except in compliance with the License.
 # Software distributed under the License is distributed on an "AS IS" basis,
 # WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License for
 # the specific language governing rights and limitations under the License.
 # The Original Software is "name.py".
 # The Initial Developers of the Original Software are Dr Peter Christen
-# (Department of Computer Science, Australian National University), Dr Tim
+# (Department of Computer Science, Australian National University) and Dr Tim
 # Churches (Centre for Epidemiology and Research, New South Wales Department
-# of Health) and Drs Markus Hegland, Stephen Roberts and Ole Nielsen
-# (Mathematical Sciences Insitute, Australian National University). Copyright
-# (C) 2002 the Australian National University and others. All Rights Reserved.
+# of Health). Copyright (C) 2002, 2003 the Australian National University and
+# others. All Rights Reserved.
 # Contributors:
 #
 # =============================================================================
@@ -1273,13 +1272,13 @@ def get_name_hmm(word_list, tag_list, name_hmm, first_name_comp,
   if (name_list[1] == []) and (name_list[2] != []):
     print '2:%s  No given name but an alternative given name: %s' % \
           (record_id, str(name_list[2])) + ' -> Corrected'
-    name_dict[1] = name_list[2]  # Move alternative given name to given name
+    name_list[1] = name_list[2][:]  # Move alternative given name to given name
     name_list[2] = []
 
   if (name_list[3] == []) and (name_list[4] != []):
     print '2:%s  No surname but an alternative surname: %s' % \
-          (record_id, str(name_dict['surname'])) + ' -> Corrected'
-    name_dict[3] = name_list[4]  # Move alternative surname to given name
+          (record_id, str(name_list[4])) + ' -> Corrected'
+    name_list[3] = name_list[4][:]  # Move alternative surname to given name
     name_list[4] = []
 
   # Check if a givenname is given but no surname  - - - - - - - - - - - - - - -
@@ -1289,14 +1288,14 @@ def get_name_hmm(word_list, tag_list, name_hmm, first_name_comp,
     if (name_list[2] != []):  # An alternative given name is availabe
       print '2:%s  No surname but an alternative given name: %s' % \
             (record_id, str(name_list)) + ' -> Corrected'
-      name_list[3] = name_list[2]  # Move alternative given name to surname
+      name_list[3] = name_list[2][:]  # Move alternative given name to surname
       name_list[2] = []
 
     elif (len(name_list[1]) > 1):  # More than one given name available
       print '2:%s  No surname but more than one given name: %s' % \
             (record_id, str(name_list)) + ' -> Corrected'
-      name_list[3] = name_list[1][-1]  # Move last given name to surname
-      name_list[1] = name_list[1][:-1]
+      name_list[3] = name_list[1][-1][:]  # Move last given name to surname
+      name_list[1] = name_list[1][:-1][:]
 
   # Check if title words are known from lookup-table  - - - - - - - - - - - - -
   #

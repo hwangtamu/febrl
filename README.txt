@@ -1,9 +1,9 @@
-Febrl (Freely extensible biomedical record linkage) Version 0.2
+Febrl (Freely extensible biomedical record linkage) Version 0.2.1
 
-Copyright 2002,2003 Australian National University and others.
+Copyright 2002, 2003 Australian National University and others.
 All Rights reserved.
 
-See the file ANUOS_v1.0.txt for the terms under which the computer
+See the file ANUOS_v1.1.txt for the terms under which the computer
 program code and associated documentation and data files in the
 Febrl package are licensed.
 

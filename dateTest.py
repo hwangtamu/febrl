@@ -1,25 +1,24 @@
 # =============================================================================
 # dateTest.py - Test module for date.py
 #
-# Freely extensible biomedical record linkage (Febrl) Version 0.2
+# Freely extensible biomedical record linkage (Febrl) Version 0.2.1
 # See http://datamining.anu.edu.au/projects/linkage.html
 #
 # =============================================================================
 # AUSTRALIAN NATIONAL UNIVERSITY OPEN SOURCE LICENSE (ANUOS LICENSE)
-# VERSION 1.0
+# VERSION 1.1
 #
-# The contents of this file are subject to the ANUOS License Version 1.0 (the
+# The contents of this file are subject to the ANUOS License Version 1.1 (the
 # "License"); you may not use this file except in compliance with the License.
 # Software distributed under the License is distributed on an "AS IS" basis,
 # WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License for
 # the specific language governing rights and limitations under the License.
 # The Original Software is "dateTest.py".
 # The Initial Developers of the Original Software are Dr Peter Christen
-# (Department of Computer Science, Australian National University), Dr Tim
+# (Department of Computer Science, Australian National University) and Dr Tim
 # Churches (Centre for Epidemiology and Research, New South Wales Department
-# of Health) and Drs Markus Hegland, Stephen Roberts and Ole Nielsen
-# (Mathematical Sciences Insitute, Australian National University). Copyright
-# (C) 2002 the Australian National University and others. All Rights Reserved.
+# of Health). Copyright (C) 2002, 2003 the Australian National University and
+# others. All Rights Reserved.
 # Contributors:
 #
 # =============================================================================
@@ -42,39 +41,38 @@ class TestCase(unittest.TestCase):
 
     # A list with dates and corresponding date tuples and epoch numbers
     #
-    self.dates = [['Sep 1, 68',        ['01','09','1968'], -487,  14],
-                  ['18 Jan 2002',      ['18','01','2002'], 11705,  1],
-                  ['17:2:2002',        ['17','02','2002'], 11735,  0],
-                  ['2002-02-25',       ['25','02','2002'], 11743,  4],
-                  ['18,03,2001',       ['18','03','2001'], 11399,  0],
-                  ['21.12.1999',       ['21','12','1999'], 10946,  0],
-                  ['February 18,19',   ['18','02','1919'], -18580,14],
-                  ['23\\July\\1968',   ['23','07','1968'], -527,   1],
-                  ['18-02-2002',       ['18','02','2002'], 11736,  0],
-                  ['5/03/01',          ['05','03','2001'], 11386,  9],
-                  ['19680429',         ['29','04','1968'], -612,   6],
-                  ['600810',           ['10','08','1960'], -3431, 15],
-                  ['3:05:2000',        ['03','05','2000'], 11080,  0],
-                  ['30.11.1989',       ['30','11','1989'], 7273,   0],
-                  ['01011970',         ['01','01','1970'], 0,      8],
-                  ["1. January '70",   ['01','01','1970'], 0,     10],
-                  ['01011970',         ['01','01','1970'], 0,      8],
-                  ['10011970',         ['10','01','1970'], 9,      7],
-                  ['31 dec  1969',     ['31','12','1969'], -1,     1],
-                  ['30 december  69',  ['30','12','1969'], -2,    10],
-                  ['01011970',         ['01','01','1970'], 0,      8],
-                  ['13 Feb 1945',      ['13','02','1945'], -9088,  1],
-                  ['Feb 13, \'45',     ['13','02','1945'], -9088, 14],
-                  ['April 29 1968',    ['29','04','1968'], -612,   3],
-                  ['29-4=68',          ['29','04','1968'], -612,   9],
-                  ['11-01-1972',       ['11','01','1972'], 740,    0],
-                  ['January 10. 1972', ['10','01','1972'], 739,    3],
-                  ['23 May 1934',      ['23','05','1934'], -13007, 1],
-                  ['28 March 34',      ['28','03','1934'], -13063,10],
-                  ['11 Jun 1902',      ['11','06','1902'], -24676, 1],
-                  ['11 Jul 1989',      ['11','07','1989'], 7131,   1],
-                  ['12111968',         ['12','11','1968'], -415,   7],
-                  ['      21111969  ', ['21','11','1969'], -41,    7]]
+    self.dates = [['Sep 1, 68',        ['01','09','1968'], 25080, 14],
+                  ['18 Jan 2002',      ['18','01','2002'], 37272,  1],
+                  ['17:2:2002',        ['17','02','2002'], 37302,  0],
+                  ['2002-02-25',       ['25','02','2002'], 37310,  4],
+                  ['18,03,2001',       ['18','03','2001'], 36966,  0],
+                  ['21.12.1999',       ['21','12','1999'], 36513,  0],
+                  ['February 18,19',   ['18','02','1919'],  6987, 14],
+                  ['23\\July\\1968',   ['23','07','1968'], 25040,  1],
+                  ['18-02-2002',       ['18','02','2002'], 37303,  0],
+                  ['5/03/01',          ['05','03','2001'], 36953,  9],
+                  ['19680429',         ['29','04','1968'], 24955,  6],
+                  ['600810',           ['10','08','1960'], 22136, 15],
+                  ['3:05:2000',        ['03','05','2000'], 36647,  0],
+                  ['30.11.1989',       ['30','11','1989'], 32840,  0],
+                  ["1. January '70",   ['01','01','1970'], 25567, 10],
+                  ['01011970',         ['01','01','1970'], 25567,  8],
+                  ['10011970',         ['10','01','1970'], 25576,  7],
+                  ['31 dec  1969',     ['31','12','1969'], 25566,  1],
+                  ['30 december  69',  ['30','12','1969'], 25565, 10],
+                  ['01011970',         ['01','01','1970'], 25567,  8],
+                  ['13 Feb 1945',      ['13','02','1945'], 16479,  1],
+                  ['Feb 13, \'45',     ['13','02','1945'], 16479, 14],
+                  ['April 29 1968',    ['29','04','1968'], 24955,  3],
+                  ['29-4=68',          ['29','04','1968'], 24955,  9],
+                  ['11-01-1972',       ['11','01','1972'], 26307,  0],
+                  ['January 10. 1972', ['10','01','1972'], 26306,  3],
+                  ['29 Feb 1932',      ['29','02','1932'], 11746,  1],
+                  ['29 Feb 32',        ['29','02','1932'], 11746, 10],
+                  ['11 Jun 1902',      ['11','06','1902'],   891,  1],
+                  ['11 Jul 1989',      ['11','07','1989'], 32698,  1],
+                  ['12111968',         ['12','11','1968'], 25152,  7],
+                  ['      21111969  ', ['21','11','1969'], 25526,  7]]
 
     # Define a list of date parsing format strings
     #
@@ -155,7 +153,7 @@ class TestCase(unittest.TestCase):
       assert (age1 == age2), 'Age 1 and age 2 differ for date "'+d[0]+ \
              '": '+str(age1)+' / '+str(age2)
 
-      assert (age1 < 101.0), \
+      assert (age1 < 105.0), \
              'Age 1 for date "'+str(d[0])+'" is not smaller than 100.0: '+ \
              str(age1)
 

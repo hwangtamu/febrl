@@ -1,25 +1,24 @@
 # =============================================================================
 # indexing.py - Classes for indexing and blocking.
 #
-# Freely extensible biomedical record linkage (Febrl) Version 0.2
+# Freely extensible biomedical record linkage (Febrl) Version 0.2.1
 # See http://datamining.anu.edu.au/projects/linkage.html
 #
 # =============================================================================
 # AUSTRALIAN NATIONAL UNIVERSITY OPEN SOURCE LICENSE (ANUOS LICENSE)
-# VERSION 1.0
+# VERSION 1.1
 #
-# The contents of this file are subject to the ANUOS License Version 1.0 (the
+# The contents of this file are subject to the ANUOS License Version 1.1 (the
 # "License"); you may not use this file except in compliance with the License.
 # Software distributed under the License is distributed on an "AS IS" basis,
 # WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License for
 # the specific language governing rights and limitations under the License.
-# The Original Software is "blocking.py".
+# The Original Software is "indexing.py".
 # The Initial Developers of the Original Software are Dr Peter Christen
-# (Department of Computer Science, Australian National University), Dr Tim
+# (Department of Computer Science, Australian National University) and Dr Tim
 # Churches (Centre for Epidemiology and Research, New South Wales Department
-# of Health) and Drs Markus Hegland, Stephen Roberts and Ole Nielsen
-# (Mathematical Sciences Insitute, Australian National University). Copyright
-# (C) 2002 the Australian National University and others. All Rights Reserved.
+# of Health). Copyright (C) 2002, 2003 the Australian National University and
+# others. All Rights Reserved.
 # Contributors:
 #
 # =============================================================================
@@ -64,6 +63,7 @@
 
 from __future__ import generators
 import encode
+import parallel
 
 # =============================================================================
 
@@ -98,31 +98,37 @@ def get_sublists(alist, length):
 
 def linkage_rec_pairs(index_a, index_b):
   """Routine to extract all record number pairs from the given indexing data
-     structure that need to be compared for a record linkage process where two
+     structures that need to be compared for a record linkage process where two
      data sets are involved.
 
-     Returns a list of record number pairs as strings of the form:
-     'rec_num_a'_'rec_num_b'
+     This routine works for sequential and parallel runs, in that only a local
+     part of all the record pairs are kept for the record pair dictionary.
+
+     Returns a dictionary with record numbers as keys, and for each a
+     dictionary with record numbers as keys (and values 1).
   """
 
   rec_pair_dict = {}
   duplicate_rec_pairs = 0  # Number of duplicate record pairs
 
-  # Get the number of blocks in both indexes
-  #
-  num_blocks_a = index_a.num_blocks
-  num_blocks_b = index_b.num_blocks
+  par_size = parallel.size()  # Get number of processes and my process number
+  par_rank = parallel.rank()
 
   # Initialise the blocking iteration generator - - - - - - - - - - - - - - - -
   #
   block_iter_a = index_a.block_iterator()
-  blocking_value_a = block_iter_a.next()  # Get first block
-  block_cnt =      0                      # Processed block counter 
 
-  print '1:    Create record pair list for linkage'
+  num_blocks_a = index_a.num_blocks  # Total number of blocks in index A
+  num_blocks_b = index_b.num_blocks  # Total number of blocks in index B
+  block_cnt =      0                      # Processed block counter 
+  rec_pair_cnt =   0                  # Number of record pairs
+
+  print '1:  Create record pair dictionary for linkage'
 
   # Loop over all blocks in the compacted index - - - - - - - - - - - - - - - -
   #
+  blocking_value_a = block_iter_a.next()  # Get first block
+
   while blocking_value_a != None:  # Loop over all blocks
 
     block_var_a =            blocking_value_a[0]
@@ -132,33 +138,41 @@ def linkage_rec_pairs(index_a, index_b):
     #
     block_record_numbers_b = index_b.get_block_records(block_var_a)
 
-    if (block_record_numbers_b != None):  # There are records ib this block
+    if (block_record_numbers_b != None):  # There are records in this block
 
       # Form cartesian product of all record pairs
       #
       for rec_num_a in block_record_numbers_a:
-        for rec_num_b in block_record_numbers_b:
-          rec_num_pair = str(rec_num_a)+'_'+str(rec_num_b)
 
-          # Check if the record pair is already in the dictionary
-          #
-          if (not rec_pair_dict.has_key(rec_num_pair)):
-            rec_pair_dict[rec_num_pair] = 1
-          else:
-            duplicate_rec_pairs += 1
+        if (rec_num_a % par_size == par_rank):  # A 'local' record number
+
+          rec_num_a_dict = rec_pair_dict.get(rec_num_a, {})
+
+          for rec_num_b in block_record_numbers_b:
+
+            if (rec_num_a_dict.has_key(rec_num_b)):
+              duplicate_rec_pairs += 1  # Record pair already in dictionary
+            else:
+              rec_num_a_dict[rec_num_b] = True
+              rec_pair_cnt += 1  # One more record pairs
+
+          if (rec_num_a_dict != {}):  # Only insert non-empty dictionary
+            rec_pair_dict[rec_num_a] = rec_num_a_dict
 
     block_cnt += 1
-    if ((block_cnt % int(num_blocks_a/10)) == 0):  # Report progress every 10%
-      print '2:      %i/%i blocks processed, number of record pairs: %i' % \
-            (block_cnt, num_blocks_a, len(rec_pair_dict))
+
+    # Report progress every 10% (only if more than 10000 blocks)  - - - - - - -
+    #
+    if (num_blocks_a >= 10000) and (block_cnt % int(num_blocks_a / 10) == 0):
+      print '1:      %i/%i blocks processed, number of record pairs: %i' % \
+            (block_cnt, num_blocks_a, rec_pair_cnt)
 
     blocking_value_a = block_iter_a.next()  # Get next block
 
-  print '1:      Number of record pairs:           %i' % (len(rec_pair_dict))
-  print '1:      Number of duplicate record pairs: %i (deleted)' % \
-        (duplicate_rec_pairs)
+  print '1:    Number of record pairs:   %i' % (rec_pair_cnt)
+  print '1:      Duplicate record pairs: %i (deleted)' % (duplicate_rec_pairs)
 
-  return rec_pair_dict.keys()
+  return [rec_pair_dict, rec_pair_cnt]
 
 # =============================================================================
 
@@ -167,63 +181,79 @@ def deduplication_rec_pairs(index):
      structure that need to be compared for a deduplication process where one
      data set is involved.
 
-     Returns a list of record number pairs as strings of the form:
-     'rec_num_a'_'rec_num_b'
+     This routine works for sequential and parallel runs, in that only a local
+     part of all the record pairs are kept for the record pair dictionary.
+
+     Returns a dictionary with record numbers as keys, and for each a
+     dictionary with record numbers as keys (and values 1).
   """
 
   rec_pair_dict = {}
   duplicate_rec_pairs = 0  # Number of duplicate record pairs
 
+  par_size = parallel.size()  # Get number of processes and my process number
+  par_rank = parallel.rank()
+
   # Initialise the blocking iteration generator - - - - - - - - - - - - - - - -
   #
   block_iter = index.block_iterator()
 
-  num_blocks = index.num_blocks       # Total number of blocks in the index
-  blocking_value = block_iter.next()  # Get first block
+  num_blocks =     index.num_blocks   # Total number of blocks in the index
   block_cnt =      0                  # Processed block counter 
+  rec_pair_cnt =   0                  # Number of record pairs
 
-  print '1:    Create record pair list for deduplication'
+  print '1:  Create record pair dictionary for deduplication'
 
   # Loop over all blocks in the compacted index - - - - - - - - - - - - - - - -
   #
+  blocking_value = block_iter.next()  # Get first block
+
   while blocking_value != None:  # Loop over all blocks
 
     block_var =            blocking_value[0]
     block_record_numbers = blocking_value[1]
 
-    block_record_numbers.sort()  # Sort the record numbers in the block
-
     # Do not process blocks with one record only
     #
     if (len(block_record_numbers) > 1):
-      rec_cnt = 1
+
+      block_record_numbers.sort()  # Sort the record numbers in the block
+
+      rec_cnt = 1  # Counter of record numbers within the block
 
       for rec_num_a in block_record_numbers:
-        for rec_num_b in block_record_numbers[rec_cnt:]:
 
-          rec_num_pair = '%s_%s' % (str(rec_num_a), str(rec_num_b))
+        if (rec_num_a % par_size == par_rank):  # A 'local' record number
 
-          # Check if the record pair is already in the dictionary
-          #
-          if (not rec_pair_dict.has_key(rec_num_pair)):
-            rec_pair_dict[rec_num_pair] = 1
-          else:
-            duplicate_rec_pairs += 1
+          rec_num_a_dict = rec_pair_dict.get(rec_num_a, {})
+
+          for rec_num_b in block_record_numbers[rec_cnt:]:
+
+            if (rec_num_a_dict.has_key(rec_num_b)):
+              duplicate_rec_pairs += 1  # Record pair already in dictionary
+            else:
+              rec_num_a_dict[rec_num_b] = True
+              rec_pair_cnt += 1  # One more record pairs
+
+          if (rec_num_a_dict != {}):  # Only insert non-empty dictionary
+            rec_pair_dict[rec_num_a] = rec_num_a_dict
 
         rec_cnt += 1
 
     block_cnt += 1
-    if ((block_cnt % int(num_blocks/10)) == 0):  # Report progress every 10%
-      print '2:      %i/%i blocks processed, number of record pairs: %i' % \
-            (block_cnt, num_blocks, len(rec_pair_dict))
+
+    # Report progress every 10% (only if more than 10000 blocks)  - - - - - - -
+    #
+    if (num_blocks >= 10000) and (block_cnt % int(num_blocks / 10) == 0):
+      print '1:      %i/%i blocks processed, number of record pairs: %i' % \
+            (block_cnt, num_blocks, rec_pair_cnt)
 
     blocking_value = block_iter.next()  # Get next block
 
-  print '1:      Number of record pairs:           %i' % (len(rec_pair_dict))
-  print '1:      Number of duplicate record pairs: %i (deleted)' % \
-        (duplicate_rec_pairs)
+  print '1:    Number of record pairs:   %i' % (rec_pair_cnt)
+  print '1:      Duplicate record pairs: %i (deleted)' % (duplicate_rec_pairs)
 
-  return rec_pair_dict.keys()
+  return [rec_pair_dict, rec_pair_cnt]
 
 # =============================================================================
 
@@ -594,12 +624,13 @@ class Indexing:
                 (record_id, str(rec_num))+ \
                 '"%s" into index %i' % (str(block_var), i)
 
-    print '1:    Inserted %i record numbers into index' % (num_rec_inserted)
-    print '1:    Number of empty blocking values: %i' % (num_empty_block_var)
+    print '1:      Inserted %i record numbers into index' % (num_rec_inserted)
     if (self.skip_missing == False):
-      print '1:      (which were inserted)'
+      print '1:        Number of empty blocking values: %i' % \
+            (num_empty_block_var) + ' (which were inserted)'
     else:
-      print '1:      (which were not inserted)'
+      print '1:        Number of empty blocking values: %i' % \
+            (num_empty_block_var) + ' (which were not inserted)'
 
     # Count and print the total number of blocks  - - - - - - - - - - - - - - -
     #
@@ -614,43 +645,44 @@ class Indexing:
   def merge(self, other_index):
     """Merge an indexing data structure with another indexing data structure.
 
-       The indexes must be of the same derived class and can not be compacted.
+       The 'other_index' must only contain the list of indexes from another
+       index, but not the complete index object.
+
+       The number of indexes (indexes are a list of index dictionaries) must
+       be the same in self.index and other_index.
+
+       Each of the index dictionaries are then merged.
     """
 
-    if type(self) != type(other_index):
-      print 'Error:Different indexing types, merging not possible'
-      raise Exception
-
-    # Check if both indexes are not compacted and have same definitions - -
+    # Check if this index is not compacted (unfortunatey we can not check this
+    # for the other index)
     #
-    if (self.compacted == False) and (other_index.compacted == False):
-      if (self.dataset.name != other_index.dataset.name) or \
-         (self.index_definition != other_index.index_definition) or \
-         (self.skip_missing != other_index.skip_missing) or \
-         (self.field_names != other_index.field_names) or \
-         (self.num_indexes != other_index.num_indexes):
-        print 'error:Different indexing definitions, merging not possible'
-        raise Exception
-
-      for i in range(self.num_indexes):
-
-        # Get keys and corresponding dictionaries from other index
-        #
-        block_items = other_index.index[i].items()
-
-        # 'block_items' is now a list, with each entry being a tuple made of
-        # the value of the blocking variable, and a dictionary with the
-        # record numbers in a block
-
-        for (block_value, rec_dict) in block_items:
-
-          index_val = self.index[i].get(block_value,{})
-          index_val.update(rec_dict)  # Merge dictionaries for this value
-          self.index[i][block_value] = index_val
-
-    else:  # Merging of compacted indexes not possible  - - - - - - - - - - - -
+    if (self.compacted == True):
       print 'error:Cannot merge compacted indexes'
       raise Exception
+
+    # Check if both indexes have the same numbe rof index dictionaries
+    #
+    if (len(other_index) != self.num_indexes):
+      print 'error:Different number of index dictionaries in merge routine' + \
+            ': self: %i, other: %i' % (self.num_indexes, len(other_index))
+
+    for i in range(self.num_indexes):
+
+      other_index_dict = other_index[i]
+
+      # Get keys (block values) from other index
+      #
+      for block_value in other_index_dict:
+
+        # Get record numbers with this block value
+        #
+        rec_dict = other_index_dict[block_value]
+
+        index_val = self.index[i].get(block_value,{})
+        index_val.update(rec_dict)  # Merge dictionaries for this value
+
+        self.index[i][block_value] = index_val  # Store back into this index
 
     # Count and print the total number of blocks  - - - - - - - - - - - - - - -
     #
@@ -658,7 +690,8 @@ class Indexing:
     for i in range(self.num_indexes):
       self.num_blocks += len(self.index[i])
 
-    print '1:    Total number of blocks in index: %i' % (self.num_blocks)
+    print '1:    Merged indexes (new total number of blocks in index: %i)' % \
+          (self.num_blocks)
 
   # ---------------------------------------------------------------------------
 
@@ -738,10 +771,11 @@ class BlockingIndex(Indexing):
        ready to be retrieved block wise.
     """
 
+    self.compact_index = self.index
     self.compacted = True
 
-    print '1:  Index compacted (nothing to be done)'
-    print '1:    Number of blocks in index: %i' % (self.num_blocks)
+    print '1:    Index compacted (nothing to be done)'
+    print '1:      Total number of blocks in index: %i' % (self.num_blocks)
 
   # ---------------------------------------------------------------------------
 
@@ -759,7 +793,7 @@ class BlockingIndex(Indexing):
     #
     for i in range(self.num_indexes):
 
-      for (block_var, rec_dict) in self.index[i].items():
+      for (block_var, rec_dict) in self.compact_index[i].items():
 
         rec_list = rec_dict.keys()  # Get the record numbers for in this block
 
@@ -775,10 +809,16 @@ class BlockingIndex(Indexing):
        the index.
     """
 
+    # Check if index has been compacted - - - - - - - - - - - - - - - - - - - -
+    #
+    if (self.compacted == False):
+      print 'error:Index has not been compacted, block iteration not possible'
+      raise Exception
+
     index_num = int(block_var[0])  # Get the number of the index
 
-    if self.index[index_num].has_key(block_var):
-      rec_dict= self.index[index_num][block_var]  # Found
+    if self.compact_index[index_num].has_key(block_var):
+      rec_dict= self.compact_index[index_num][block_var]  # Found
 
       return rec_dict.keys()
 
@@ -871,8 +911,8 @@ class SortingIndex(Indexing):
 
     self.compacted = True
 
-    print '1:  Index compacted (sorted indexes)'
-    print '1:    Number of blocks in index: %i' % (self.num_blocks)
+    print '1:    Index compacted (sorted indexes)'
+    print '1:      Total number of blocks in index: %i' % (self.num_blocks)
 
   # ---------------------------------------------------------------------------
 
@@ -1115,8 +1155,8 @@ class BigramIndex(Indexing):
 
     self.compacted = True
 
-    print '1:  Index compacted (bigram indexes)'
-    print '1:    Number of blocks in index: %i' % (self.num_blocks)
+    print '1:    Index compacted (bigram indexes)'
+    print '1:      Total number of blocks in index: %i' % (self.num_blocks)
 
   # ---------------------------------------------------------------------------
 

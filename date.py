@@ -1,52 +1,59 @@
 # =============================================================================
 # date.py - Routines for date conversions and parsing.
 #
-# Freely extensible biomedical record linkage (Febrl) Version 0.2
+# Freely extensible biomedical record linkage (Febrl) Version 0.2.1
 # See http://datamining.anu.edu.au/projects/linkage.html
 #
 # =============================================================================
 # AUSTRALIAN NATIONAL UNIVERSITY OPEN SOURCE LICENSE (ANUOS LICENSE)
-# VERSION 1.0
+# VERSION 1.1
 #
-# The contents of this file are subject to the ANUOS License Version 1.0 (the
+# The contents of this file are subject to the ANUOS License Version 1.1 (the
 # "License"); you may not use this file except in compliance with the License.
 # Software distributed under the License is distributed on an "AS IS" basis,
 # WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License for
 # the specific language governing rights and limitations under the License.
 # The Original Software is "date.py".
 # The Initial Developers of the Original Software are Dr Peter Christen
-# (Department of Computer Science, Australian National University), Dr Tim
+# (Department of Computer Science, Australian National University) and Dr Tim
 # Churches (Centre for Epidemiology and Research, New South Wales Department
-# of Health) and Drs Markus Hegland, Stephen Roberts and Ole Nielsen
-# (Mathematical Sciences Insitute, Australian National University). Copyright
-# (C) 2002 the Australian National University and others. All Rights Reserved.
+# of Health). Copyright (C) 2002, 2003 the Australian National University and
+# others. All Rights Reserved.
 # Contributors:
+# - Peter Viechnicki, Research Department, Vredenburg Corp. Lanham, MD, USA
+#   E-Mail: pviechnicki@vredenburg.com
+#   Fixed bug in str_to_date, added '%U' directive
 #
 # =============================================================================
 
 """Module date.py - Routines for date conversions and parsing.
 
    PUBLIC FUNCTIONS:
-     epoch_to_date        Convert a Unix epoch day number into a date
-     date_to_epoch        Convert a date into a Unix epoch day integer
+     epoch_to_date        Convert a epoch day number into a date
+     date_to_epoch        Convert a date into a epoch day integer
      date_to_age          Convert a date into an age (relative to a fix date)
      str_to_date          A routine that converts a string into a date using
                           a format string
      get_today            Return today's date as a [day,month,year] tuple.
 
+   The date conversion routines are based on the 'normalDate.py' module by
+   Jeff Bauer, see:
+
+      http://starship.python.net/crew/jbauer/normalDate/
+   
+   Note that the epoch date used is NOT the UNIX epoch date (1 January 1970),
+   but instead the 1 January 1900.
+
    Note that dates are returned as a tuple of strings, with day and month being
    of length 2 (i.e. '01' etc.), and year being of length 4 (e.g. '2003').
 
    See doc strings of individual functions for detailed documentation.
-
-   TODO:
-   - PC 30/11/2002  Fix date_to_epoch and epoch_to_date, which currently do not
-                    allow processing of dates before 1901.
 """
 
 # =============================================================================
 # Imports go here
 
+import math
 import string
 import time
 
@@ -62,30 +69,89 @@ month_abbrev_dict = {'jan':'01', 'feb':'02', 'mar':'03', 'apr':'04', \
 #
 string_replace = ["'.,:-=_/\\", \
                   "         "]
+
 # Characters in the first list are replaced by the corresponding character in
 # the second list
 
 replace_table = string.maketrans(string_replace[0], string_replace[1])
 
 # =============================================================================
+# Some simple funcions used for date conversions follow
+# (based on functions from the 'normalDate.py' module by Jeff Bauer, see:
+# http://starship.python.net/crew/jbauer/normalDate/)
+
+days_in_month = [[31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31], \
+                 [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]]
+
+def first_day_of_year(year):
+  """Calculate the day number (relative to 1 january 1900) of the first day in
+     the given year.
+  """
+
+  if (year == 0):
+    print 'error:A year value of 0 is not possible'
+    raise Exception
+
+  elif (year < 0):
+    first_day = (year * 365) + int((year - 1) / 4) - 693596
+  else:  # Positive year
+    leap_adj = int ((year + 3) / 4)
+    if (year > 1600):
+      leap_adj = leap_adj - int((year + 99 - 1600) / 100) + \
+                 int((year + 399 - 1600) / 400)
+
+    first_day = year * 365 + leap_adj - 693963
+
+    if (year > 1582):
+      first_day -= 10
+
+  return first_day
+
+# -----------------------------------------------------------------------------
+
+def is_leap_year(year):
+  """Determine if the given year is a leap year. Returns 0 (no) or 1 (yes).
+  """
+
+  if (year < 1600):
+    if ((year % 4) != 0):
+      return 0
+    else:
+      return 1
+
+  elif ((year % 4) != 0):
+    return 0
+
+  elif ((year % 100) != 0):
+    return 1
+
+  elif ((year % 400) != 0):
+    return 0
+
+  else:
+    return 1
+
+# =============================================================================
 
 def epoch_to_date(daynum):
-  """Convert a Unix epoch day number into a date [day, month, year], with
+  """Convert an epoch day number into a date [day, month, year], with
      day, month and year being strings of length 2, 2, and 4, respectively.
+     (based on a function from the 'normalDate.py' module by Jeff Bauer, see:
+     http://starship.python.net/crew/jbauer/normalDate/)
 
   USAGE:
     [year, month, day] = epoch_to_date(daynum)
 
   ARGUMENTS:
-    daynum  A integer giving the Unix epoch day (0 = 1970-01-01)
+    daynum  A integer giving the epoch day (0 = 1 January 1900)
 
   DESCRIPTION:
-    Function for converting a number of days since Unix epoch time (integer
-    value) into a date tuple [day, month, year].
+    Function for converting a number of days (integer value) since epoch time
+    1 January 1900 (integer value) into a date tuple [day, month, year].
 
   EXAMPLES:
-    [day, month, year] = epoch_to_date(0)       # 1970-01-01
-    [day, month, year] = epoch_to_date(11736)   # 2002-02-18
+    [day, month, year] = epoch_to_date(0)      # returns ['01','01','1900']
+    [day, month, year] = epoch_to_date(37734)  # returns ['25','04','2003']
   """
 
   if (not (isinstance(daynum, int) or isinstance(daynum, long))):
@@ -93,22 +159,65 @@ def epoch_to_date(daynum):
           (str(daynum))
     raise Exception
 
-  date_tuple  = time.gmtime(daynum*24*3600)
+  if (daynum >= -115860):
+    year = 1600 + int(math.floor((daynum + 109573) / 365.2425))
+  elif (daynum >= -693597):
+    year = 4 + int(math.floor((daynum + 692502) / 365.2425))
+  else:
+    year = -4 + int(math.floor((daynum+695058) / 365.2425))
+
+  days = daynum - first_day_of_year(year) + 1
+
+  if (days <= 0):
+    year -= 1  
+    days = daynum - first_day_of_year(year) + 1
+
+  days_in_year = 365 + is_leap_year(year)  # Adjust for a leap year
+
+  if (days > days_in_year):
+    year += 1
+    days = daynum - first_day_of_year(year) + 1
+
+  # Add 10 days for dates between 15 October 1582 and 31 December 1582
+  #
+  if (daynum >= -115860) and (daynum <= -115783):
+    days += 10
+
+  day_count = 0
+  month = 12
+  leap_year_flag = is_leap_year(year)
+
+  for m in range(12):
+    day_count += days_in_month[leap_year_flag][m]
+    if (day_count >= days):
+      month = m + 1
+      break
+
+  # Add up the days in the prior months
+  #
+  prior_month_days = 0
+  for m in range(month-1):
+    prior_month_days += days_in_month[leap_year_flag][m]
+
+  day = days - prior_month_days
+
+  day_str =   string.zfill(str(day),2)  # Add '0' if necessary
+  month_str = string.zfill(str(month),2)  # Add '0' if necessary
+  year_str =  str(year)  # Is always four digits long
 
   # A log message for high volume log output (level 3)  - - - - - - - - - - - -
   #
-  print '3:    Epoch: %i -> Date: %s' % (daynum, str(date_tuple))
+  print '3:    Epoch: %i -> Day:%s, month:%s, year:%s' % \
+        (daynum, day_str, month_str, year_str)
 
-  day =   string.zfill(str(date_tuple[2]),2)  # Add '0' if necessary
-  month = string.zfill(str(date_tuple[1]),2)  # Add '0' if necessary
-  year =  str(date_tuple[0])  # Is always four digits long
-
-  return [day, month, year]
+  return [day_str, month_str, year_str]
 
 # =============================================================================
 
 def date_to_epoch(day, month, year):
-  """ Convert a date [day, month, year] into a Unix epoch day number.
+  """ Convert a date [day, month, year] into an epoch day number.
+     (based on a function from the 'normalDate.py' module by Jeff Bauer, see:
+     http://starship.python.net/crew/jbauer/normalDate/)
 
   USAGE:
     daynum = date_to_epoch(year, month, day)
@@ -119,16 +228,16 @@ def date_to_epoch(day, month, year):
     year   Year value (string or integer number)
 
   DESCRIPTION:
-    Function for converting a date into a Unix epoch day number
-    (integer value).
-
-    Based on a Perl script... source unknown
+    Function for converting a date into a epoch day number (integer value)
+    since 1 january 1900.
 
   EXAMPLES:
-    day1 = date_to_epoch(18,  2, 2002)  # 11736
-    day2 = date_to_epoch('01', '01', '1970')  # 0
+    day = date_to_epoch('01', '01', '1900')  # returns 0
+    day = date_to_epoch('25', '04', '2003')  # returns 37734
   """
 
+  # Convert into integer values
+  #
   try:
     day_int = int(day)
   except:
@@ -145,55 +254,35 @@ def date_to_epoch(day, month, year):
     print 'error:"year" value is not an integer'
     raise Exception
 
-  if (day_int <= 0) or (day_int > 31):
-    print 'error:Input value for "day" is not a possible day number: %i' % \
-          (day)
-    raise Exception
-  if (month_int <= 0) or (month_int > 12):
-    print 'error:Input value for "month" is not a possible day number: %i' % \
-          (month)
-    raise Exception
+  # Test if values are within range
+  #
   if (year_int <= 1000):
     print 'error:Input value for "year" is not a positive integer ' + \
           'number: %i' % (year)
     raise Exception
 
-  # Note; mktime did not work on Tim's RedHat 8.0 Linux system running
-  # Python 2.2.1, a date of 1/9/1968 was too early and mktime complained
-  # about the values in the tuple.
+  leap_year_flag = is_leap_year(year_int)
 
-  #epoch_time = time.mktime((year_int, month_int, day_int, 0,0,0,0,0,0)) - \
-  #             time.timezone
-  #epoch_date = int(epoch_time / (24 * 3600))
+  if (month_int <= 0) or (month_int > 12):
+    print 'error:Input value for "month" is not a possible day number: %i' % \
+          (month)
+    raise Exception
 
-  # Do some adjustments for leap year etc.
-  #
-  if (month_int < 3):
-    year_int = year_int - 1
-  if (month_int > 2):
-    month_int = month_int - 3
-  else:
-     month_int = month_int + 9
+  if (day_int <= 0) or (day_int > days_in_month[leap_year_flag][month_int-1]):
+    print 'error:Input value for "day" is not a possible day number: %i' % \
+          (day)
+    raise Exception
 
-  c = year_int / 100.0
-  ya = year_int - ( 100 * c )
+  days = first_day_of_year(year_int) + day_int - 1
 
-  epoch_date = int(((146097*c)/4) + ((1461*ya)/4) + \
-                  (((153*month_int)+2)/5) + day_int - 719469)
+  for m in range(month_int-1):
+    days += days_in_month[leap_year_flag][m]
 
-  if (epoch_date < 0):
-    epoch_date -= 1  # Adjust for pre 1970 dates ##### Still wrong #####
+  if (year_int == 1582):
+    if (month_int > 10) or ((month_int == 10) and (day_int > 4)):
+      days -= 10
 
-  #print
-  #print epoch_date
-  #print epoch_date2
-
-  # A log message for high volume log output (level 3)  - - - - - - - - - - - -
-  #
-  print '3:    Date: %s -> Epoch: %i' % \
-        (str([day_int,month_int,year_int]), epoch_date)
-
-  return epoch_date
+  return days
 
 # =============================================================================
 
@@ -278,6 +367,7 @@ def str_to_date(date_str, format_str, pivot_year):
                   %m  Month as a decimal number [01,12]
                   %y  Year without century as a decimal number [00,99]
                   %Y  Year with century as a decimal number
+                  %U  'UNK' or 'UNKNOWN' (for day)
     pivot_year  If a two-digit year is given, the pivot year is used to
                 detemine if it is expanded into 19XX or 20XX. Two-digits years
                 smaller than the pivot year will be expanded into 20XX, years
@@ -315,9 +405,6 @@ def str_to_date(date_str, format_str, pivot_year):
 
   # Now check the date and format strings - - - - - - - - - - - - - - - - - - -
   #
-  if (date_str =='') or (format_str ==''):
-    return []  # No date or no format string given
-
   if (date_str =='') or (format_str ==''):
     return []  # No date or no format string given
 
@@ -370,12 +457,16 @@ def str_to_date(date_str, format_str, pivot_year):
     elif (directive == '%d'):  # Day of the month number
       try:
         day = int(date_list[0])  # Convert into an integer number
+        if (day < 1) or (day > 31):
+          day = -1
       except:
         day = -1  # Day is no integer
 
     elif (directive == '%m'):  # Month number (between 1..12)
       try:
         month = int(date_list[0])  # Convert into an integer number
+        if (month < 1) or (month > 12):
+          month = -1
       except:
         month = -1  # Month is no integer
 
@@ -404,6 +495,14 @@ def str_to_date(date_str, format_str, pivot_year):
         except:
           year = -1  # year is no integer
 
+    elif (directive == '%U'): # New date expression for UNKNOWN
+                              # (Peter Viechnicki)
+      # print "New %U: date_list[0] = ", date_list[0]
+      if (date_list[0] == 'unk' or date_list[0] == 'unknown'):
+        day = 'UNK'
+      else:
+        day = -1
+
     else:
       print 'error:Illegal format directive: "%s"' % (directive)
       raise Exception
@@ -429,14 +528,15 @@ def str_to_date(date_str, format_str, pivot_year):
 
   valid = True
 
-  if (month == 2):
-    if (leap_year == True) and (day > 29):
-      valid = False  # Illegal day number in February in a leap year
-    elif (leap_year == False) and (day > 28):
-      valid = False  # Illegal day number in February in a normal year
-  elif (month in [1,3,5,7,8,10,12]) and (day > 31):
+  if (day != 'UNK'):  # Only test day value if known
+    if (month == 2):
+      if (leap_year == True) and (day > 29):
+        valid = False  # Illegal day number in February in a leap year
+      elif (leap_year == False) and (day > 28):
+        valid = False  # Illegal day number in February in a normal year
+    elif (month in [1,3,5,7,8,10,12]) and (day > 31):
       valid = False  # Illegal day number in 31-day months
-  elif (month in [4,6,9,11]) and (day > 30):
+    elif (month in [4,6,9,11]) and (day > 30):
       valid = False  # Illegal day number in 30-day months
 
   if (valid == False):

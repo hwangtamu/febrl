@@ -1,25 +1,24 @@
 # =============================================================================
 # lookupTest.py - Test module for lookup.py
 #
-# Freely extensible biomedical record linkage (Febrl) Version 0.2
+# Freely extensible biomedical record linkage (Febrl) Version 0.2.1
 # See http://datamining.anu.edu.au/projects/linkage.html
 #
 # =============================================================================
 # AUSTRALIAN NATIONAL UNIVERSITY OPEN SOURCE LICENSE (ANUOS LICENSE)
-# VERSION 1.0
+# VERSION 1.1
 #
-# The contents of this file are subject to the ANUOS License Version 1.0 (the
+# The contents of this file are subject to the ANUOS License Version 1.1 (the
 # "License"); you may not use this file except in compliance with the License.
 # Software distributed under the License is distributed on an "AS IS" basis,
 # WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License for
 # the specific language governing rights and limitations under the License.
 # The Original Software is "lookupTest.py".
 # The Initial Developers of the Original Software are Dr Peter Christen
-# (Department of Computer Science, Australian National University), Dr Tim
+# (Department of Computer Science, Australian National University) and Dr Tim
 # Churches (Centre for Epidemiology and Research, New South Wales Department
-# of Health) and Drs Markus Hegland, Stephen Roberts and Ole Nielsen
-# (Mathematical Sciences Insitute, Australian National University). Copyright
-# (C) 2002 the Australian National University and others. All Rights Reserved.
+# of Health). Copyright (C) 2002, 2003 the Australian National University and
+# others. All Rights Reserved.
 # Contributors:
 #
 # =============================================================================
@@ -42,7 +41,7 @@ class TestCase(unittest.TestCase):
   #
   def setUp(self):
     self.tag_lookup_files = ['./data/post_address.tbl',
-                             './data/geoloc_misc.tbl',
+                             './data/address_misc.tbl',
                              './data/saints.tbl',
                              './data/givenname_f.tbl',
                              './data/surname.tbl']
@@ -52,7 +51,7 @@ class TestCase(unittest.TestCase):
 
     self.geocode_lookup_files = ['./data/postcode_centroids.csv']
 
-    self.correction_list_files = ['./data/geoloc_corr.lst',
+    self.correction_list_files = ['./data/address_corr.lst',
                                   './data/name_corr.lst']
 
   # Clean up test case  - - - - - - - - - - - - - - - - - - - - - - - - - - - -

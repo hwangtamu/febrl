@@ -1,25 +1,24 @@
 # =============================================================================
 # trainhmm.py - Main module to train a Hidden Markov Model (HMM)
 #
-# Freely extensible biomedical record linkage (Febrl) Version 0.2
+# Freely extensible biomedical record linkage (Febrl) Version 0.2.1
 # See http://datamining.anu.edu.au/projects/linkage.html
 #
 # =============================================================================
 # AUSTRALIAN NATIONAL UNIVERSITY OPEN SOURCE LICENSE (ANUOS LICENSE)
-# VERSION 1.0
+# VERSION 1.1
 #
-# The contents of this file are subject to the ANUOS License Version 1.0 (the
+# The contents of this file are subject to the ANUOS License Version 1.1 (the
 # "License"); you may not use this file except in compliance with the License.
 # Software distributed under the License is distributed on an "AS IS" basis,
 # WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License for
 # the specific language governing rights and limitations under the License.
 # The Original Software is "trainhmm.py".
 # The Initial Developers of the Original Software are Dr Peter Christen
-# (Department of Computer Science, Australian National University), Dr Tim
+# (Department of Computer Science, Australian National University) and Dr Tim
 # Churches (Centre for Epidemiology and Research, New South Wales Department
-# of Health) and Drs Markus Hegland, Stephen Roberts and Ole Nielsen
-# (Mathematical Sciences Insitute, Australian National University). Copyright
-# (C) 2002 the Australian National University and others. All Rights Reserved.
+# of Health). Copyright (C) 2002, 2003 the Australian National University and
+# others. All Rights Reserved.
 # Contributors:
 #
 # =============================================================================
@@ -221,11 +220,13 @@ for line in xreadlines.xreadlines(f_in):
         print 'error:Illegal state name "%s" in record ' % (str(state)) + \
               '%s in training file line %i' % (str(rec_count), line_count) + \
               ', possible values: %s' % (str(hmm_states))
+        raise Exception
 
       if (tag not in hmm_observ):
         print 'error:Illegal observation (tag) name "%s"' % (str(state)) + \
               ' in record %i in training file line ' % (rec_count) + \
               '%i, possible values: %s' % (line_count, str(hmm_observ))
+        raise Exception
 
       if (state in hmm_states) and (tag in hmm_observ):
         line_data.append((state, tag))  # Append (state,tag) tuple

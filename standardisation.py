@@ -1,25 +1,24 @@
 # =============================================================================
 # standardisation.py - Classes for cleaning and standardisations
 #
-# Freely extensible biomedical record linkage (Febrl) Version 0.2
+# Freely extensible biomedical record linkage (Febrl) Version 0.2.1
 # See http://datamining.anu.edu.au/projects/linkage.html
 #
 # =============================================================================
 # AUSTRALIAN NATIONAL UNIVERSITY OPEN SOURCE LICENSE (ANUOS LICENSE)
-# VERSION 1.0
+# VERSION 1.1
 #
-# The contents of this file are subject to the ANUOS License Version 1.0 (the
+# The contents of this file are subject to the ANUOS License Version 1.1 (the
 # "License"); you may not use this file except in compliance with the License.
 # Software distributed under the License is distributed on an "AS IS" basis,
 # WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License for
 # the specific language governing rights and limitations under the License.
 # The Original Software is "standardisation.py".
 # The Initial Developers of the Original Software are Dr Peter Christen
-# (Department of Computer Science, Australian National University), Dr Tim
+# (Department of Computer Science, Australian National University) and Dr Tim
 # Churches (Centre for Epidemiology and Research, New South Wales Department
-# of Health) and Drs Markus Hegland, Stephen Roberts and Ole Nielsen
-# (Mathematical Sciences Insitute, Australian National University). Copyright
-# (C) 2002 the Australian National University and others. All Rights Reserved.
+# of Health). Copyright (C) 2002, 2003 the Australian National University and
+# others. All Rights Reserved.
 # Contributors:
 #
 # =============================================================================
@@ -38,8 +37,8 @@
 # Imports go here
 
 import os
-from pprint import *
 import string
+import time
 
 import date     # Module with routines for dates
 import name     # Module with name standardisation routines
@@ -137,9 +136,9 @@ def check_field_spilling(str1, str2, tag_lookup_table, record_id, fields_str):
         entry_tags = entry_tags[3:]  # Remove first tag and '/'
 
       if (do_spilling == True):
-        print 'warning:%s Found (and corrected) word  spilling:' % \
-              (record_id) + ' "%s","%s" -> "%s"%s' % \
-              (org_str1.strip(),org_str2.strip(), check_word, fields_str)
+        print '2:%s    Found (and corrected) word  spilling:' % (record_id) + \
+              ' "%s","%s" -> "%s"%s' % (org_str1.strip(), org_str2.strip(), \
+              check_word, fields_str)
         return True  # Found a word spilling
       else:
         return False
@@ -269,8 +268,8 @@ class RecordStandardiser:
     print '1:  Component standardisers:'
     for cs in self.component_standardisers:
       print '1:    Name: %s' % (str(cs.name))
-      print '1:      Input fields:  %s' % (pformat(cs.input_fields))
-      print '1:      Output fields: %s' % (pformat(cs.output_fields))
+      print '1:      Input fields:  %s' % (str(cs.input_fields))
+      print '1:      Output fields: %s' % (str(cs.output_fields))
 
   # ---------------------------------------------------------------------------
 
@@ -301,7 +300,7 @@ class RecordStandardiser:
 
       # A string with the input fields, for logging
       #
-      fields_str = os.linesep+'###            [Fields: %s]' % (str(fields))
+      fields_str = os.linesep+'[Fields: %s]' % (str(fields))
 
       output_record.update(cs.standardise(fields, record_id, fields_str))
 
@@ -435,6 +434,72 @@ class ComponentStandardiser:
 
     print 'error:Override abstract method in derived class'
     raise Exception
+
+# =============================================================================
+
+class PassFieldStandardiser(ComponentStandardiser):
+  """Dummy standardiser used to simply pass fields from input to output data
+     set without doing any standardisation. Values are simply copied directly
+     from the input field(s) to the output field(s).
+
+     The number of input fields must be the same as the number of output fields
+     as values are copied directly from an input field to the corresponding
+     output field.
+
+     No additional argument besides the base class arguments can be given to
+     this field standardiser.
+  """
+
+  # ---------------------------------------------------------------------------
+
+  def __init__(self, **kwargs):
+    """Constructor.
+    """
+
+    ComponentStandardiser.__init__(self, kwargs)  # Initialise base class
+
+    # Check if the number of input fields equals to the number of output fields
+    #
+    if (len(self.input_fields) != len(self.output_fields)):
+      print 'error:Different number of input and output fields for ' + \
+            '"PassField" standardiser'
+      raise Exception
+
+    self.num_fields = len(self.input_fields)  # Save number of fields
+
+    # A log message for low/medium volume log output (level 1/2)  - - - - - - -
+    #
+    print '1:'
+    print '1:Initialised "PassField" standardiser: "%s"' % \
+          (str(self.name))
+    print '1:  Input fields:            %s' % (str(self.input_fields))
+    print '1:  Output fields:           %s' % (str(self.output_fields))
+ 
+  # ---------------------------------------------------------------------------
+
+  def standardise(self, fields, record_id, fields_str):
+    """Copy the values from the input fields into corresponding output fields.
+    """
+
+    result = {}  # Output results dictionary
+
+    if (self.num_fields == 1) and (isinstance(fields, str)):
+      fields = [fields]
+
+    if (not isinstance(fields, list)):
+      print 'error:Input fields are not a list or a string: %s' % (str(fields))
+      raise Exception
+
+    if (self.num_fields != len(fields)):
+      print 'error:Wrong number of input fields: %i (should be %i)' % \
+            (len(fields), self.num_fields)
+      raise Exception
+
+    for i in range(self.num_fields):
+      if (fields[i].strip() != ''):  # Only copy non-empty fields
+        result[self.output_fields[i]] = fields[i]  # Copy into output fields
+
+    return result
 
 # =============================================================================
 
@@ -605,9 +670,8 @@ class DateStandardiser(ComponentStandardiser):
                                   self.pivot_year)
       if (len(date_try) == 3):
         parsed = 1  # Parsed successful
-        break
-
-      iter += 1
+      else:
+        iter += 1  # Try next format string
 
     if (parsed == 1):  # Date successfully parsed - - - - - - - - - - - - - - -
       day =   date_try[0]
@@ -1089,6 +1153,8 @@ class NameHMMStandardiser(ComponentStandardiser):
                                    self.first_name_comp, self.name_tag_table,
                                    record_id, fields_str)
 
+    # names_list[0] would contain title words, but they are already processed!
+
     # Now copy result into defined (not None) output fields - - - - - - - - - -
     #
     result = {}
@@ -1110,7 +1176,7 @@ class NameHMMStandardiser(ComponentStandardiser):
             (record_id, gender_guess)
 
     if (self.output_fields[2] != None):  # Given name is defined
-      tmp_value = string.join(names_list[0],' ').strip()
+      tmp_value = string.join(names_list[1],' ').strip()
       if (tmp_value != ''):
         result[self.output_fields[2]] = tmp_value
     else:
@@ -1118,7 +1184,7 @@ class NameHMMStandardiser(ComponentStandardiser):
             (record_id, string.join(names_list[0],' '))
 
     if (self.output_fields[3] != None):  # Alternative given name is defined
-      tmp_value = string.join(names_list[1],' ').strip()
+      tmp_value = string.join(names_list[2],' ').strip()
       if (tmp_value != ''):
         result[self.output_fields[3]] = tmp_value
     else:
@@ -1126,7 +1192,7 @@ class NameHMMStandardiser(ComponentStandardiser):
             (record_id, string.join(names_list[1],' '))
 
     if (self.output_fields[4] != None):  # Surname is defined
-      tmp_value = string.join(names_list[2],' ').strip()
+      tmp_value = string.join(names_list[3],' ').strip()
       if (tmp_value != ''):
         result[self.output_fields[4]] = tmp_value
     else:
@@ -1134,7 +1200,7 @@ class NameHMMStandardiser(ComponentStandardiser):
             (record_id, string.join(names_list[2],' '))
 
     if (self.output_fields[5] != None):  # Alternative surname is defined
-      tmp_value = string.join(names_list[3],' ').strip()
+      tmp_value = string.join(names_list[4],' ').strip()
       if (tmp_value != ''):
         result[self.output_fields[5]] = tmp_value
     else:

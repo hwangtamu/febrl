@@ -1,25 +1,24 @@
 # =============================================================================
 # dataset.py - Access to various data set implementations (CSV, SQL, etc.)
 #
-# Freely extensible biomedical record linkage (Febrl) Version 0.2
+# Freely extensible biomedical record linkage (Febrl) Version 0.2.1
 # See http://datamining.anu.edu.au/projects/linkage.html
 #
 # =============================================================================
 # AUSTRALIAN NATIONAL UNIVERSITY OPEN SOURCE LICENSE (ANUOS LICENSE)
-# VERSION 1.0
+# VERSION 1.1
 #
-# The contents of this file are subject to the ANUOS License Version 1.0 (the
+# The contents of this file are subject to the ANUOS License Version 1.1 (the
 # "License"); you may not use this file except in compliance with the License.
 # Software distributed under the License is distributed on an "AS IS" basis,
 # WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License for
 # the specific language governing rights and limitations under the License.
 # The Original Software is "dataset.py".
 # The Initial Developers of the Original Software are Dr Peter Christen
-# (Department of Computer Science, Australian National University), Dr Tim
+# (Department of Computer Science, Australian National University) and Dr Tim
 # Churches (Centre for Epidemiology and Research, New South Wales Department
-# of Health) and Drs Markus Hegland, Stephen Roberts and Ole Nielsen
-# (Mathematical Sciences Insitute, Australian National University). Copyright
-# (C) 2002 the Australian National University and others. All Rights Reserved.
+# of Health). Copyright (C) 2002, 2003 the Australian National University and
+# others. All Rights Reserved.
 # Contributors:
 #
 # =============================================================================
@@ -42,6 +41,12 @@
 
    See the doc strings of individual classes and methods for detailed
    documentation.
+
+   For parallel runs of Febrl the flag 'writemode' in module parallel is used
+   to determine if only the host process is writing into data sets or all
+   processes are writing into local data sets (in which case the process number
+   is added to the file names).
+   For SQL data sets only the 'host' writing mode is currently possible.
 """
 
 # =============================================================================
@@ -53,12 +58,23 @@ import os
 import xreadlines
 import shelve
 
-import tcsv     # Tim Churches' CSV parser
+import parallel  # Needed to determine parallel write mode ('host' or 'all')
+import tcsv      # Tim Churches' CSV parser
 
 try:
   import MySQLdb  # Python database API for MySQL
+  # print '1:***** Using "MySQLdb" module for DataSetSQL *****'
 except:
   print 'warning:No mySQL module available'
+
+try:
+  import bsddb3  # Import Berkely database module
+  shelve_type = 'BSDDB3'
+  # print '1:***** using "bsddb3" module for DataSetShelve *****'
+
+except:
+  print 'warning:No bsddb3 available, use normal shelve'
+  shelve_type = 'SHELVE'
 
 # =============================================================================
 
@@ -151,6 +167,7 @@ class DataSet:
     self.next_record_num = None
     self.num_records =     None
     self.missing_values =  ['']
+    self.parallelwrite =   parallel.writemode
 
     # Process base keyword arguments (all data set specific keywords were
     # processed in the derived class constructor)
@@ -299,7 +316,8 @@ class DataSetCOL(DataSet):
        base attributes.
     """
 
-    self.file_name =       None   # The name of the CSV file
+    self.dataset_type =    'COL'
+    self.file_name =       None   # The name of the COL file
     self.header_lines =    0      # Default no header lines
     self.write_header =    False  # Flag, set to not write header line
     self.file =            None   # File pointer to current file
@@ -375,8 +393,6 @@ class DataSetCOL(DataSet):
     self.field_list = map(None, fields_starts, fields_lengths, fields_names)
     self.field_list.sort()
 
-    print '1:XXX='+str(self.field_list)
-
     # Now perform various checks for each access mode - - - - - - - - - - - - -
 
     if (self.access_mode == 'read'):  # - - - - - - - - - - - - - - - - - - - -
@@ -419,6 +435,11 @@ class DataSetCOL(DataSet):
 
     elif (self.access_mode == 'write'):   # - - - - - - - - - - - - - - - - - -
 
+      # Modify file name if parallel write mode is set to 'all'
+      #
+      if (self.parallelwrite == 'all'):
+        self.file_name = self.file_name+'-P%i' % (parallel.rank())
+
       # Make sure fields are not overlapping and are continuous (no gaps)
       #
       col_count = 0
@@ -433,39 +454,53 @@ class DataSetCOL(DataSet):
         col_count += field_length  # Increase column counter by field length,
                                    # this should be start column of next field
 
-      # Try to open the file in write mode
+      # Now only initialse file according to parallel write mode
       #
-      try:
-        self.file = open(self.file_name,'w')
-      except:
-        print 'error:Can not open file: "%s" for writing' % (self.file_name)
-        raise IOError
+      if (self.parallelwrite == 'all') or \
+         ((self.parallelwrite == 'host') and (parallel.rank() == 0)):
 
-      # Write the header line with field names if desired
-      #
-      if (self.write_header == True):
-        header_line = ''
+        # Try to open the file in write mode
+        #
+        try:
+          self.file = open(self.file_name,'w')
+        except:
+          print 'error:Can not open file: "%s" for writing' % (self.file_name)
+          raise IOError
 
-        for (field_start, field_length, field_name) in self.field_list:
+        # Write the header line with field names if desired
+        #
+        if (self.write_header == True):
+          header_line = ''
 
-          if (self.strip_fields == True):
-            field_name = field_name.strip()
+          for (field_start, field_length, field_name) in self.field_list:
 
-          # Make sure field names have length of fields
-          #
-          header_line += field_name[:field_length].ljust(field_length)
+            if (self.strip_fields == True):
+              field_name = field_name.strip()
 
-        print '1:####write: '+str(self.field_list)
-        print '1:####       '+header_line
+            # Make sure field names have length of fields
+            #
+            header_line += field_name[:field_length].ljust(field_length)
 
-        self.file.write(header_line+os.linesep)  # Write header line
-        self.file.flush()
+          #print '1:####write: '+str(self.field_list)
+          #print '1:####       '+header_line
+
+          self.file.write(header_line+os.linesep)  # Write header line
+          self.file.flush()
+
+      else:  # Don't initialise file
+
+        self.file = None
 
       self.num_records =     0
       self.next_record_num = 0
 
     elif (self.access_mode == 'append'):  # - - - - - - - - - - - - - - - - - -
 
+      # Modify file name if parallel write mode is set to 'all'
+      #
+      if (self.parallelwrite == 'all'):
+        self.file_name = self.file_name+'-P%i' % (parallel.rank())
+
       # Make sure fields are not overlapping and are continuous (no gaps)
       #
       col_count = 0
@@ -480,49 +515,62 @@ class DataSetCOL(DataSet):
         col_count += field_length  # Increase column counter by field length,
                                    # this should be start column of next field
 
-      # Try to open the file in append mode
+      # Now only initialse file according to parallel write mode
       #
-      try:
-        self.file = open(self.file_name,'a')
-      except:
-        print 'error:Can not open file: "%s" for appending' % (self.file_name)
-        raise IOError
+      if (self.parallelwrite == 'all') or \
+         ((self.parallelwrite == 'host') and (parallel.rank() == 0)):
 
-      # Count number of records in the file
-      #
-      if (sys.platform[0:5] in ['linux','sunos']):  # Fast line counting
-        wc = os.popen('wc -l ' + self.file_name)
-        num_rows = int(string.split(wc.readline())[0])
-        wc.close()
-      else:  # Slow line counting method
-        num_rows = 0
-        fp = open(self.file_name,'r')
-        for l in fp.xreadlines():
-          num_rows += 1
-        fp.close()
+        # Try to open the file in append mode
+        #
+        try:
+          self.file = open(self.file_name,'a')
+        except:
+          print 'error:Can not open file: "%s" for appending' % \
+                (self.file_name)
+          raise IOError
 
-      # If no records are stored write header if needed
-      #
-      if (num_rows == 0) and (self.write_header == True):
-        header_line = ''
+        # Count number of records in the file
+        #
+        if (sys.platform[0:5] in ['linux','sunos']):  # Fast line counting
+          wc = os.popen('wc -l ' + self.file_name)
+          num_rows = int(string.split(wc.readline())[0])
+          wc.close()
+        else:  # Slow line counting method
+          num_rows = 0
+          fp = open(self.file_name,'r')
+          for l in fp.xreadlines():
+            num_rows += 1
+          fp.close()
 
-        for (field_start, field_length, field_name) in self.field_list:
+        # If no records are stored write header if needed
+        #
+        if (num_rows == 0) and (self.write_header == True):
+          header_line = ''
 
-          if (self.strip_fields == True):
-            field_name = field_name.strip()
+          for (field_start, field_length, field_name) in self.field_list:
 
-          # Make sure field names have length of fields
-          #
-          header_line += field_name[:field_length].ljust(field_length)
+            if (self.strip_fields == True):
+              field_name = field_name.strip()
 
-        print '1:####append: '+str(self.field_list)
-        print '1:####        '+header_line
+            # Make sure field names have length of fields
+            #
+            header_line += field_name[:field_length].ljust(field_length)
 
-        self.file.write(header_line+os.linesep)  # Write header line
-        self.file.flush()
+          #print '1:####append: '+str(self.field_list)
+          #print '1:####        '+header_line
 
-      self.num_records =     num_rows - self.header_lines
-      self.next_record_num = self.num_records
+          self.file.write(header_line+os.linesep)  # Write header line
+          self.file.flush()
+
+        self.num_records =     num_rows - self.header_lines
+        self.next_record_num = self.num_records
+
+      else:  # Don't initialise file
+
+        self.file = None
+
+        self.num_records =     0
+        self.next_record_num = 0
 
     else:  # Illegal data set access mode - - - - - - - - - - - - - - - - - - -
       print 'error:Illegal data set access mode: "%s"' % \
@@ -534,6 +582,7 @@ class DataSetCOL(DataSet):
     print '1:'
     print '1:Initialised COL data set "%s"' % (self.name)
     print '1:  In access mode: %s' % (self.access_mode)
+    print '1:  Parallel write: %s' % (self.parallelwrite)
     print '1:  File name:      %s' % (self.file_name)
     print '1:  Fields:         %s' % (str(self.fields))
     print '2:  Fields list:    %s' % (str(self.field_list))
@@ -696,6 +745,11 @@ class DataSetCOL(DataSet):
     """Write a block of records by appending them to the end of a file.
     """
 
+    # Check parallel write mode
+    #
+    if (self.parallelwrite == 'host') and (parallel.rank() > 0):
+      return  # Don't write if not host process
+
     if (self.file == None):
       print 'error:Data set not initialised'
       raise Exception
@@ -721,8 +775,8 @@ class DataSetCOL(DataSet):
 
         rec_line += field_data[:field_length].ljust(field_length)
 
-      print '1:####write: '+str(rec)
-      print '1:####       '+rec_line
+      #print '1:####write: '+str(rec)
+      #print '1:####       '+rec_line
 
       self.file.write(rec_line+os.linesep)  # Write record to file
 
@@ -782,6 +836,7 @@ class DataSetCSV(DataSet):
        base attributes.
     """
 
+    self.dataset_type =     'CSV'
     self.file_name =        None   # The name of the CSV file
     self.header_lines =     0      # Default no header lines
     self.write_header =     False  # Flag, set to not write header line
@@ -899,77 +954,109 @@ class DataSetCSV(DataSet):
 
     elif (self.access_mode == 'write'):   # - - - - - - - - - - - - - - - - - -
 
-      # Try to open the file in write mode
+      # Modify file name if parallel write mode is set to 'all'
       #
-      try:
-        self.file = open(self.file_name,'w')
-      except:
-        print 'error:Can not open file: "%s" for writing' % (self.file_name)
-        raise IOError
+      if (self.parallelwrite == 'all'):
+        self.file_name = self.file_name+'-P%i' % (parallel.rank())
 
-      # Write the header line with field names if desired
+      # Now only initialse file according to parallel write mode
       #
-      if (self.write_header == True):
-        header_line = ''
-        j = 0  # Index into fields list
-        for i in range(self.tot_field_number):
-          if (i == self.field_list[j][0]):
-            field_name = self.field_list[j][1]
-            if (self.strip_fields == True):
-              field_name = field_name.strip()
-            header_line = header_line + self.write_quote_char + field_name + \
-                          self.write_quote_char + ', '
-            j += 1
-          else:
-            header_line = header_line + ', '  # Not specified field
-        self.file.write(header_line[:-2]+os.linesep)  # Write header line
-        self.file.flush()
+      if (self.parallelwrite == 'all') or \
+         ((self.parallelwrite == 'host') and (parallel.rank() == 0)):
+
+        # Try to open the file in write mode
+        #
+        try:
+          self.file = open(self.file_name,'w')
+        except:
+          print 'error:Can not open file: "%s" for writing' % (self.file_name)
+          raise IOError
+
+        # Write the header line with field names if desired
+        #
+        if (self.write_header == True):
+          header_line = ''
+          j = 0  # Index into fields list
+          for i in range(self.tot_field_number):
+            if (i == self.field_list[j][0]):
+              field_name = self.field_list[j][1]
+              if (self.strip_fields == True):
+                field_name = field_name.strip()
+              header_line = header_line + self.write_quote_char + \
+                            field_name + self.write_quote_char + ', '
+              j += 1
+            else:
+              header_line = header_line + ', '  # Not specified field
+          self.file.write(header_line[:-2]+os.linesep)  # Write header line
+          self.file.flush()
+
+      else:  # Don't initialise file
+
+        self.file = None
 
       self.num_records =     0
       self.next_record_num = 0
 
     elif (self.access_mode == 'append'):  # - - - - - - - - - - - - - - - - - -
 
-      # Try to open the file in append mode
+      # Modify file name if parallel write mode is set to 'all'
       #
-      try:
-        self.file = open(self.file_name,'a')
-      except:
-        print 'error:Can not open file: "%s" for appending' % (self.file_name)
-        raise IOError
+      if (self.parallelwrite == 'all'):
+        self.file_name = self.file_name+'-P%i' % (parallel.rank())
 
-      # Count number of records in the file
+      # Now only initialse file according to parallel write mode
       #
-      if (sys.platform[0:5] in ['linux','sunos']):  # Fast line counting
-        wc = os.popen('wc -l ' + self.file_name)
-        num_rows = int(string.split(wc.readline())[0])
-        wc.close()
-      else:  # Slow line counting method
-        num_rows = 0
-        fp = open(self.file_name,'r')
-        for l in fp.xreadlines():
-          num_rows += 1
-        fp.close()
+      if (self.parallelwrite == 'all') or \
+         ((self.parallelwrite == 'host') and (parallel.rank() == 0)):
 
-      # If no records are stored write header if needed
-      #
-      if (num_rows == 0) and (self.write_header == True):
-        header_line = ''
-        j = 0  # Index into fields list
-        for i in range(self.tot_field_number):
-          if (i == self.field_list[j][0]):
-            field_name = self.field_list[j][1]
-            if (self.strip_fields == True):
-              field_name = field_name.strip()
-            header_line = header_line + field_name + ', '
-            j += 1
-          else:
-            header_line = header_line + ', '  # Not specified field
-        self.file.write(header_line[:-2]+os.linesep)  # Write header line
-        self.file.flush()
+        # Try to open the file in append mode
+        #
+        try:
+          self.file = open(self.file_name,'a')
+        except:
+          print 'error:Can not open file: "%s" for appending' % \
+                (self.file_name)
+          raise IOError
 
-      self.num_records =     num_rows - self.header_lines
-      self.next_record_num = self.num_records
+        # Count number of records in the file
+        #
+        if (sys.platform[0:5] in ['linux','sunos']):  # Fast line counting
+          wc = os.popen('wc -l ' + self.file_name)
+          num_rows = int(string.split(wc.readline())[0])
+          wc.close()
+        else:  # Slow line counting method
+          num_rows = 0
+          fp = open(self.file_name,'r')
+          for l in fp.xreadlines():
+            num_rows += 1
+          fp.close()
+
+        # If no records are stored write header if needed
+        #
+        if (num_rows == 0) and (self.write_header == True):
+          header_line = ''
+          j = 0  # Index into fields list
+          for i in range(self.tot_field_number):
+            if (i == self.field_list[j][0]):
+              field_name = self.field_list[j][1]
+              if (self.strip_fields == True):
+                field_name = field_name.strip()
+              header_line = header_line + field_name + ', '
+              j += 1
+            else:
+              header_line = header_line + ', '  # Not specified field
+          self.file.write(header_line[:-2]+os.linesep)  # Write header line
+          self.file.flush()
+
+        self.num_records =     num_rows - self.header_lines
+        self.next_record_num = self.num_records
+
+      else:  # Don't initialise file
+
+        self.file = None
+
+        self.num_records =     0
+        self.next_record_num = 0
 
     else:  # Illegal data set access mode - - - - - - - - - - - - - - - - - - -
       print 'error:Illegal data set access mode: "%s"' % \
@@ -981,6 +1068,7 @@ class DataSetCSV(DataSet):
     print '1:'
     print '1:Initialised CSV data set "%s"' % (self.name)
     print '1:  In access mode: %s' % (self.access_mode)
+    print '1:  Parallel write: %s' % (self.parallelwrite)
     print '1:  File name:      %s' % (self.file_name)
     print '1:  Fields:         %s' % (str(self.fields))
     print '2:  Fields list:    %s' % (str(self.field_list))
@@ -1146,6 +1234,11 @@ class DataSetCSV(DataSet):
     """Write a block of records by appending them to the end of a file.
     """
 
+    # Check parallel write mode
+    #
+    if (self.parallelwrite == 'host') and (parallel.rank() > 0):
+      return  # Don't write if not host process
+
     if (self.file == None):
       print 'error:Data set not initialised'
       raise Exception
@@ -1235,14 +1328,13 @@ class DataSetSQL(DataSet):
             ' used'
       raise Exception
 
-
-
+    self.dataset_type =       'SQL'
     self.database_name =       None  # Database name
     self.database_user =       None  # User name
     self.database_password =   None  # User password
     self.database =            None  # Database object
     self.database_block_size = 10000 # Number of transactions for blocking
-    self.field_list =       []       # Field name list sorted according to
+    self.field_list =          []    # Field name list sorted according to
                                      # database column numbers
     self.table_name =          ''
     self.tot_field_number = 0     # The total field (column) number
@@ -1301,6 +1393,17 @@ class DataSetSQL(DataSet):
       raise Exception
 
     DataSet.__init__(self, base_kwargs)
+
+    # Check if parallel write is set to 'host'  - - - - - - - - - - - - - - - -
+    #
+    if (self.parallelwrite != 'host'):
+      print 'warning:Parallel write mode for  SQL data set is not "host": %s' \
+            % (self.parallelwrite)
+
+    # Only host process will access SQL data base
+    #
+    if (parallel.rank() > 0):
+      return  # All other processes don't do anything
 
     # Check if the values in the 'fields' arguments are all strings (database
     # column names)
@@ -1445,6 +1548,7 @@ class DataSetSQL(DataSet):
     print '1:'
     print '1:Initialised SQL data set "%s"' % (self.name)
     print '1:  In access mode: %s' % (self.access_mode)
+    print '1:  Parallel write: %s' % (self.parallelwrite)
     print '1:  Database name:  %s' % (self.database_name)
     print '1:  Database user:  %s' % (self.database_user)
     print '1:  Table name:     %s' % (self.table_name)
@@ -1597,6 +1701,11 @@ class DataSetSQL(DataSet):
     """Write a block of records.
     """
 
+    # Check parallel write mode
+    #
+    if (self.parallelwrite == 'host') and (parallel.rank() > 0):
+      return  # Don't write if not host process
+
     if (self.database == None):
       print 'error:Data set not initialised'
       raise Exception
@@ -1681,7 +1790,7 @@ class RandomDataSet:
    '_rec_num_' (the record number), a positive (or zero) integer number. This
    record number is created and returned by one of the sequential data sets.
 
-   For records that are red from a random access data set, their hidden field
+   For records that are read from a random access data set, their hidden field
    '_dataset_name_' is set to the name of the random data set.
 
    BASE METHODS
@@ -1689,6 +1798,9 @@ class RandomDataSet:
                                     either 'read', 'write' or 'readwrite'
                                     access mode.
      finalise()                     Finalise access to a data set.
+     re_initialise(access_mode)     To close and re-initialise a data set. It
+                                    is possible to change the access mode when
+                                    a data set is re-initialised.
      read_record(rec_number)        Read the record with the given number.
                                     Return 'None' if the record is not in the
                                     data set.
@@ -1730,13 +1842,14 @@ class RandomDataSet:
 
     # General attributes for all data sets
     #
-    self.name =               None
-    self.description =        ''
-    self.access_mode =        None
-    self.fields =             None
-    self.fields_default =     ''
-    self.num_records =        None
-    self.missing_values =     ['']
+    self.name =            None
+    self.description =     ''
+    self.access_mode =     None
+    self.fields =          None
+    self.fields_default =  ''
+    self.num_records =     None
+    self.missing_values =  ['']
+    self.parallelwrite =   parallel.writemode
 
     # Process base keyword arguments (all data set specific keywords were
     # processed in the derived class constructor)
@@ -1753,7 +1866,7 @@ class RandomDataSet:
 
       elif (keyword == 'access_mode'):
         if (value not in ['read','write','readwrite']):
-          print 'error:Illegal mode for "access_mode": %s' % (str(value))
+          print 'error:Illegal value for "access_mode": %s' % (str(value))
           raise Exception
         self.access_mode = value
 
@@ -1809,6 +1922,19 @@ class RandomDataSet:
 
   # ---------------------------------------------------------------------------
 
+  def re_initialise(self, access_mode):
+    """Re-initalise the data set (close and open it) so that all data
+       structures are up to date.
+
+       A new access mode can be set with the given argument 'access_mode'. If
+       set to None, the current access mode is kept.
+    """
+
+    print 'error:Override abstract method in derived class'
+    raise Exception
+
+  # ---------------------------------------------------------------------------
+
   def read_records(self, rec_number_list):
     """Read and return the records with the given record numbers.
        See implementations in derived classes for details.
@@ -1855,8 +1981,15 @@ class DataSetShelve(RandomDataSet):
      Implementation of a shelve data set based on the Python shelve module.
      Basically, this is a file based dictionary.
 
+     If a shelve data set is opened in 'write' or 'readwrite' access mode its
+     previous content will be cleared (truncated) when it is opened.
+
      DERIVED CLASS ATTRIBUTES
-       file_name  A string containing the name of the underlying shelve file.
+       file_name  A string containing the name of the underlying shelve
+                  file(s).
+       clear      A flag (True or False), when True the content of the database
+                  will be cleared when opened in 'write' or 'readwrite' access
+                  modes.
   """
 
   # ---------------------------------------------------------------------------
@@ -1866,9 +1999,14 @@ class DataSetShelve(RandomDataSet):
        base attributes.
     """
 
-    self.file_name = None  # The name of the shelve files (without extensions).
-    self.shelve =    None  # The 'shelve' File pointer to current file.
-
+    self.dataset_type = 'SHELVE'
+    self.file_name =    None   # The name of the shelve files (without
+                               # extensions)
+    self.shelve =       None   # The 'shelve' File pointer to current file.
+    self.db =           None   # A reference to the underlting database
+    self.clear =        False  # Flag True/False for clearing the database
+                               # when opening or not
+ 
     # Process all keyword arguments
     #
     base_kwargs = {}  # Dictionary, will contain unprocessed arguments
@@ -1880,6 +2018,13 @@ class DataSetShelve(RandomDataSet):
           raise Exception
         self.file_name = value
 
+      elif (keyword == 'clear'):
+        if (value not in [True, False]):
+          print 'error:Illegal value for argument "clear" ' + \
+                '(must be True or False)'
+          raise Exception
+        self.clear = value
+
       else:
         base_kwargs[keyword] = value
 
@@ -1890,16 +2035,99 @@ class DataSetShelve(RandomDataSet):
     RandomDataSet.__init__(self, base_kwargs)  # Process base arguments
 
     # Open the shelve - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-    #
-    try:
-      self.shelve = shelve.open(self.file_name)
-    except:
-      print 'error:Can not open shelve: "%s"' % (str(self.file_name))
-      raise Exception
 
-    # Get the number of records in the shelve - - - - - - - - - - - - - - - - -
+    # Modify file name if parallel write mode is set to 'all'
     #
-    self.num_records = len(self.shelve)
+    if (self.access_mode in ['readwrite', 'write']) and \
+       (self.parallelwrite == 'all'):
+      self.file_name = self.file_name+'-P%i' % (parallel.rank())
+
+    if (self.access_mode == 'read'):
+      shelve_access = 'r'  # Read access mode for shelve implementation
+
+      if (self.clear == True):
+        print 'warning:Open Shelve dataset in read access mode, clearing' + \
+              ' not possible'
+    else:
+      shelve_access = 'c'  # Read/write access, but also create if not there
+
+#      # Clear the old database by deleting its file
+#      #
+#      if (self.clear == True) and (parallel.rank() == 0):
+#
+#        print '1:  Delete old database files for Shelve data set'
+#
+#        if (self.shelve_db == 'BSDDB3'):
+#          try:
+#            os.remove(self.file_name)
+#          except:
+#            print 'error:Can not delete database file "%s"' % (self.file_name)
+#            raise Exception
+#
+#        elif (self.shelve_db == 'Shelve'):
+#          try:
+#            os.remove(self.file_name+'.dir')
+#          except:
+#            print 'error:Can not delete database file "%s"' % \
+#                  (self.file_name+'.dir')
+#            raise Exception
+#
+#          try:
+#            os.remove(self.file_name+'.pag')
+#          except:
+#            print 'error:Can not delete database file "%s"' % \
+#                  (self.file_name+'.pag')
+#            raise Exception
+
+    # Only open Shelve data set if in read mode or appropriate  - - - - - - - -
+    # parallel write mode
+    #
+    if (self.access_mode == 'read') or (self.parallelwrite == 'all') or \
+       ((self.parallelwrite == 'host') and (parallel.rank() == 0)):
+
+      if (shelve_type == 'BSDDB3'):  # Berkeley database module available
+
+        # Open the BSDDB data base first
+        #
+        try:
+          self.db = bsddb3.rnopen(self.file_name, shelve_access)
+
+        except:
+          print 'error:Can not open BSDDB3 shelve: "%s" in mode "%s"' % \
+                (str(self.file_name), str(shelve_access))
+          raise Exception
+
+        self.shelve = shelve.BsdDbShelf(self.db)  # Open the shelve
+
+      else:  # Use standard shelve module
+        try:
+          self.shelve = shelve.open(self.file_name, shelve_access)
+        except:
+          print 'error:Can not open shelve: "%s" in mode "%s"' % \
+                (str(self.file_name), str(shelve_access))
+          raise Exception
+
+      # Now clear the shelve if the 'clear' flag is set to True - - - - - - - -
+      # (and we're not in read only access mode)
+      #
+      if (self.clear == True) and (self.access_mode != 'read'):
+        if ((self.parallelwrite == 'host') and (parallel.rank() == 0)) or \
+            (self.parallelwrite == 'all'):
+          all_keys = self.shelve.keys()  # Get all keys
+
+          for k in all_keys:
+            del self.shelve[k]
+
+          self.shelve.sync()  # And make sure the database is updated
+
+      # Get the number of records in the shelve - - - - - - - - - - - - - - - -
+      #
+      self.num_records = len(self.shelve)
+
+    else:  # Don't initialise shelve
+      self.shelve =      None
+      self.db =          None
+      self.num_records = 0
 
     # Check that there are records in the data set
     #
@@ -1912,9 +2140,12 @@ class DataSetShelve(RandomDataSet):
     print '1:'
     print '1:Initialised Shelve data set "%s"' % (str(self.name))
     print '1:  In access mode: %s' % (self.access_mode)
+    print '1:  Parallel write: %s' % (self.parallelwrite)
     print '1:  File name:      %s' % (self.file_name)
     print '2:  Missing values: %s' % (str(self.missing_values))
     print '1:  Number of records: %i' % (self.num_records)
+    if (self.clear == True):
+      print '1:  All elements in data set deleted (cleared)'
 
   # ---------------------------------------------------------------------------
 
@@ -1926,7 +2157,13 @@ class DataSetShelve(RandomDataSet):
     # Close shelve if it is open
     #
     if (self.shelve != None):
+
       self.shelve.close()
+
+      if (shelve_type == 'BSDDB3'):  # Berkeley database module available
+        self.db.close()  # Also close the BSDDB data base
+        self.db = None
+
       self.shelve = None
 
     self.access_mode =        None
@@ -1937,6 +2174,89 @@ class DataSetShelve(RandomDataSet):
     #
     print '1:'
     print '1:Finalised Shelve data set "%s"' % (str(self.name))
+
+  # ---------------------------------------------------------------------------
+
+  def re_initialise(self, access_mode):
+    """Re-initalise the data set (close and open it) so that all data
+       structures are up to date.
+
+       A new access mode can be set with the given argument 'access_mode'. If
+       set to None, the current access mode is kept.
+    """
+
+    if (access_mode != None):
+      if (access_mode not in ['read','write','readwrite']):
+        print 'error:Illegal value for "access_mode": %s' % (str(access_mode))
+        raise Exception
+      self.access_mode = access_mode
+
+    # First close shelve if it is open  - - - - - - - - - - - - - - - - - - - -
+    #
+    if (self.shelve != None):
+      self.shelve.sync()  # Make sure all data is written to disk
+
+      self.shelve.close()
+      self.shelve = None
+
+      if (shelve_type == 'BSDDB3'):  # Berkeley database module available
+        self.db.close()  # Also close the BSDDB data base
+        self.db = None
+
+    parallel.Barrier()
+
+    # Re-open the shelve  - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    #
+    if (self.access_mode == 'read'):
+      shelve_access = 'r'  # Read access mode for shelve implementation
+
+    else:
+      shelve_access = 'c'  # Read/write access, but also create if not there
+
+    # Only open Shelve data set if in read mode or appropriate  - - - - - - - -
+    # parallel write mode
+    #
+    if (self.access_mode == 'read') or (self.parallelwrite == 'all') or \
+       ((self.parallelwrite == 'host') and (parallel.rank() == 0)):
+
+      if (shelve_type == 'BSDDB3'):  # Berkeley database module available
+
+        # Open the BSDDB data base
+        #
+        try:
+          self.db = bsddb3.rnopen(self.file_name, shelve_access)
+        except:
+          print 'error:Can not open BSDDB3 shelve: "%s" in mode "%s"' % \
+                (str(self.file_name), str(shelve_access))
+          raise Exception
+        self.shelve = shelve.BsdDbShelf(self.db)  # Open the shelve
+
+      else:  # Use standard shelve module
+        try:
+          self.shelve = shelve.open(self.file_name, shelve_access)
+        except:
+          print 'error:Can not open shelve: "%s" in mode "%s"' % \
+                (str(self.file_name), str(shelve_access))
+          raise Exception
+
+      # Get the number of records in the shelve - - - - - - - - - - - - - - - -
+      #
+      self.num_records = len(self.shelve)
+
+    else:  # Don't initialise shelve
+      self.shelve = None
+      self.num_records = 0
+
+    # Check that there are records in the data set
+    #
+    if (self.access_mode == 'read') and (self.num_records <= 0):
+      print 'error:No records in data set initialised in "read" mode'
+      raise Exception
+
+    # A log message for low volume log output (level 1) - - - - - - - - - - - -
+    #
+    print '1:'
+    print '1:Re-initialised Shelve data set "%s"' % (str(self.name))
 
   # ---------------------------------------------------------------------------
 
@@ -1958,7 +2278,10 @@ class DataSetShelve(RandomDataSet):
 
     for rec_num in rec_number_list:
 
-      shelve_key = str(rec_num)
+      if (shelve_type == 'BSDDB3'):  # Berkeley database module available
+        shelve_key = int(rec_num)+1  # Positive integer needed for BSDDB3
+      else:
+        shelve_key = str(rec_num+1)  # String for shelve
 
       try:
         rec_dict = self.shelve[shelve_key]
@@ -1972,7 +2295,7 @@ class DataSetShelve(RandomDataSet):
 
       except KeyError:  # No record under this number in shelve
         print 'warning:Record with number %s is not stored in shelve' % \
-              (shelve_key)
+              (rec_num)
 
       except:
         print 'error:Something is wrong when reading from shelve "%s"' % \
@@ -1991,7 +2314,7 @@ class DataSetShelve(RandomDataSet):
 
   # ---------------------------------------------------------------------------
 
-  def read_record(self, rec_number):
+  def read_record(self, rec_num):
     """Read the record with the given record number.
     """
 
@@ -2003,19 +2326,22 @@ class DataSetShelve(RandomDataSet):
       print 'error:Data set not initialised for "read" or "readwrite" access'
       raise Exception
 
-    shelve_key = str(rec_number)
+    if (shelve_type == 'BSDDB3'):  # Berkeley database module available
+      shelve_key = int(rec_num)+1  # Positive integer needed for BSDDB3
+    else:
+      shelve_key = str(rec_num+1)  # String for shelve
 
     try:
       rec_dict = self.shelve[shelve_key]
 
       # Set hidden fields
       #
-      rec_dict['_rec_num_'] =      rec_number
+      rec_dict['_rec_num_'] =      rec_num
       rec_dict['_dataset_name_'] = self.name
 
     except KeyError:  # No record under this number in shelve
       print 'warning:Record with number %s is not stored in shelve' % \
-            (shelve_key)
+            (rec_num)
 
       rec_dict = None
 
@@ -2038,6 +2364,11 @@ class DataSetShelve(RandomDataSet):
     """Write the records in the given list into the data set.
     """
 
+    # Check parallel write mode
+    #
+    if (self.parallelwrite == 'host') and (parallel.rank() > 0):
+      return  # Don't write if not host process
+
     if (self.shelve == None):
       print 'error:Data set not initialised'
       raise Exception
@@ -2056,24 +2387,23 @@ class DataSetShelve(RandomDataSet):
         print 'error:Record without record number given: %s' % (str(record))
         raise Exception
 
-      shelve_key = str(rec_num)
+      if (shelve_type == 'BSDDB3'):  # Berkeley database module available
+        shelve_key = int(rec_num)+1  # Positive integer needed for BSDDB3
+      else:
+        shelve_key = str(rec_num+1)  # String for shelve
 
       if (not self.shelve.has_key(shelve_key)):  # A new record
         self.num_records += 1
 
       # Insert record into data set
       #
-      try:
-        self.shelve[shelve_key] = record
-
-      except:
-        print 'error:Something is wrong when writing into shelve "%s"' % \
-              (self.file_name)
-        raise Exception
+      self.shelve[shelve_key] = record
 
       # A log message for high volume log output (level 3)  - - - - - - - - - -
       #
       print '3:    Wrote record to data set: %s' % (str(record))
+
+    # self.shelve.sync()  # Flush to disk
 
     # A log message for medium volume log output (level 2)  - - - - - - - - - -
     #
@@ -2084,6 +2414,11 @@ class DataSetShelve(RandomDataSet):
   def write_record(self, record):
     """Write the given record into the data set.
     """
+
+    # Check parallel write mode
+    #
+    if (self.parallelwrite == 'host') and (parallel.rank() > 0):
+      return  # Don't write if not host process
 
     if (self.shelve == None):
       print 'error:Data set not initialised'
@@ -2101,7 +2436,10 @@ class DataSetShelve(RandomDataSet):
       print 'error:Record without record number given: %s' % (str(record))
       raise Exception
 
-    shelve_key = str(rec_num)
+    if (shelve_type == 'BSDDB3'):  # Berkeley database module available
+      shelve_key = int(rec_num)+1  # Positive integer needed for BSDDB3
+    else:
+      shelve_key = str(rec_num+1)  # String for shelve
 
     if (not self.shelve.has_key(shelve_key)):  # A new record
       self.num_records += 1
@@ -2116,6 +2454,8 @@ class DataSetShelve(RandomDataSet):
             (self.file_name)
       raise Exception
 
+    self.shelve.sync()  # Flush to disk
+
     # A log message for high volume log output (level 3)  - - - - - - - - - - -
     #
     print '3:    Wrote record %s to data set: %s' % (shelve_key, str(record))
@@ -2126,6 +2466,8 @@ class DataSetMemory(RandomDataSet):
   """class DataSetMemory
 
      Implementation of a memory based data set using Python dictionaries.
+
+     The only possible access mode is 'readwrite'.
   """
 
   # ---------------------------------------------------------------------------
@@ -2135,19 +2477,26 @@ class DataSetMemory(RandomDataSet):
        base attributes.
     """
 
-    self.dict = {}  # The dictionary containing the records.
+    self.dataset_type = 'MEMORY'
+    self.dict =         {}        # The dictionary containing the records.
 
     # Process all keyword arguments (no keywords for derived class)
     #
     RandomDataSet.__init__(self, kwargs)  # Process base arguments
 
-    self.num_records= 0
+    if (self.access_mode != 'readwrite'):
+      print 'error:Memory data set must be initialised in "readwrite" ' + \
+            ' access mode'
+      raise Exception
+
+    self.num_records = 0
 
     # A log message for low volume log output (level 1) - - - - - - - - - - - -
     #
     print '1:'
     print '1:Initialised Memory data set "%s"' % (self.name)
     print '1:  In access mode: %s' % (self.access_mode)
+    print '1:  Parallel write: %s' % (self.parallelwrite)
     print '2:  Missing values: %s' % (str(self.missing_values))
     print '1:  Number of records: %i' % (self.num_records)
 
@@ -2166,6 +2515,45 @@ class DataSetMemory(RandomDataSet):
     #
     print '1:'
     print '1:Finalised Memory data set "%s"' % (self.name)
+
+  # ---------------------------------------------------------------------------
+
+  def re_initialise(self, access_mode):
+    """Re-initalise the data set (close and open it) so that all data
+       structures are up to date.
+
+       A new access mode can be set with the given argument 'access_mode'. If
+       set to None, the current access mode is kept.
+
+       Only access modes "read" and "readwrite" can be used.
+    """
+
+    if (access_mode != None):
+      if (self.access_mode not in ['readwrite','read']):
+        print 'error:Memory data set must be initialised in "readwrite" ' + \
+              ' access mode'
+        raise Exception
+
+    # We have to communicate the temporary memory data set to all processes
+    #
+    if (parallel.size() > 1):
+
+      if (parallel.rank() == 0):
+        for p in range(1, parallel.size()):
+          parallel.send(self.dict, p)
+          print '1:    Sent Memory data set to process %i' % (p)
+      else:
+        del self.dict  # Delete old data set
+
+        self.dict = parallel.receive(0)
+        print '1:    Received Memory data set from process 0'
+
+    self.num_records = len(self.dict)  # Get the current number of records
+
+    # A log message for low volume log output (level 1) - - - - - - - - - - - -
+    #
+    print '1:'
+    print '1:Re-initialised Memory data set "%s"' % (str(self.name))
 
   # ---------------------------------------------------------------------------
 
@@ -2267,6 +2655,11 @@ class DataSetMemory(RandomDataSet):
     """Write the records in the given list into the data set.
     """
 
+    # Check parallel write mode
+    #
+    if (self.parallelwrite == 'host') and (parallel.rank() > 0):
+      return  # Don't write if not host process
+
     if (self.dict == None):
       print 'error:Data set not initialised'
       raise Exception
@@ -2313,6 +2706,11 @@ class DataSetMemory(RandomDataSet):
   def write_record(self, record):
     """Write the given record into the data set.
     """
+
+    # Check parallel write mode
+    #
+    if (self.parallelwrite == 'host') and (parallel.rank() > 0):
+      return  # Don't write if not host process
 
     if (self.dict == None):
       print 'error:Data set not initialised'

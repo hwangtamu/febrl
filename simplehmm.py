@@ -1,25 +1,24 @@
 # =============================================================================
 # simplehmm.py - Routines for simple Hidden Markov Model (HMM) functionality.
 #
-# Freely extensible biomedical record linkage (Febrl) Version 0.2
+# Freely extensible biomedical record linkage (Febrl) Version 0.2.1
 # See http://datamining.anu.edu.au/projects/linkage.html
 #
 # =============================================================================
 # AUSTRALIAN NATIONAL UNIVERSITY OPEN SOURCE LICENSE (ANUOS LICENSE)
-# VERSION 1.0
+# VERSION 1.1
 #
-# The contents of this file are subject to the ANUOS License Version 1.0 (the
+# The contents of this file are subject to the ANUOS License Version 1.1 (the
 # "License"); you may not use this file except in compliance with the License.
 # Software distributed under the License is distributed on an "AS IS" basis,
 # WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License for
 # the specific language governing rights and limitations under the License.
 # The Original Software is "simplehmm.py".
 # The Initial Developers of the Original Software are Dr Peter Christen
-# (Department of Computer Science, Australian National University), Dr Tim
+# (Department of Computer Science, Australian National University) and Dr Tim
 # Churches (Centre for Epidemiology and Research, New South Wales Department
-# of Health) and Drs Markus Hegland, Stephen Roberts and Ole Nielsen
-# (Mathematical Sciences Insitute, Australian National University). Copyright
-# (C) 2002 the Australian National University and others. All Rights Reserved.
+# of Health). Copyright (C) 2002, 2003 the Australian National University and
+# others. All Rights Reserved.
 # Contributors:
 #
 # =============================================================================
@@ -173,6 +172,7 @@ class hmm:
 
     # A log message for low volume log output (level 1) - - - - - - - - - - - -
     #
+    print '1:'
     print '1:Initialised HMM with'
     print '1:  States:       %s' % (str(state_list))
     print '1:  Observations: %s' % (str(obser_list))
@@ -449,6 +449,7 @@ class hmm:
 
     # A log message for low volume log output (level 1) - - - - - - - - - - - -
     #
+    print '1:'
     print '1:Trained HMM with %i training records' % (len(train_data))
     print '2:  Smooting technique used: %s' % (str(smoothing))
 
@@ -636,6 +637,7 @@ class hmm:
 
     # A log message for low volume log output (level 1) - - - - - - - - - - - -
     #
+    print '1:'
     print '1:HMM save to file: %s' % (file_name)
 
   # ---------------------------------------------------------------------------
@@ -782,6 +784,7 @@ class hmm:
 
     # A log message for low volume log output (level 1) - - - - - - - - - - - -
     #
+    print '1:'
     print '1:HMM loaded from file: %s' % (file_name)
 
   # ---------------------------------------------------------------------------

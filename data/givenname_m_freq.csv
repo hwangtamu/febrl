@@ -1,10 +1,32 @@
 # =============================================================================
-# Frequency table for male given names
+# givenname_m_freq.csv - Frequency table for male given names
 #
 # Sources: - Compiled from various web sites
 #
 # Last update: 11/04/2002, Peter Christen
 #
+# =============================================================================
+# Freely extensible biomedical record linkage (Febrl) Version 0.2.1
+# See http://datamining.anu.edu.au/projects/linkage.html
+#
+# AUSTRALIAN NATIONAL UNIVERSITY OPEN SOURCE LICENSE (ANUOS LICENSE)
+# VERSION 1.1
+#
+# The contents of this file are subject to the ANUOS License Version 1.1 (the
+# "License"); you may not use this file except in compliance with the License.
+# Software distributed under the License is distributed on an "AS IS" basis,
+# WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License for
+# the specific language governing rights and limitations under the License.
+# The Original Software is "givenname_m_freq.csv".
+# The Initial Developers of the Original Software are Dr Peter Christen
+# (Department of Computer Science, Australian National University) and Dr Tim
+# Churches (Centre for Epidemiology and Research, New South Wales Department
+# of Health). Copyright (C) 2002, 2003 the Australian National University and
+# others. All Rights Reserved.
+# Contributors:
+#
+# =============================================================================
+
 # =============================================================================
 #
 # This table is in a two-column comma separated format, with the first column

@@ -1,27 +1,27 @@
 # =============================================================================
 # comparison.py - Classes for field and record comparions.
 #
-# Freely extensible biomedical record linkage (Febrl) Version 0.2
+# Freely extensible biomedical record linkage (Febrl) Version 0.2.1
 # See http://datamining.anu.edu.au/projects/linkage.html
 #
 # =============================================================================
 # AUSTRALIAN NATIONAL UNIVERSITY OPEN SOURCE LICENSE (ANUOS LICENSE)
-# VERSION 1.0
+# VERSION 1.1
 #
-# The contents of this file are subject to the ANUOS License Version 1.0 (the
+# The contents of this file are subject to the ANUOS License Version 1.1 (the
 # "License"); you may not use this file except in compliance with the License.
 # Software distributed under the License is distributed on an "AS IS" basis,
 # WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License for
 # the specific language governing rights and limitations under the License.
 # The Original Software is "comparison.py".
 # The Initial Developers of the Original Software are Dr Peter Christen
-# (Department of Computer Science, Australian National University), Dr Tim
+# (Department of Computer Science, Australian National University) and Dr Tim
 # Churches (Centre for Epidemiology and Research, New South Wales Department
-# of Health) and Drs Markus Hegland, Stephen Roberts and Ole Nielsen
-# (Mathematical Sciences Insitute, Australian National University). Copyright
-# (C) 2002 the Australian National University and others. All Rights Reserved.
+# of Health). Copyright (C) 2002, 2003 the Australian National University and
+# others. All Rights Reserved.
 # Contributors:
-#
+# Daniel R. Sabath M.Sc. (Research Consultant, Harborview Injury Prevention and
+#                         Research Center, Seattle)
 # =============================================================================
 
 """Module comparison.py - Classes for field and record comparions.
@@ -1693,14 +1693,16 @@ class FieldComparatorDate(FieldComparator):
             '[day,month,year]'
       raise Exception
 
-    if ((fields_a[0] < 1) or (fields_a[0] > 31) or \
-        (fields_a[1] < 1) or (fields_a[1] > 12)):
+    # Integer conversion in comparison by Dan Sabath
+    #
+    if ((int(fields_a[0]) < 1) or (int(fields_a[0]) > 31) or \
+        (int(fields_a[1]) < 1) or (int(fields_a[1]) > 12)):
       print 'error:%s Fields A does not have valid day or month values' % \
             (records_id)
       raise Exception
 
-    if ((fields_b[0] < 1) or (fields_b[0] > 31) or \
-        (fields_b[1] < 1) or (fields_b[1] > 12)):
+    if ((int(fields_b[0]) < 1) or (int(fields_b[0]) > 31) or \
+        (int(fields_b[1]) < 1) or (int(fields_b[1]) > 12)):
       print 'error:%s Fields B does not have valid day or month values' % \
             (records_id)
       raise Exception
@@ -1989,6 +1991,10 @@ class FieldComparatorAge(FieldComparator):
        or a [day,month,year] list.
     """
 
+    if ('00' in fields_a) or ('00' in fields_b):
+      print 'warning:%s fields_a: %s, fields_b: %s' \
+            % (records_id, str(fields_a),str(fields_a))
+ 
     # Check if fields contain missing values  - - - - - - - - - - - - - - - - -
     #
     for field in fields_a:

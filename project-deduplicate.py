@@ -1,25 +1,24 @@
 # =============================================================================
 # project-deduplicate.py - Configuration for a deduplication project.
 #
-# Freely extensible biomedical record linkage (Febrl) Version 0.2
+# Freely extensible biomedical record linkage (Febrl) Version 0.2.1
 # See http://datamining.anu.edu.au/projects/linkage.html
 #
 # =============================================================================
 # AUSTRALIAN NATIONAL UNIVERSITY OPEN SOURCE LICENSE (ANUOS LICENSE)
-# VERSION 1.0
+# VERSION 1.1
 #
-# The contents of this file are subject to the ANUOS License Version 1.0 (the
+# The contents of this file are subject to the ANUOS License Version 1.1 (the
 # "License"); you may not use this file except in compliance with the License.
 # Software distributed under the License is distributed on an "AS IS" basis,
 # WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License for
 # the specific language governing rights and limitations under the License.
 # The Original Software is "project-deduplicate.py".
 # The Initial Developers of the Original Software are Dr Peter Christen
-# (Department of Computer Science, Australian National University), Dr Tim
+# (Department of Computer Science, Australian National University) and Dr Tim
 # Churches (Centre for Epidemiology and Research, New South Wales Department
-# of Health) and Drs Markus Hegland, Stephen Roberts and Ole Nielsen
-# (Mathematical Sciences Insitute, Australian National University). Copyright
-# (C) 2002 the Australian National University and others. All Rights Reserved.
+# of Health). Copyright (C) 2002, 2003 the Australian National University and
+# others. All Rights Reserved.
 # Contributors:
 #
 # =============================================================================
@@ -29,7 +28,7 @@
    Briefly, what needs to be defined for a deduplication project is:
    - A Febrl object, a project, plus a project logger
    - One input data set
-   - One corresponding temporary data set (with read and write access)
+   - One corresponding temporary data set (with 'readwrite' access)
    - Lookup tables to be used
    - Standardisers for names, addresses and dates
    - Field comparator functions and a record comparator
@@ -43,6 +42,9 @@
    "Configuration and Running Febrl using a Module derived from 'project.py'"
 
    in the Febrl manual.
+
+   This project module will standardised and then deduplicate the example data
+   set 'dataset2.csv' given in the 'dbgen' directory.
 """
 
 # =============================================================================
@@ -63,18 +65,19 @@ from classification import *   # Classifiers for weight vectors
 # =============================================================================
 # Set up Febrl and create a new project (or load a saved project)
 
-myfebrl = Febrl(description = 'Deduplication Febrl instance',
+myfebrl = Febrl(description = 'Example deduplication Febrl instance',
                  febrl_path = '.')
 
-myproject = myfebrl.new_project(name = 'MDC',
-                         description = 'Deduplicate Midwifes Data Collection',
-                           file_name = 'mdc-deduplicate.fbr',
-                          block_size = 1000)
+myproject = myfebrl.new_project(name = 'example-dedup',
+                         description = 'Deduplicate example data set 2',
+                           file_name = 'example-deduplicate.fbr',
+                          block_size = 100,
+                      parallel_write = 'host')
 
 # =============================================================================
 # Define a project logger
 
-mylog = ProjectLog(file_name = 'mdc-deduplicate.log',
+mylog = ProjectLog(file_name = 'example-dedup.log',
                      project = myproject,
                    log_level = 1,
                verbose_level = 1,
@@ -84,49 +87,45 @@ mylog = ProjectLog(file_name = 'mdc-deduplicate.log',
 
 # =============================================================================
 # Define original input data set(s)
-#
 # Only one data set is needed for deduplication
-# 
-indata = DataSetCSV(name = 'MDC',
-             description = 'Midwifes Data Collection, 1990-2000, ' + \
-                           'source: Department of Health',
+
+indata = DataSetCSV(name = 'example2in',
+             description = 'Example data set 2',
              access_mode = 'read',
             header_lines = 1,
             write_header = True,
-               file_name = '../../data/nswhealth_mdc/mdc.csv',
-                  fields = {'year':0,
-                            'rseqnum':1,
-                            'ohoscode':2,
-                            'omrn':3,
-                            'gname':4,
-                            'sname':5,
-                            'omdob':6,
-                            'ocob':7,
-                            'wfarenum':8,
-                            'wayfare':9,
-                            'locality':10,
-                            'pcode':11,
-                            'state':12,
-                            'obmrn':13,
-                            'bdob':14,
-                            'plural':15,
-                            'plurnum':16},
+               file_name = './dbgen/dataset2.csv',
+                  fields = {'rec_id':0,
+                            'given_name':1,
+                            'surname':2,
+                            'street_num':3,
+                            'address_part_1':4,
+                            'address_part_2':5,
+                            'suburb':6,
+                            'postcode':7,
+                            'state':8,
+                            'date_of_birth':9,
+                            'soc_sec_id':10},
           fields_default = '',
             strip_fields = True,
           missing_values = ['','missing'])
 
 # =============================================================================
 # Define temporary data set(s) (one per input data set)
+# Commented lines are only needed for the disk based Shelve data set
 
-tmpdata = DataSetMemory(name = 'MDCtmp',
-                 description = 'Temporary MDC data set',
+tmpdata = DataSetMemory(name = 'example2tmp',
+#tmpdata = DataSetShelve(name = 'example2tmp',
+#                   file_name = './example2-shelve',
+#                       clear = True,
+                 description = 'Temporary example 2 data set',
                  access_mode = 'readwrite',
-                      fields = {'title':0,
-                                'gender_guess':1,
-                                'given_name':2,
-                                'alt_given_name':3,
-                                'surname':4,
-                                'alt_surname':5,
+                      fields = {'title':1,
+                                'gender_guess':2,
+                                'given_name':3,
+                                'alt_given_name':4,
+                                'surname':5,
+                                'alt_surname':6,
                                 'wayfare_number':7,
                                 'wayfare_name':8,
                                 'wayfare_qualifier':9,
@@ -143,13 +142,15 @@ tmpdata = DataSetMemory(name = 'MDCtmp',
                                 'postcode':20,
                                 'territory':21,
                                 'country':22,
-                                'address_hmm_prob':23,
-                                'baby_day':24,
-                                'baby_month':25,
-                                'baby_year':26,
-                                'mother_day':27,
-                                'mother_month':28,
-                                'mother_year':29},
+                                'dob_day':23,
+                                'dob_month':24,
+                                'dob_year':25,
+# The following are output fields that are passed without standardisation
+                                'rec_id':0,
+                                'soc_sec_id':26,
+# The last output field contains the probability of the address HMM
+                                'address_hmm_prob':27,
+                               },
               missing_values = ['','missing'])
 
 # =============================================================================
@@ -170,22 +171,22 @@ name_correction_list = CorrectionList(name = 'Name correction list')
 
 name_correction_list.load('./data/name_corr.lst')
 
-address_lookup_table = TagLookupTable(name = 'Geoloc lookup table',
+address_lookup_table = TagLookupTable(name = 'Address lookup table',
                                    default = '')
 
 address_lookup_table.load(['./data/country.tbl',
-                          './data/geoloc_misc.tbl',
-                          './data/geoloc_qual.tbl',
-                          './data/institution_type.tbl',
-                          './data/post_address.tbl',
-                          './data/saints.tbl',
-                          './data/territory.tbl',
-                          './data/unit_type.tbl',
-                          './data/wayfare_type.tbl'])
+                           './data/address_misc.tbl',
+                           './data/address_qual.tbl',
+                           './data/institution_type.tbl',
+                           './data/post_address.tbl',
+                           './data/saints.tbl',
+                           './data/territory.tbl',
+                           './data/unit_type.tbl',
+                           './data/wayfare_type.tbl'])
 
 address_correction_list = CorrectionList(name = 'Address correction list')
 
-address_correction_list.load('./data/geoloc_corr.lst')
+address_correction_list.load('./data/address_corr.lst')
 
 pc_geocode_table = GeocodeLookupTable(name = 'Postcode centroids',
                                    default = [])
@@ -215,9 +216,9 @@ address_tags = ['PC','N4','NU','AN','TR','CR','LN','ST','IN','IT','LQ','WT',
                 'WN','UT','HY','SL','CO','VB','PA','UN','RU']
 
 myaddress_hmm = hmm('Address HMM', address_states, address_tags)
-myaddress_hmm.load_hmm('./hmm/geoloc-absdiscount.hmm')
-# myaddress_hmm.load_hmm('./hmm/geoloc.hmm')
-# myaddress_hmm.load_hmm('./hmm/geoloc-laplace.hmm')
+myaddress_hmm.load_hmm('./hmm/address-absdiscount.hmm')
+# myaddress_hmm.load_hmm('./hmm/address.hmm')
+# myaddress_hmm.load_hmm('./hmm/address-laplace.hmm')
 
 # =============================================================================
 # Define a list of date parsing format strings
@@ -245,43 +246,17 @@ date_parse_formats = ['%d %m %Y',   # 24 04 2002  or  24 4 2002
 # =============================================================================
 # Define standardisers for dates
 
-mdc_baby_dob_std = DateStandardiser(name = 'MDC-BDOB-std',
-                             description = 'MDC baby DOB standardiser',
-                            input_fields = 'bdob',
-                           output_fields = ['baby_day','baby_month',
-                                            'baby_year'],
-                           parse_formats = date_parse_formats)
-
-mdc_mother_dob_std = DateStandardiser(name = 'MDC-MDOB-std',
-                               description = 'MDC mother DOB standardiser',
-                              input_fields = 'omdob',
-                             output_fields = ['mother_day','mother_month',
-                                              'mother_year'],
-                             parse_formats = date_parse_formats)
+dob_std = DateStandardiser(name = 'DOB-std',
+                    description = 'Date of birth standardiser',
+                   input_fields = 'date_of_birth',
+                  output_fields = ['dob_day','dob_month', 'dob_year'],
+                  parse_formats = date_parse_formats)
 
 # =============================================================================
 # Define a standardiser for names based on rules
 
-mdc_name_rules_std = NameRulesStandardiser(name = 'MDC-Name-Rules',
-                                   input_fields = ['gname','sname'],
-                                  output_fields = ['title',
-                                                   'gender_guess',
-                                                   'given_name',
-                                                   'alt_given_name',
-                                                   'surname',
-                                                   'alt_surname'],
-                                 name_corr_list = name_correction_list,
-                                 name_tag_table = name_lookup_table,
-                                    male_titles = ['mr'],
-                                  female_titles = ['ms'],
-                                field_separator = ' ',
-                               check_word_spill = True)
-
-# =============================================================================
-# Define a standardiser for names based on HMM
-
-mdc_name_hmm_std = NameHMMStandardiser(name = 'MDC-Name-HMM',
-                               input_fields = ['gname','sname'],
+name_rules_std = NameRulesStandardiser(name = 'Name-Rules',
+                               input_fields = ['given_name','surname'],
                               output_fields = ['title',
                                                'gender_guess',
                                                'given_name',
@@ -292,167 +267,209 @@ mdc_name_hmm_std = NameHMMStandardiser(name = 'MDC-Name-HMM',
                              name_tag_table = name_lookup_table,
                                 male_titles = ['mr'],
                               female_titles = ['ms'],
-                                   name_hmm = myname_hmm,
                             field_separator = ' ',
                            check_word_spill = True)
 
 # =============================================================================
+# Define a standardiser for names based on HMM
+
+name_hmm_std = NameHMMStandardiser(name = 'Name-HMM',
+                           input_fields = ['given_name','surname'],
+                          output_fields = ['title',
+                                           'gender_guess',
+                                           'given_name',
+                                           'alt_given_name',
+                                           'surname',
+                                           'alt_surname'],
+                         name_corr_list = name_correction_list,
+                         name_tag_table = name_lookup_table,
+                            male_titles = ['mr'],
+                          female_titles = ['ms'],
+                               name_hmm = myname_hmm,
+                        field_separator = ' ',
+                       check_word_spill = True)
+
+# =============================================================================
 # Define a standardiser for addresses based on HMM
 
-mdc_address_hmm_std = AddressHMMStandardiser(name = 'MDC-Address-HMM',
-                                     input_fields = ['wfarenum','wayfare',
-                                                     'locality','pcode',
-                                                     'state'],
-                                    output_fields = ['wayfare_number',
-                                                     'wayfare_name',
-                                                     'wayfare_qualifier',
-                                                     'wayfare_type',
-                                                     'unit_number',
-                                                     'unit_type',
-                                                     'property_name',
-                                                     'institution_name',
-                                                     'institution_type',
-                                                     'postaddress_number',
-                                                     'postaddress_type',
-                                                     'locality_name',
-                                                     'locality_qualifier',
-                                                     'postcode',
-                                                     'territory',
-                                                     'country',
-                                                     None],
-                                address_corr_list = address_correction_list,
-                                address_tag_table = address_lookup_table,
-                                      address_hmm = myaddress_hmm)
+address_hmm_std = AddressHMMStandardiser(name = 'Address-HMM',
+                                 input_fields = ['street_num','address_part_1',
+                                                 'address_part_2','suburb',
+                                                 'postcode', 'state'],
+                                output_fields = ['wayfare_number',
+                                                 'wayfare_name',
+                                                 'wayfare_qualifier',
+                                                 'wayfare_type',
+                                                 'unit_number',
+                                                 'unit_type',
+                                                 'property_name',
+                                                 'institution_name',
+                                                 'institution_type',
+                                                 'postaddress_number',
+                                                 'postaddress_type',
+                                                 'locality_name',
+                                                 'locality_qualifier',
+                                                 'postcode',
+                                                 'territory',
+                                                 'country',
+                                                 'address_hmm_prob'],
+                            address_corr_list = address_correction_list,
+                            address_tag_table = address_lookup_table,
+                                  address_hmm = myaddress_hmm)
+
+# =============================================================================
+# Define a pass field standardiser for all fields that should be passed from
+# the input to the output data set without any cleaning or standardisdation.
+
+pass_fields = PassFieldStandardiser(name = 'Pass fields',
+                            input_fields = ['rec_id', 'soc_sec_id'],
+                           output_fields = ['rec_id', 'soc_sec_id'])
 
 # =============================================================================
 # Define record standardiser(s) (one for each data set)
 
-mdc_comp_stand = [mdc_baby_dob_std, mdc_mother_dob_std, mdc_name_rules_std,
-                  mdc_address_hmm_std]
+comp_stand = [dob_std, name_rules_std, address_hmm_std, pass_fields]
 
 # The HMM based name standardisation is not used in the above standardiser,
 # uncomment the lines below (and comment the ones above) to use HMM
 # standardisation for names.
 #
-mdc_comp_stand = [mdc_baby_dob_std, mdc_mother_dob_std, mdc_name_hmm_std,
-                  mdc_address_hmm_std]
+#comp_stand = [dob_std, name_hmm_std, address_hmm_std, pass_fields]
 
-mdc_standardiser = RecordStandardiser(name = 'MDC-std',
-                               description = 'MDC standardiser',
-                             input_dataset = indata,
-                            output_dataset = tmpdata,
-                                  comp_std = mdc_comp_stand)
+example_standardiser = RecordStandardiser(name = 'Example-std',
+                                   description = 'Example standardiser',
+                                 input_dataset = indata,
+                                output_dataset = tmpdata,
+                                      comp_std = comp_stand)
 
 # =============================================================================
 # Define blocking index(es) (one per temporary data set)
 
-myblock_def = [[('surname','dmetaphone', 4),('mother_year','direct')],
+myblock_def = [[('surname','dmetaphone', 4),('dob_year','direct')],
                [('given_name','truncate', 3), ('postcode','direct')],
-               [('locality_name','nysiis'),('mother_month','direct')],
+               [('locality_name','nysiis'),('dob_month','direct')],
               ]
 
-# Define one or more indexes (to be used in the classfier furter below)
+# Define one or more indexes (to be used in the classifier further below)
 
-mdc_index = BlockingIndex(name = 'MDC-blocking',
-                       dataset = tmpdata,
-                     index_def = myblock_def)
+example_index = BlockingIndex(name = 'Index-blocking',
+                           dataset = tmpdata,
+                         index_def = myblock_def)
 
-mdc_sorting_index = SortingIndex(name = 'MDC-sorting',
-                              dataset = tmpdata,
-                            index_def = myblock_def,
-                          window_size = 3)
+example_sorting_index = SortingIndex(name = 'Index-sorting',
+                                  dataset = tmpdata,
+                                index_def = myblock_def,
+                              window_size = 3)
 
-mdc_bigram_index = BigramIndex(name = 'MDC-bigram',
-                            dataset = tmpdata,
-                          index_def = myblock_def,
-                          threshold = 0.75)
+example_bigram_index = BigramIndex(name = 'Index-bigram',
+                                dataset = tmpdata,
+                              index_def = myblock_def,
+                              threshold = 0.75)
 
 # =============================================================================
 # Define comparison functions for deduplication
 
-given_name_nysiis = FieldComparatorEncodeString(fields_a = 'surname',
-                                                fields_b = 'surname',
-                                                   m_prob = 0.95,
-                                                   u_prob = 0.001,
-                                           missing_weight = 0.0,
-                                            encode_method = 'nysiis',
-                                                  reverse = False)
-
-surname_dmetaphone = FieldComparatorEncodeString(fields_a = 'surname',
-                                                 fields_b = 'surname',
-                                                   m_prob = 0.95,
-                                                   u_prob = 0.001,
-                                           missing_weight = 0.0,
-                                            encode_method = 'dmetaphone',
-                                                  reverse = False)
-
-wayfare_name_winkler = FieldComparatorApproxString(fields_a = 'wayfare_name',
-                                                   fields_b = 'wayfare_name',
-                                                     m_prob = 0.95,
-                                                     u_prob = 0.001,
-                                             missing_weight = 0.0,
-                                             compare_method = 'winkler',
-                                           min_approx_value = 0.7)
-
-locality_name_key = FieldComparatorKeyDiff(fields_a = 'locality_name',
-                                           fields_b = 'locality_name',
-                                             m_prob = 0.95,
-                                             u_prob = 0.001,
-                                     missing_weight = 0.0,
-                                       max_key_diff = 2)
-
-postcode_distance = FieldComparatorDistance(fields_a = 'postcode',
-                                            fields_b = 'postcode',
+given_name_nysiis = FieldComparatorEncodeString(name = 'Given name NYSIIS',
+                                            fields_a = 'given_name',
+                                            fields_b = 'given_name',
                                               m_prob = 0.95,
                                               u_prob = 0.001,
                                       missing_weight = 0.0,
-                                       geocode_table = pc_geocode_table,
-                                        max_distance = 50.0)
+                                       encode_method = 'nysiis',
+                                             reverse = False)
 
-mother_age = FieldComparatorAge(fields_a = ['mother_day','mother_month',
-                                            'mother_year'],
-                                fields_b = ['mother_day','mother_month',
-                                            'mother_year'],
-                       m_probability_day = 0.95,
-                       u_probability_day = 0.03333,
-                     m_probability_month = 0.95,
-                     u_probability_month = 0.083,
-                      m_probability_year = 0.95,
-                      u_probability_year = 0.01,
-                           max_perc_diff = 10.0,
-                                fix_date = 'today')
+surname_dmetaphone = FieldComparatorEncodeString(name = 'Surname D-Metaphone',
+                                             fields_a = 'surname',
+                                             fields_b = 'surname',
+                                               m_prob = 0.95,
+                                               u_prob = 0.001,
+                                       missing_weight = 0.0,
+                                        encode_method = 'dmetaphone',
+                                              reverse = False)
+
+wayfare_name_winkler = FieldComparatorApproxString(name = 'Wayfare name ' + \
+                                                          'Winkler',
+                                               fields_a = 'wayfare_name',
+                                               fields_b = 'wayfare_name',
+                                                 m_prob = 0.95,
+                                                 u_prob = 0.001,
+                                         missing_weight = 0.0,
+                                         compare_method = 'winkler',
+                                       min_approx_value = 0.7)
+
+locality_name_key = FieldComparatorKeyDiff(name = 'Locality name key diff',
+                                       fields_a = 'locality_name',
+                                       fields_b = 'locality_name',
+                                         m_prob = 0.95,
+                                         u_prob = 0.001,
+                                 missing_weight = 0.0,
+                                   max_key_diff = 2)
+
+postcode_distance = FieldComparatorDistance(name = 'Postcode distance',
+                                        fields_a = 'postcode',
+                                        fields_b = 'postcode',
+                                          m_prob = 0.95,
+                                          u_prob = 0.001,
+                                  missing_weight = 0.0,
+                                   geocode_table = pc_geocode_table,
+                                    max_distance = 50.0)
+
+age = FieldComparatorAge(name = 'Age',
+                     fields_a = ['dob_day','dob_month', 'dob_year'],
+                     fields_b = ['dob_day','dob_month', 'dob_year'],
+            m_probability_day = 0.95,
+            u_probability_day = 0.03333,
+          m_probability_month = 0.95,
+          u_probability_month = 0.083,
+           m_probability_year = 0.95,
+           u_probability_year = 0.01,
+                max_perc_diff = 10.0,
+                     fix_date = 'today')
 
 field_comparisons = [given_name_nysiis, surname_dmetaphone, \
                      wayfare_name_winkler, locality_name_key, \
-                     postcode_distance, mother_age]
+                     postcode_distance, age]
 
-mdc_comparator = RecordComparator(tmpdata, tmpdata, field_comparisons)
+example_comparator = RecordComparator(tmpdata, tmpdata, field_comparisons)
 
 # =============================================================================
 # Define a classifier for classifying the matching vectors
 
-mdc_f_s_classifier = FellegiSunterClassifier(name = 'MDC Fellegi and Sunter',
+example_fs_classifier = FellegiSunterClassifier(name = 'Fellegi and Sunter',
+                                           dataset_a = tmpdata,
+                                           dataset_b = tmpdata,
+                                     lower_threshold = 0.0,
+                                     upper_threshold = 30.0)
+
+example_flex_classifier = FlexibleClassifier(name = 'Example flex classifier',
                                         dataset_a = tmpdata,
                                         dataset_b = tmpdata,
-                                  lower_threshold = -20.0,
-                                  upper_threshold = 20.0)
+                                  lower_threshold = 0.0,
+                                  upper_threshold = 10.0,
+                                        calculate = [('avrg', [0,1]),
+                                                     ('max',  [2,3,4]),
+                                                     ('min',  [5])],
+                                      final_funct = 'avrg')
 
 # =============================================================================
 # Start the deduplication task
 
 myproject.deduplicate(input_dataset = indata,
                         tmp_dataset = tmpdata,
-                   rec_standardiser = mdc_standardiser,
-                     rec_comparator = mdc_comparator,
-                     blocking_index = mdc_index,
-                         classifier = mdc_f_s_classifier,
+                   rec_standardiser = example_standardiser,
+                     rec_comparator = example_comparator,
+                     blocking_index = example_index,
+                         classifier = example_flex_classifier,
                        first_record = 0,
-                     number_records = 1000, # 5000,
-                       output_print = True,
-                   output_histogram = True,
-                        output_file = 'mdc-deduplicate.res',
-                   output_threshold = 30.0,
-                  output_assignment = None) # 'one2one')
+                     number_records = 5000,
+                   output_histogram = 'dedup-example-histogram.res',
+            output_rec_pair_details = 'dedup-example-details.res',
+            output_rec_pair_weights = 'dedup-example-weights.res',
+                   output_threshold = 10.0,
+                  output_assignment = 'one2one')
 
 # =============================================================================
 
+myfebrl.finalise()
+
+# =============================================================================
