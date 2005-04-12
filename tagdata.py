@@ -1,29 +1,51 @@
 # =============================================================================
-# tagdata.py - Main module to tag elements in a training data file
-#
-# Freely extensible biomedical record linkage (Febrl) Version 0.2.2
-# See http://datamining.anu.edu.au/projects/linkage.html
-#
-# =============================================================================
 # AUSTRALIAN NATIONAL UNIVERSITY OPEN SOURCE LICENSE (ANUOS LICENSE)
-# VERSION 1.1
-#
-# The contents of this file are subject to the ANUOS License Version 1.1 (the
-# "License"); you may not use this file except in compliance with the License.
-# Software distributed under the License is distributed on an "AS IS" basis,
-# WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License for
-# the specific language governing rights and limitations under the License.
-# The Original Software is "tagdata.py".
-# The Initial Developers of the Original Software are Dr Peter Christen
-# (Department of Computer Science, Australian National University) and Dr Tim
-# Churches (Centre for Epidemiology and Research, New South Wales Department
-# of Health). Copyright (C) 2002, 2003 the Australian National University and
+# VERSION 1.2
+# 
+# The contents of this file are subject to the ANUOS License Version 1.2
+# (the "License"); you may not use this file except in compliance with
+# the License. You may obtain a copy of the License at:
+# 
+#   http://datamining.anu.edu.au/linkage.html
+# 
+# Software distributed under the License is distributed on an "AS IS"
+# basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See
+# the License for the specific language governing rights and limitations
+# under the License.
+# 
+# The Original Software is: "tagdata.py"
+# 
+# The Initial Developers of the Original Software are:
+#   Dr Tim Churches (Centre for Epidemiology and Research, New South Wales
+#                    Department of Health)
+#   Dr Peter Christen (Department of Computer Science, Australian National
+#                      University)
+# 
+# Copyright (C) 2002 - 2005 the Australian National University and
 # others. All Rights Reserved.
+# 
 # Contributors:
+# 
+# Alternatively, the contents of this file may be used under the terms
+# of the GNU General Public License Version 2 or later (the "GPL"), in
+# which case the provisions of the GPL are applicable instead of those
+# above. The GPL is available at the following URL: http://www.gnu.org/
+# If you wish to allow use of your version of this file only under the
+# terms of the GPL, and not to allow others to use your version of this
+# file under the terms of the ANUOS License, indicate your decision by
+# deleting the provisions above and replace them with the notice and
+# other provisions required by the GPL. If you do not delete the
+# provisions above, a recipient may use your version of this file under
+# the terms of any one of the ANUOS License or the GPL.
+# =============================================================================
+#
+# Freely extensible biomedical record linkage (Febrl) - Version 0.3
+#
+# See: http://datamining.anu.edu.au/linkage.html
 #
 # =============================================================================
 
-"""Module tagdata.py - Main module to tag elements into a training data file
+"""Module tagdata.py - Main module to tag elements into a training data file.
 
    DESCRIPTION:
      Ths module can be used to tag records randomly selected from a data set to
@@ -31,7 +53,7 @@
      module. Records are tagged using either lookup-tables for names or for
      address words.
 
-     The 'tag_component' can be either 'name' or 'address', and is used to 
+     The 'tag_component' can be either 'name' or 'address', and is used to
      determine the possible tags to be used. The corresponding list of field
      names has to be given in 'tag_component_fields'.
 
@@ -77,6 +99,9 @@
      The user has to manually inspect the output file and delete (or comment)
      all lines with tags that are not correct, and insert a (or modify the
      given) HMM state name for each tag in a sequence.
+
+   The directory separator 'dirsep' is a shorthand to os.sep as defined in
+   febrl.py.
 
    EXAMPLE:
      The three input data records:
@@ -129,9 +154,19 @@ from name import *             # Name tagging functionality
 from address import *          # Address tagging functionality
 from simplehmm import *        # Hidden Markov model (HMM) functionalities
 
-import os      # Operating system depedent functions
-import random  # Python standard module for random number functionality
-import time    # Python standard module for time functions
+import logging
+import os       # Operating system depedent functions
+import random   # Python standard module for random number functionality
+import time     # Python standard module for time functions
+
+# =============================================================================
+# Define a project logger
+
+init_febrl_logger(log_file_name = 'febrl-tagdata.log',
+                     file_level = 'WARN',
+                  console_level = 'INFO',
+                      clear_log = True,
+                parallel_output = 'host')
 
 # =============================================================================
 # Set up Febrl and create a new project (or load a saved project)
@@ -144,16 +179,6 @@ tag_project = tag_febrl.new_project(name = 'Tag-Data',
                                file_name = 'tag.fbr')
 
 # =============================================================================
-# Define a project logger
-
-tag_log = ProjectLog(file_name = 'tag_data.log',
-                       project = tag_project,
-                     log_level = 1,
-                 verbose_level = 1,
-                     clear_log = True,
-                       no_warn = False)
-
-# =============================================================================
 # Define settings for data tagging
 
 # Define your original input data set - - - - - - - - - - - - - - - - - - - - -
@@ -162,7 +187,7 @@ input_data = DataSetCSV(name = 'example1in',
                  description = 'Example data set 1',
                  access_mode = 'read',
                 header_lines = 1,
-                   file_name = './dbgen/dataset1.csv',
+                   file_name = 'dsgen'+dirsep+'dataset1.csv',
                       fields = {'rec_id':0,
                                 'given_name':1,
                                 'surname':2,
@@ -189,15 +214,16 @@ num_rec_to_select = (input_data.num_records / 2)  # Use 50% for tagging
 
 # Define name of output data set  - - - - - - - - - - - - - - - - - - - - - - -
 #
-output_file_name = 'tagged_data.csv'
+output_file_name = 'tagged-data.csv'
 
 # Component: Can either be 'name' or 'address'  - - - - - - - - - - - - - - - -
 #
-tag_component = 'name'
+tag_component = 'address'
 
 # Define a list with field namess from the input data set in the component  - -
 #
-tag_component_fields = ['given_name', 'surname']
+tag_component_fields = ['street_num', 'address_part_1', 'address_part_2',
+                        'suburb', 'postcode', 'state']
 
 # Define if word spilling should be checked or not  - - - - - - - - - - - - - -
 #
@@ -208,9 +234,9 @@ check_word_spilling = True  # Set to True or False
 field_separator = ' '
 
 # Use HMM for tagging and segmenting  - - - - - - - - - - - - - - - - - - - - -
+# (set to address of a HMM file or None)
 #
-hmm_file_name = './hmm/name-absdiscount.hmm' # Set to name of a HMM file or
-                                             # None
+hmm_file_name = 'hmm'+dirsep+'address-absdiscount.hmm'
 
 # Retag an existing training file - - - - - - - - - - - - - - - - - - - - - - -
 # - Note that retagging is only possible if a HMM file name is given as well
@@ -222,41 +248,41 @@ retag_file_name = None  # Set to name of an existing training file or None
 
 # Write out frequencies into a file - - - - - - - - - - - - - - - - - - - - - -
 #
-freqs_file_name = 'freqs.txt'  # Set to a file name or None
+freqs_file_name = 'tagged-data-freqs.txt'  # Set to a file name or None
 
 # Define and load lookup tables - - - - - - - - - - - - - - - - - - - - - - - -
 #
 name_lookup_table = TagLookupTable(name = 'Name lookup table',
                                 default = '')
-
-name_lookup_table.load(['./data/givenname_f.tbl',
-                        './data/givenname_m.tbl',
-                        './data/name_prefix.tbl',
-                        './data/name_misc.tbl',
-                        './data/saints.tbl',
-                        './data/surname.tbl',
-                        './data/title.tbl'])
+name_lookup_table.load(['data'+dirsep+'givenname_f.tbl',
+                        'data'+dirsep+'givenname_m.tbl',
+                        'data'+dirsep+'name_prefix.tbl',
+                        'data'+dirsep+'name_misc.tbl',
+                        'data'+dirsep+'saints.tbl',
+                        'data'+dirsep+'surname.tbl',
+                        'data'+dirsep+'title.tbl'])
 
 name_correction_list = CorrectionList(name = 'Name correction list')
+name_correction_list.load('data'+dirsep+'name_corr.lst')
 
-name_correction_list.load('./data/name_corr.lst')
-
-address_lookup_table = TagLookupTable(name = 'Address tagging lookup table',
+address_lookup_table = TagLookupTable(name = 'Address lookup table',
                                    default = '')
-
-address_lookup_table.load(['./data/country.tbl',
-                          './data/address_misc.tbl',
-                          './data/address_qual.tbl',
-                          './data/institution_type.tbl',
-                          './data/post_address.tbl',
-                          './data/saints.tbl',
-                          './data/territory.tbl',
-                          './data/unit_type.tbl',
-                          './data/wayfare_type.tbl'])
+address_lookup_table.load(['data'+dirsep+'country.tbl',
+                           'data'+dirsep+'address_misc.tbl',
+                           'data'+dirsep+'address_qual.tbl',
+                           'data'+dirsep+'institution_type.tbl',
+                           'data'+dirsep+'locality_name_act.tbl',
+                           'data'+dirsep+'locality_name_nsw.tbl',
+                           'data'+dirsep+'post_address.tbl',
+                           'data'+dirsep+'postcode_act.tbl',
+                           'data'+dirsep+'postcode_nsw.tbl',
+                           'data'+dirsep+'saints.tbl',
+                           'data'+dirsep+'territory.tbl',
+                           'data'+dirsep+'unit_type.tbl',
+                           'data'+dirsep+'wayfare_type.tbl'])
 
 address_correction_list = CorrectionList(name = 'Address correction list')
-
-address_correction_list.load('./data/address_corr.lst')
+address_correction_list.load('data'+dirsep+'address_corr.lst')
 
 # =============================================================================
 # =============================================================================
@@ -267,31 +293,34 @@ address_correction_list.load('./data/address_corr.lst')
 # Test settings - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 #
 if (end_rec_number <=  start_rec_number):
-  print 'error:End record number is larger or equal to start record number'
+  logging.exception('End record number is larger or equal to start record ' + \
+                    'number')
   raise Exception
 
 rec_range = end_rec_number - start_rec_number + 1  # Range of racords
 
 if (rec_range < num_rec_to_select):
-  print 'error:Range of input records smaller than records to be selected'
+  logging.exception('Range of input records smaller than records to be ' + \
+                    'selected')
   raise Exception
 
 if (tag_component not in ['name', 'address']):
-  print 'error:Illegal tag component: %s' % (str(tag_component))
+  logging.exception('Illegal tag component: %s' % (str(tag_component)))
   raise Exception
 
 if (check_word_spilling not in [True, False]):
-  print 'error:Illegal value for "check_word_spilling", must be True or False'
+  logging.exception('Illegal value for "check_word_spilling", must be True' + \
+                    ' or False')
   raise Exception
 
 # Load HMM if file name is given - - - - - - - - - - - - - - - - - - - - - - -
 
 if (hmm_file_name != None):
   if (hmm_file_name == input_data.file_name):
-    print 'error:HMM file name is the same as input file name'
+    logging.exception('HMM file name is the same as input file name')
     raise Exception
   elif (hmm_file_name == output_file_name):
-    print 'error:HMM file name is the same as output file name'
+    logging.exception('HMM file name is the same as output file name')
     raise Exception
 
   the_hmm = hmm('Tagging HMM',[],[])  # Create new empty HMM object
@@ -305,24 +334,24 @@ else:
 #
 if (retag_file_name != None):
   if (the_hmm == None):  # Make sure a HMM is given
-    print 'error:Re-tagging only possible when a HMM is given'
+    logging.exception('Re-tagging only possible when a HMM is given')
     raise Exception
 
   if (retag_file_name == input_data.file_name):
-    print 'error:Re-tag file name is the same as input file name'
+    logging.exception('Re-tag file name is the same as input file name')
     raise Exception
   elif (retag_file_name == output_file_name):
-    print 'error:Re-tag file name is the same as output file name'
+    logging.exception('Re-tag file name is the same as output file name')
     raise Exception
   elif (retag_file_name == hmm_file_name):
-    print 'error:Re-tag file name is the same as HMM file name'
+    logging.exception('Re-tag file name is the same as HMM file name')
     raise Exception
 
   try:
     f_in = open(retag_file_name, 'r')  # Test if file is available
   except:
-    print 'error:Cannot open file specified for re-tagging: %s' % \
-          (str(retag_file_name))
+    logging.exception('Cannot open file specified for re-tagging: %s' % \
+          (str(retag_file_name)))
     raise IOError
 
   # Now gather record numbers and previous tags/states, as well as the original
@@ -334,7 +363,7 @@ if (retag_file_name != None):
   state = -1  # Header lines state
   prevline = ''
 
-  for line in f_in.xreadlines():  # Read training file and process it
+  for line in f_in:  # Read training file and process it
     line = line.strip()
 
     if (state == -1) and (len(line) == 0):  # End of header lines
@@ -350,8 +379,8 @@ if (retag_file_name != None):
 
     if (len(sline) > 2) and (len(sline[2]) > 3) and (sline[0] == '#') \
        and (sline[2][0] == '(') and (sline[2][-2:] == '):'):
-      try:	
-        rec = int(sline[1])  # Original record number 
+      try:
+        rec = int(sline[1])  # Original record number
         tagged_recs[rec]  = None
         cleaned_recs[rec] = None
         state = 1
@@ -375,51 +404,53 @@ if (retag_file_name != None):
   tagged_recs_keys = tagged_recs.keys()
 
   start_rec_number =  0  # Override specified numbers
-  end_rec_number =    input_data.num_records  
+  end_rec_number =    input_data.num_records
   num_rec_to_select = len(tagged_recs_keys)
 
 # If a frequency file name is given, check  - - - - - - - - - - - - - - - - - -
 #
 if (freqs_file_name != None):
   if (the_hmm == None):  # Make sure a HMM is given
-    print 'error:Frequency file output only possible when a HMM is given'
+    logging.exception('Frequency file output only possible when a HMM is ' + \
+                      'given')
     raise Exception
 
   if (freqs_file_name == input_data.file_name):
-    print 'error:Frequency file name is the same as input file name'
+    logging.exception('Frequency file name is the same as input file name')
     raise Exception
   elif (freqs_file_name == output_file_name):
-    print 'error:Frequency file name is the same as output file name'
+    logging.exception('Frequency file name is the same as output file name')
     raise Exception
   elif (freqs_file_name == hmm_file_name):
-    print 'error:Frequency file name is the same as HMM file name'
+    logging.exception('Frequency file name is the same as HMM file name')
     raise Exception
 
 # Print header (and write it to the log file if activated)  - - - - - - - - - -
 #
-print '1:'
-print '1:'+'#'*75
-print '1:#'
-print '1:# "tagdata.py" - Version 0.2'
-print '1:# Process started at: %s' % (time.ctime(time.time()))
-print '1:#'
-print '1:# Input file name:        %s' % (str(input_data.file_name))
-print '1:# Output file name:       %s' % (str(output_file_name))
-print '1:# Tag component:          %s' % (str(tag_component))
+logging.info('')
+logging.info(''+'#'*75)
+logging.info('#')
+logging.info('# "tagdata.py" - Version 0.2')
+logging.info('# Process started at: %s' % (time.ctime(time.time())))
+logging.info('#')
+logging.info('# Input file name:        %s' % (str(input_data.file_name)))
+logging.info('# Output file name:       %s' % (str(output_file_name)))
+logging.info('# Tag component:          %s' % (str(tag_component)))
 if (hmm_file_name != None):
-  print '1:# Using HMM:              %s' % (str(hmm_file_name))
+  logging.info('# Using HMM:              %s' % (str(hmm_file_name)))
   if (retag_file_name != None):
-    print '1:# Re-tagging file:        %s' % (str(retag_file_name))
+    logging.info('# Re-tagging file:        %s' % (str(retag_file_name)))
   if (freqs_file_name != None):
-    print '1:# Writing frequency file: %s' % (str(freqs_file_name))
-print '1:#'
+    logging.info('# Writing frequency file: %s' % (str(freqs_file_name)))
+logging.info('#')
 
 # Open output file and write header - - - - - - - - - - - - - - - - - - - - - -
 #
 try:
   f_out = open(output_file_name,'w')
 except:
-  print 'error:Cannot write to output file: %s' % (str(output_file_name))
+  logging.exception('Cannot write to output file: %s' % \
+                    (str(output_file_name)))
   raise IOError
 
 f_out.write('#'+'#'*70+os.linesep)
@@ -470,7 +501,7 @@ prev_num_rec_left = num_rec_to_select  # Number of records left in the previous
 
 # Due to the random nature of selecting records, and because sometimes  - - -
 # a selected component can be empty (and is thus not used for training)
-# more than one iteration over the input data set is carried out. In each 
+# more than one iteration over the input data set is carried out. In each
 # iteration, records are selected randomly.
 #
 while (rec_count < num_rec_to_select):  # Loop until 'num_rec_to_select'
@@ -539,7 +570,7 @@ while (rec_count < num_rec_to_select):  # Loop until 'num_rec_to_select'
       #
       if (clean_comp != '') and (not rec_selected.has_key(line_read)):
 
-        print '3:    Cleaned component: "%s"' % (clean_comp)
+        logging.debug('    Cleaned component: "%s"' % (clean_comp))
 
         if (tag_component == 'name'):
           [word_list, tag_list] = tag_name_component(clean_comp, \
@@ -560,9 +591,9 @@ while (rec_count < num_rec_to_select):  # Loop until 'num_rec_to_select'
           #
           tag_seq = perm_tag_sequence(tag_list)  # From mymath module
 
-          print '3:      Word list: %s' % (str(word_list))
-          print '3:      Tag list:  %s' % (str(tag_list))
-          print '3:      Tag permutations: %s' % (str(tag_seq))
+          logging.debug('      Word list: %s' % (str(word_list)))
+          logging.debug('      Tag list:  %s' % (str(tag_list)))
+          logging.debug('      Tag permutations: %s' % (str(tag_seq)))
 
           # Do HMM processing - - - - - - - - - - - - - - - - - - - - - - - - -
           #
@@ -608,25 +639,25 @@ while (rec_count < num_rec_to_select):  # Loop until 'num_rec_to_select'
                 seq_string = seq_string+' '+tag_seq[i][j]+':,'
 
             f_out.write(seq_string[:-1]+os.linesep)  # Write without , at end
-            print '3:    %s' % (str(seq_string[:-1]))
+            logging.debug('    %s' % (str(seq_string[:-1])))
 
           if (hmm_file_name != None):
             f_out.write('# Maximum Viterbi probability: %0.5f'% \
                         (max_prob) + os.linesep)
-            print '3:    Maximum Viterbi probability: %0.5f' % (max_prob)
+            logging.debug('    Maximum Viterbi probability: %0.5f' % \
+                          (max_prob))
 
           if (retag_file_name != None) and (tagged_recs[line_read] != None):
             if (tagged_recs[line_read].strip() != seq_string[:-1].strip()):
               f_out.write("# Note: ***** Changed *****" + os.linesep)
 
-              print '3:%s   Note: ***** Changed *****' % (record_id)
+              logging.debug('%s   Note: ***** Changed *****' % (record_id))
               f_out.write('# Was: ' + tagged_recs[line_read]+os.linesep)
                           # Write commented original tag sequence
-              print '3:%s    Original tag sequence: %s' % \
-                    (record_id, str(tagged_recs[line_read]))
+              logging.debug('%s    Original tag sequence: %s' % \
+                            (record_id, str(tagged_recs[line_read])))
 
           f_out.write(os.linesep)  # Write an empty line
-          print '3:'
 
           if (hmm_file_name != None):
             seq_key = seq_string[:-1]  # Add sequence to dictionary
@@ -641,8 +672,8 @@ while (rec_count < num_rec_to_select):  # Loop until 'num_rec_to_select'
           # Print process indicator message every 100 records - - - - - - - - -
           #
           if (rec_count % 100 == 0):
-            print '1:  Processed %i of %i records' % \
-                  (rec_count, num_rec_to_select)
+            logging.info('  Processed %i of %i records' % \
+                         (rec_count, num_rec_to_select))
 
     record = input_data.read_record()  # Read next record
     line_read += 1
@@ -655,10 +686,11 @@ while (rec_count < num_rec_to_select):  # Loop until 'num_rec_to_select'
 
   if (unchanged_loop_cnt > 5):  # Do five loops maximal without selecting
                                 # new records
-    print 'warning:Can not select more than %i' % (rec_count) + \
-          ' records for training. This is probably due to empty input ' + \
-          'components. Please reduce the value of "num_rec" or increase ' + \
-          'the range between "start_rec_number" and "end_rec_number".'
+    logging.warn('Can not select more than %i records ' % (rec_count) + \
+                 'for training. This is probably due to empty input ' + \
+                 'components. Please reduce the value of "num_rec" or ' + \
+                 'increase the range between "start_rec_number" and ' + \
+                 '"end_rec_number".')
     break
 
   if (num_rec_left < 10):  # Only 10 records left to select
@@ -720,9 +752,9 @@ if (freqs_file_name != None):
     freqs_out.write(os.linesep)
   freqs_out.close()
 
-print '1:Read %i lines, processed %i lines' % (line_read, rec_count)
+logging.info('Read %i lines, processed %i lines' % (line_read, rec_count))
 
-print '1:'
-print '1:End.'
+logging.info('')
+logging.info('End.')
 
 # =============================================================================

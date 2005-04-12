@@ -1,28 +1,47 @@
 # =============================================================================
-# date.py - Routines for date conversions and parsing.
-#
-# Freely extensible biomedical record linkage (Febrl) Version 0.2.2
-# See http://datamining.anu.edu.au/projects/linkage.html
-#
-# =============================================================================
 # AUSTRALIAN NATIONAL UNIVERSITY OPEN SOURCE LICENSE (ANUOS LICENSE)
-# VERSION 1.1
-#
-# The contents of this file are subject to the ANUOS License Version 1.1 (the
-# "License"); you may not use this file except in compliance with the License.
-# Software distributed under the License is distributed on an "AS IS" basis,
-# WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License for
-# the specific language governing rights and limitations under the License.
-# The Original Software is "date.py".
-# The Initial Developers of the Original Software are Dr Peter Christen
-# (Department of Computer Science, Australian National University) and Dr Tim
-# Churches (Centre for Epidemiology and Research, New South Wales Department
-# of Health). Copyright (C) 2002, 2003 the Australian National University and
+# VERSION 1.2
+# 
+# The contents of this file are subject to the ANUOS License Version 1.2
+# (the "License"); you may not use this file except in compliance with
+# the License. You may obtain a copy of the License at:
+# 
+#   http://datamining.anu.edu.au/linkage.html
+# 
+# Software distributed under the License is distributed on an "AS IS"
+# basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See
+# the License for the specific language governing rights and limitations
+# under the License.
+# 
+# The Original Software is: "date.py"
+# 
+# The Initial Developers of the Original Software are:
+#   Dr Tim Churches (Centre for Epidemiology and Research, New South Wales
+#                    Department of Health)
+#   Dr Peter Christen (Department of Computer Science, Australian National
+#                      University)
+# 
+# Copyright (C) 2002 - 2005 the Australian National University and
 # others. All Rights Reserved.
+# 
 # Contributors:
-# - Peter Viechnicki, Research Department, Vredenburg Corp. Lanham, MD, USA
-#   E-Mail: pviechnicki@vredenburg.com
-#   Fixed bug in str_to_date, added '%U' directive
+# 
+# Alternatively, the contents of this file may be used under the terms
+# of the GNU General Public License Version 2 or later (the "GPL"), in
+# which case the provisions of the GPL are applicable instead of those
+# above. The GPL is available at the following URL: http://www.gnu.org/
+# If you wish to allow use of your version of this file only under the
+# terms of the GPL, and not to allow others to use your version of this
+# file under the terms of the ANUOS License, indicate your decision by
+# deleting the provisions above and replace them with the notice and
+# other provisions required by the GPL. If you do not delete the
+# provisions above, a recipient may use your version of this file under
+# the terms of any one of the ANUOS License or the GPL.
+# =============================================================================
+#
+# Freely extensible biomedical record linkage (Febrl) - Version 0.3
+#
+# See: http://datamining.anu.edu.au/linkage.html
 #
 # =============================================================================
 
@@ -40,7 +59,7 @@
    Jeff Bauer, see:
 
       http://starship.python.net/crew/jbauer/normalDate/
-   
+
    Note that the epoch date used is NOT the UNIX epoch date (1 January 1970),
    but instead the 1 January 1900.
 
@@ -53,6 +72,7 @@
 # =============================================================================
 # Imports go here
 
+import logging
 import math
 import string
 import time
@@ -89,7 +109,7 @@ def first_day_of_year(year):
   """
 
   if (year == 0):
-    print 'error:A year value of 0 is not possible'
+    logging.exception('A year value of 0 is not possible')
     raise Exception
 
   elif (year < 0):
@@ -155,8 +175,8 @@ def epoch_to_date(daynum):
   """
 
   if (not (isinstance(daynum, int) or isinstance(daynum, long))):
-    print 'error:Input value for "daynum" is not of integer type: %s' % \
-          (str(daynum))
+    logging.exception('Input value for "daynum" is not of integer type: %s' % \
+          (str(daynum)))
     raise Exception
 
   if (daynum >= -115860):
@@ -169,7 +189,7 @@ def epoch_to_date(daynum):
   days = daynum - first_day_of_year(year) + 1
 
   if (days <= 0):
-    year -= 1  
+    year -= 1
     days = daynum - first_day_of_year(year) + 1
 
   days_in_year = 365 + is_leap_year(year)  # Adjust for a leap year
@@ -207,8 +227,8 @@ def epoch_to_date(daynum):
 
   # A log message for high volume log output (level 3)  - - - - - - - - - - - -
   #
-  print '3:    Epoch: %i -> Day:%s, month:%s, year:%s' % \
-        (daynum, day_str, month_str, year_str)
+  logging.debug('Epoch: %i -> Day:%s, month:%s, year:%s' % \
+        (daynum, day_str, month_str, year_str))
 
   return [day_str, month_str, year_str]
 
@@ -241,36 +261,36 @@ def date_to_epoch(day, month, year):
   try:
     day_int = int(day)
   except:
-    print 'error:"day" value is not an integer'
+    logging.exception('"day" value is not an integer')
     raise Exception
   try:
     month_int = int(month)
   except:
-    print 'error:"month" value is not an integer'
+    logging.exception('"month" value is not an integer')
     raise Exception
   try:
     year_int = int(year)
   except:
-    print 'error:"year" value is not an integer'
+    logging.exception('"year" value is not an integer')
     raise Exception
 
   # Test if values are within range
   #
   if (year_int <= 1000):
-    print 'error:Input value for "year" is not a positive integer ' + \
-          'number: %i' % (year)
+    logging.exception('Input value for "year" is not a positive integer ' + \
+          'number: %i' % (year))
     raise Exception
 
   leap_year_flag = is_leap_year(year_int)
 
   if (month_int <= 0) or (month_int > 12):
-    print 'error:Input value for "month" is not a possible day number: %i' % \
-          (month)
+    logging.exception('Input value for "month" is not a possible day ' + \
+                      'number: %i' % (month))
     raise Exception
 
   if (day_int <= 0) or (day_int > days_in_month[leap_year_flag][month_int-1]):
-    print 'error:Input value for "day" is not a possible day number: %i' % \
-          (day)
+    logging.exception('Input value for "day" is not a possible day number:' + \
+                      '%i' % (day))
     raise Exception
 
   days = first_day_of_year(year_int) + day_int - 1
@@ -323,7 +343,8 @@ def date_to_age(day, month, year, fix_date='today'):
     fix_epoch = fix_date
 
   else:
-    print 'error:"fix_date" is not in a valid form: %s' % (str(fix_date))
+    logging.exception('"fix_date" is not in a valid form: %s' % \
+                      (str(fix_date)))
     raise Exception
 
   # Get epoch number for input date and fix date  - - - - - - - - - - - - - - -
@@ -339,11 +360,10 @@ def date_to_age(day, month, year, fix_date='today'):
   #
   age = float(day_diff) / 365.25  # Can be positive or negative
 
-  # A log message for high volume log output (level 3)  - - - - - - - - - - - -
+  # A log message - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   #
-  print '3:    Date: %s with fix date: %s -> Age: %.3f' % \
-        (str([day,month,year]), str(fix_date), age)
-
+  logging.debug('Date: %s with fix date: %s -> Age: %.3f' % \
+                (str([day,month,year]), str(fix_date), age))
   return age
 
 # =============================================================================
@@ -432,7 +452,8 @@ def str_to_date(date_str, format_str, pivot_year):
         work_date_str = work_date_str[2:]
 
       else:
-        print 'error:Illegal format string without spaces: "%s"' % (formatstr)
+        logging.exception('Illegal format string without spaces: "%s"' % \
+                          (formatstr))
         raise Exception
 
   else:  # A space in either date or format string but not in both
@@ -497,14 +518,13 @@ def str_to_date(date_str, format_str, pivot_year):
 
     elif (directive == '%U'): # New date expression for UNKNOWN
                               # (Peter Viechnicki)
-      # print "New %U: date_list[0] = ", date_list[0]
       if (date_list[0] == 'unk' or date_list[0] == 'unknown'):
         day = 'UNK'
       else:
         day = -1
 
     else:
-      print 'error:Illegal format directive: "%s"' % (directive)
+      logging.exception('Illegal format directive: "%s"' % (directive))
       raise Exception
 
     date_list =   date_list[1:]    # Remove processed first element
@@ -561,9 +581,9 @@ def get_today():
            string.zfill(str(sys_time[1]),2), \
            str(sys_time[0])]
 
-  # A log message for high volume log output (level 3)  - - - - - - - - - - - -
+  # A log message - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   #
-  print '3:    Today is %s' % (str(today))
+  logging.debug('Today is %s' % (str(today)))
 
   return today
 

@@ -1,25 +1,47 @@
 # =============================================================================
-# datasetTest.py - Test module for dataset.py
-#
-# Freely extensible biomedical record linkage (Febrl) Version 0.2.2
-# See http://datamining.anu.edu.au/projects/linkage.html
-#
-# =============================================================================
 # AUSTRALIAN NATIONAL UNIVERSITY OPEN SOURCE LICENSE (ANUOS LICENSE)
-# VERSION 1.1
-#
-# The contents of this file are subject to the ANUOS License Version 1.1 (the
-# "License"); you may not use this file except in compliance with the License.
-# Software distributed under the License is distributed on an "AS IS" basis,
-# WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License for
-# the specific language governing rights and limitations under the License.
-# The Original Software is "datasetTest.py".
-# The Initial Developers of the Original Software are Dr Peter Christen
-# (Department of Computer Science, Australian National University) and Dr Tim
-# Churches (Centre for Epidemiology and Research, New South Wales Department
-# of Health). Copyright (C) 2002, 2003 the Australian National University and
+# VERSION 1.2
+# 
+# The contents of this file are subject to the ANUOS License Version 1.2
+# (the "License"); you may not use this file except in compliance with
+# the License. You may obtain a copy of the License at:
+# 
+#   http://datamining.anu.edu.au/linkage.html
+# 
+# Software distributed under the License is distributed on an "AS IS"
+# basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See
+# the License for the specific language governing rights and limitations
+# under the License.
+# 
+# The Original Software is: "datasetTest.py"
+# 
+# The Initial Developers of the Original Software are:
+#   Dr Tim Churches (Centre for Epidemiology and Research, New South Wales
+#                    Department of Health)
+#   Dr Peter Christen (Department of Computer Science, Australian National
+#                      University)
+# 
+# Copyright (C) 2002 - 2005 the Australian National University and
 # others. All Rights Reserved.
-# Contributors:
+# 
+# Contributors: scaredycat@swiftdsl.com.au
+# 
+# Alternatively, the contents of this file may be used under the terms
+# of the GNU General Public License Version 2 or later (the "GPL"), in
+# which case the provisions of the GPL are applicable instead of those
+# above. The GPL is available at the following URL: http://www.gnu.org/
+# If you wish to allow use of your version of this file only under the
+# terms of the GPL, and not to allow others to use your version of this
+# file under the terms of the ANUOS License, indicate your decision by
+# deleting the provisions above and replace them with the notice and
+# other provisions required by the GPL. If you do not delete the
+# provisions above, a recipient may use your version of this file under
+# the terms of any one of the ANUOS License or the GPL.
+# =============================================================================
+#
+# Freely extensible biomedical record linkage (Febrl) - Version 0.3
+#
+# See: http://datamining.anu.edu.au/linkage.html
 #
 # =============================================================================
 
@@ -33,6 +55,15 @@ import dataset
 
 doSQLtest = 'no'  # Set this to 'yes' or 'no' depending if you want to test
                   # your MySQL data set access
+doPQSQLtest = 'no' # Set this to 'yes' or 'no' depending if you want to test
+                   # your PostgreSQL data set access
+
+# Note: Only one of the two SQL tests can be done
+#
+if (doSQLtest == 'yes') and (doPQSQLtest == 'yes'):
+  print 'Only one of the two SQL tests can be done in a test run. Please ' + \
+        'set one to "no"'
+  raise Exception
 
 # -----------------------------------------------------------------------------
 
@@ -77,7 +108,7 @@ class TestCase(unittest.TestCase):
                                  access_mode='write',
                                  header_lines=1,
                                  write_header=True,
-                                 file_name='./test.txt',
+                                 file_name='dataset-test.txt',
                                  fields={'gname':(0,10),'sname':(10,10),
                                          'pcode':(20,6)},
                                  fields_default='missing',
@@ -134,7 +165,7 @@ class TestCase(unittest.TestCase):
                                  access_mode='read',
                                  header_lines=1,
                                  write_header=True,
-                                 file_name='./test.txt',
+                                 file_name='dataset-test.txt',
                                  fields={'gname':(0,10),'sname':(10,10),
                                          'pcode':(20,6)},
                                  fields_default='missing',
@@ -258,7 +289,7 @@ class TestCase(unittest.TestCase):
                                  access_mode='append',
                                  header_lines=1,
                                  write_header=True,
-                                 file_name='./test.txt',
+                                 file_name='dataset-test.txt',
                                  fields={'gname':(0,10),'sname':(10,10),
                                          'pcode':(20,6)},
                                  fields_default='missing',
@@ -315,7 +346,7 @@ class TestCase(unittest.TestCase):
                                  access_mode='read',
                                  header_lines=1,
                                  write_header=True,
-                                 file_name='./test.txt',
+                                 file_name='dataset-test.txt',
                                  fields={'gname':(0,10),'sname':(10,10),
                                          'pcode':(20,6)},
                                  fields_default='missing',
@@ -420,11 +451,11 @@ class TestCase(unittest.TestCase):
                                  access_mode='write',
                                  header_lines=1,
                                  write_header=True,
-                                 file_name='./test.csv',
+                                 file_name='dataset-test.csv',
                                  fields={'gname':0,'sname':1,'pcode':2},
                                  fields_default='missing',
                                  strip_fields=True,
-                                 write_quote_char='"',
+                                 write_quote_char='',
                                  missing_values =['','missing'])
 
     assert (isinstance(test_ds.fields,dict)), \
@@ -477,7 +508,7 @@ class TestCase(unittest.TestCase):
                                  access_mode='read',
                                  header_lines=1,
                                  write_header=True,
-                                 file_name='./test.csv',
+                                 file_name='dataset-test.csv',
                                  fields={'gname':0,'sname':1,'pcode':2},
                                  fields_default='missing',
                                  strip_fields=True,\
@@ -600,7 +631,7 @@ class TestCase(unittest.TestCase):
                                  access_mode='append',
                                  header_lines=1,
                                  write_header=True,
-                                 file_name='./test.csv',
+                                 file_name='dataset-test.csv',
                                  fields={'gname':0,'sname':1,'pcode':2},
                                  fields_default='missing',
                                  strip_fields=True,\
@@ -656,7 +687,7 @@ class TestCase(unittest.TestCase):
                                  access_mode='read',
                                  header_lines=1,
                                  write_header=True,
-                                 file_name='./test.csv',
+                                 file_name='dataset-test.csv',
                                  fields={'gname':0,'sname':1,'pcode':2},
                                  fields_default='missing',
                                  strip_fields=True,\
@@ -753,23 +784,27 @@ class TestCase(unittest.TestCase):
   def testSQL(self):   # - - - - - - - - - - - - - - - - - - - - - - - - - - -
     """Test SQL data set"""
 
-    if (doSQLtest == 'no'):
+    if (doSQLtest == 'yes'):
+      dset = dataset.DataSetSQL
+    elif doPQSQLtest == 'yes':
+      dset = dataset.DataSetPGSQL
+    else:
       return  # Don't do SLQ test
 
     # Initialise data set for writing
     #
-    test_ds = dataset.DataSetSQL(name='SQLds',
-                                 description='no description',
-                                 access_mode='write',
-                                 table_name='test',
-                                 fields={'gname':'givenname',
-                                         'sname':'surname',
-                                         'pcode':'postcode'},
-                                 fields_default='missing',
-                                 strip_fields=True,
-                                 missing_values =['','missing'],
-                                 database_name='reclink',
-                                 database_user='christen')
+    test_ds = dset(name='SQLds',
+                   description='no description',
+                   access_mode='write',
+                   table_name='test',
+                   fields={'gname':'givenname',
+                           'sname':'surname',
+                           'pcode':'postcode'},
+                   fields_default='missing',
+                   strip_fields=True,
+                   missing_values =['','missing'],
+                   database_name='reclink',
+                   database_user='christen')
 
     assert (isinstance(test_ds.fields,dict)), \
            'SQL data set fields are not of type dictionary: '+ \
@@ -816,18 +851,18 @@ class TestCase(unittest.TestCase):
 
     # Re-initialise data set for reading
 
-    test_ds = dataset.DataSetSQL(name='SQLds',
-                                 description='no description',
-                                 access_mode='read',
-                                 table_name='test',
-                                 fields={'gname':'givenname',
-                                         'sname':'surname',
-                                         'pcode':'postcode'},
-                                 fields_default='missing',
-                                 strip_fields=True,
-                                 missing_values =['','missing'],
-                                 database_name='reclink',
-                                 database_user='christen')
+    test_ds = dset(name='SQLds',
+                   description='no description',
+                   access_mode='read',
+                   table_name='test',
+                   fields={'gname':'givenname',
+                           'sname':'surname',
+                           'pcode':'postcode'},
+                   fields_default='missing',
+                   strip_fields=True,
+                   missing_values =['','missing'],
+                   database_name='reclink',
+                   database_user='christen')
 
     assert (isinstance(test_ds.fields,dict)), \
            'SQL data set fields are not of type dictionary: '+ \
@@ -941,18 +976,18 @@ class TestCase(unittest.TestCase):
 
     # Re-initialise data set for appending
 
-    test_ds = dataset.DataSetSQL(name='SQLds',
-                                 description='no description',
-                                 access_mode='append',
-                                 table_name='test',
-                                 fields={'gname':'givenname',
-                                         'sname':'surname',
-                                         'pcode':'postcode'},
-                                 fields_default='missing',
-                                 strip_fields=True,
-                                 missing_values =['','missing'],
-                                 database_name='reclink',
-                                 database_user='christen')
+    test_ds = dset(name='SQLds',
+                   description='no description',
+                   access_mode='append',
+                   table_name='test',
+                   fields={'gname':'givenname',
+                           'sname':'surname',
+                           'pcode':'postcode'},
+                   fields_default='missing',
+                   strip_fields=True,
+                   missing_values =['','missing'],
+                   database_name='reclink',
+                   database_user='christen')
 
     assert (isinstance(test_ds.fields,dict)), \
            'SQL data set fields are not of type dictionary: '+ \
@@ -999,18 +1034,18 @@ class TestCase(unittest.TestCase):
 
     # Re-initialise data set for reading
 
-    test_ds = dataset.DataSetSQL(name='SQLds',
-                                 description='no description',
-                                 access_mode='read',
-                                 table_name='test',
-                                 fields={'gname':'givenname',
-                                         'sname':'surname',
-                                         'pcode':'postcode'},
-                                 fields_default='missing',
-                                 strip_fields=True,
-                                 missing_values =['','missing'],
-                                 database_name='reclink',
-                                 database_user='christen')
+    test_ds = dset(name='SQLds',
+              description='no description',
+              access_mode='read',
+              table_name='test',
+              fields={'gname':'givenname',
+                      'sname':'surname',
+                      'pcode':'postcode'},
+              fields_default='missing',
+              strip_fields=True,
+              missing_values =['','missing'],
+              database_name='reclink',
+              database_user='christen')
 
     assert (isinstance(test_ds.fields,dict)), \
            'SQL data set fields are not of type dictionary: '+ \
@@ -1113,7 +1148,7 @@ class TestCase(unittest.TestCase):
                                            'sname':1,
                                            'pcode':2},
                           fields_default='missing',
-                               file_name='./testshelve',
+                               file_name='dataset-testshelve',
                          missing_values =['','missing'])
 
     assert (test_ds.name == 'ShelveDS'), \
@@ -1165,7 +1200,7 @@ class TestCase(unittest.TestCase):
                                               'sname':1,
                                               'pcode':2},
                                     fields_default='missing',
-                                    file_name='./testshelve',
+                                    file_name='dataset-testshelve',
                                     missing_values =['','missing'])
 
     assert (test_ds.name == 'ShelveDS'), \
@@ -1248,7 +1283,7 @@ class TestCase(unittest.TestCase):
                                               'sname':1,
                                               'pcode':2},
                                     fields_default='missing',
-                                    file_name='./testshelve',
+                                    file_name='dataset-testshelve',
                                     missing_values =['','missing'])
 
     assert (test_ds.name == 'ShelveDS'), \
@@ -1515,6 +1550,6 @@ if (__name__ == "__main__"):
 
   # The following code does the same as 'unittest.main()'
   #
-  # mysuite = unittest.makeSuite(TestCase,'test')
+  # mysuite = unittest.makeSuite(TestCase,'dataset-test')
   # testrunner = unittest.TextTestRunner(verbosity=1)
   # testrunner.run(mysuite)

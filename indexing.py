@@ -1,25 +1,47 @@
 # =============================================================================
-# indexing.py - Classes for indexing and blocking.
-#
-# Freely extensible biomedical record linkage (Febrl) Version 0.2.2
-# See http://datamining.anu.edu.au/projects/linkage.html
-#
-# =============================================================================
 # AUSTRALIAN NATIONAL UNIVERSITY OPEN SOURCE LICENSE (ANUOS LICENSE)
-# VERSION 1.1
-#
-# The contents of this file are subject to the ANUOS License Version 1.1 (the
-# "License"); you may not use this file except in compliance with the License.
-# Software distributed under the License is distributed on an "AS IS" basis,
-# WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License for
-# the specific language governing rights and limitations under the License.
-# The Original Software is "indexing.py".
-# The Initial Developers of the Original Software are Dr Peter Christen
-# (Department of Computer Science, Australian National University) and Dr Tim
-# Churches (Centre for Epidemiology and Research, New South Wales Department
-# of Health). Copyright (C) 2002, 2003 the Australian National University and
+# VERSION 1.2
+# 
+# The contents of this file are subject to the ANUOS License Version 1.2
+# (the "License"); you may not use this file except in compliance with
+# the License. You may obtain a copy of the License at:
+# 
+#   http://datamining.anu.edu.au/linkage.html
+# 
+# Software distributed under the License is distributed on an "AS IS"
+# basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See
+# the License for the specific language governing rights and limitations
+# under the License.
+# 
+# The Original Software is: "indexing.py"
+# 
+# The Initial Developers of the Original Software are:
+#   Dr Tim Churches (Centre for Epidemiology and Research, New South Wales
+#                    Department of Health)
+#   Dr Peter Christen (Department of Computer Science, Australian National
+#                      University)
+# 
+# Copyright (C) 2002 - 2005 the Australian National University and
 # others. All Rights Reserved.
+# 
 # Contributors:
+# 
+# Alternatively, the contents of this file may be used under the terms
+# of the GNU General Public License Version 2 or later (the "GPL"), in
+# which case the provisions of the GPL are applicable instead of those
+# above. The GPL is available at the following URL: http://www.gnu.org/
+# If you wish to allow use of your version of this file only under the
+# terms of the GPL, and not to allow others to use your version of this
+# file under the terms of the ANUOS License, indicate your decision by
+# deleting the provisions above and replace them with the notice and
+# other provisions required by the GPL. If you do not delete the
+# provisions above, a recipient may use your version of this file under
+# the terms of any one of the ANUOS License or the GPL.
+# =============================================================================
+#
+# Freely extensible biomedical record linkage (Febrl) - Version 0.3
+#
+# See: http://datamining.anu.edu.au/linkage.html
 #
 # =============================================================================
 
@@ -62,6 +84,9 @@
 # Imports go here
 
 from __future__ import generators
+
+import logging
+
 import encode
 import parallel
 
@@ -163,10 +188,10 @@ def linkage_rec_pairs(index_a, index_b):
 
   num_blocks_a = index_a.num_blocks  # Total number of blocks in index A
   num_blocks_b = index_b.num_blocks  # Total number of blocks in index B
-  block_cnt =    0                   # Processed block counter 
+  block_cnt =    0                   # Processed block counter
   rec_pair_cnt = 0                   # Number of record pairs
 
-  print '1:  Create record pair dictionary for linkage'
+  logging.info('  Create record pair dictionary for linkage')
 
   # Loop over all blocks in the compacted index - - - - - - - - - - - - - - - -
   #
@@ -207,13 +232,14 @@ def linkage_rec_pairs(index_a, index_b):
     # Report progress every 10% (only if more than 10000 blocks)  - - - - - - -
     #
     if (num_blocks_a >= 10000) and ((block_cnt % int(num_blocks_a / 10)) == 0):
-      print '1:      %i/%i blocks processed, number of record pairs: %i' % \
-            (block_cnt, num_blocks_a, rec_pair_cnt)
+      logging.info('      %i/%i blocks processed, number of record pairs: %i' \
+                   % (block_cnt, num_blocks_a, rec_pair_cnt))
 
     blocking_value_a = block_iter_a.next()  # Get next block
 
-  print '1:    Number of record pairs:   %i' % (rec_pair_cnt)
-  print '1:      Duplicate record pairs: %i (deleted)' % (duplicate_rec_pairs)
+  logging.info('    Number of record pairs:   %i' % (rec_pair_cnt))
+  logging.info('      Duplicate record pairs: %i (deleted)' % \
+               (duplicate_rec_pairs))
 
   return [rec_pair_dict, rec_pair_cnt]
 
@@ -242,10 +268,10 @@ def deduplication_rec_pairs(index):
   block_iter = index.block_iterator()
 
   num_blocks =     index.num_blocks   # Total number of blocks in the index
-  block_cnt =      0                  # Processed block counter 
+  block_cnt =      0                  # Processed block counter
   rec_pair_cnt =   0                  # Number of record pairs
 
-  print '1:  Create record pair dictionary for deduplication'
+  logging.info('  Create record pair dictionary for deduplication')
 
   # Loop over all blocks in the compacted index - - - - - - - - - - - - - - - -
   #
@@ -288,13 +314,14 @@ def deduplication_rec_pairs(index):
     # Report progress every 10% (only if more than 10000 blocks)  - - - - - - -
     #
     if (num_blocks >= 10000) and ((block_cnt % int(num_blocks / 10)) == 0):
-      print '1:      %i/%i blocks processed, number of record pairs: %i' % \
-            (block_cnt, num_blocks, rec_pair_cnt)
+      logging.info('      %i/%i blocks processed, number of record pairs: %i' \
+                   % (block_cnt, num_blocks, rec_pair_cnt))
 
     blocking_value = block_iter.next()  # Get next block
 
-  print '1:    Number of record pairs:   %i' % (rec_pair_cnt)
-  print '1:      Duplicate record pairs: %i (deleted)' % (duplicate_rec_pairs)
+  logging.info('    Number of record pairs:   %i' % (rec_pair_cnt))
+  logging.info('      Duplicate record pairs: %i (deleted)' % \
+               (duplicate_rec_pairs))
 
   return [rec_pair_dict, rec_pair_cnt]
 
@@ -428,28 +455,28 @@ class Indexing:
 
       elif (keyword in ['skip','skip_missing']):
         if (value not in [True, False]):
-          print 'error:Argument "skip_missing" must be "True" or "False"'
+          logging.exception('Argument "skip_missing" must be True or False')
           raise Exception
         self.skip_missing = value
 
       elif (keyword in ['index_def', 'index_definition']):
         if (not isinstance(value, list)):
-          print'error:Argument "index_definition" is not a list'
+          logging.exception('Argument "index_definition" is not a list')
           raise Exception
         self.index_definition = value
 
       else:
-        print 'error:Illegal constructor argument keyword: '+keyword
+        logging.exception('Illegal constructor argument keyword: '+keyword)
         raise Exception
 
     # Check if the needed attributes are set  - - - - - - - - - - - - - - - - -
     #
     if (self.dataset == None):
-      print 'error:Data set is not defined'
+      logging.exception('Data set is not defined')
       raise Exception
 
     if (self.index_definition == None):
-      print 'error:Index is not defined'
+      logging.exception('Index is not defined')
       raise Exception
 
     # Check if definition of indexes is correct and fields are valid in - - - -
@@ -457,23 +484,23 @@ class Indexing:
     #
     for index in self.index_definition:
       if (not isinstance(index, list)):
-        print 'error:Index "%s" in "index_definition" is not a list' % \
-              (str(index))
+        logging.exception('Index "%s" in "index_definition" is not a list' % \
+                          (str(index)))
         raise Exception
       for field_tuple in index:
         if (not isinstance(field_tuple, tuple)):
-          print 'error:Tuple "%s" in index "%s" is not a tuple' % \
-                (str(field_tuple), str(index))
+          logging.exception('Tuple "%s" in index "%s" is not a tuple' % \
+                            (str(field_tuple), str(index)))
           raise Exception
 
         if (len(field_tuple) < 2):
-          print 'error:Length of tuple "%s" in index "%s" is less than two' % \
-                (str(field_tuple), str(index))
+          logging.exception('Length of tuple "%s" in index "%s" is less ' % \
+                            (str(field_tuple), str(index)) + 'than two')
           raise Exception
 
         if (not self.dataset.fields.has_key(field_tuple[0])):
-          print 'error:Field "%s" not in data set %s' % \
-                (str(field_tuple[0]), str(self.dataset.name))
+          logging.exception('Field "%s" not in data set %s' % \
+                            (str(field_tuple[0]), str(self.dataset.name)))
           raise Exception
 
     # Process index definitions - - - - - - - - - - - - - - - - - - - - - - - -
@@ -487,54 +514,54 @@ class Indexing:
         field_list.append(field_tuple[0])  # Append the field name
 
         if (field_tuple[1] not in self.methods):
-          print 'error:Illegal method for field "%s" in index: "%s": %s' % \
-                (str(field_tuple[0]), str(index), str(field_tuple[1]))
+          logging.exception('Illegal method for field "%s" in index: "%s": %s'\
+                            % (str(field_tuple[0]), str(index), \
+                            str(field_tuple[1])))
           raise Exception
 
         if (field_tuple[1] == 'truncate') and (len(field_tuple) != 3):
-          print 'error:Missing "length" with method "truncate" in ' + \
-                'index: "%s"' % (str(index))
+          logging.exception('Missing "length" with method "truncate" in ' + \
+                            'index: "%s"' % (str(index)))
           raise Exception
 
         elif (field_tuple[1] in ['soundex','mod_soundex','phonex','nysiis', \
                                  'dmetaphone']) and (len(field_tuple) >= 3):
           if (not isinstance(field_tuple[2], int)) or (field_tuple[2] <= 0):
-            print 'error:Length given to encoding method is not a positive '+ \
-                  'integer'
+            logging.exception('Length given to encoding method is not a ' + \
+                              'positive integer')
             raise Exception
 
         if (field_tuple[1] in ['soundex','mod_soundex','phonex','nysiis', \
                                'dmetaphone']) and (len(field_tuple) == 4):
           if (field_tuple[3] not in ['reverse','rev']):
-            print 'error:Second parameter for tuple "%s" is not "reverse"' % \
-                  (str(field_tuple))
+            logging.exception('Second parameter for tuple "%s" is not ' % \
+                              (str(field_tuple)) + '"reverse"')
             raise Exception
 
         if (len(field_tuple) > 4):
-          print 'error:Field tuple has to many elements: %s' % \
-                (str(field_tuple))
+          logging.exception('Field tuple has to many elements: %s' % \
+                            (str(field_tuple)))
           raise Exception
 
       self.field_names.append(field_list)
 
     if (len(self.index) != len(self.field_names)):
-      print 'error:Illegal number of fields or indexes'
+      logging.exception('Illegal number of fields or indexes')
       raise Exception
 
     self.num_indexes = len(self.index)
 
-    # A log message for low volume log output (level 1) - - - - - - - - - - - -
+    # A log message - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     #
-    print '1:'
-    print '1:Initialised blocking index:'
-    print '1:  Name:                %s' % (str(self.name))
-    print '1:  Data set:            %s' % (str(self.dataset.name))
-    print '1:  Skip missing values: %s' % (str(self.skip_missing))
-    print '1:  Used field names:    %s' % (str(self.field_names))
-    print '1:  Number of indexes:   %i' % (self.num_indexes)
-    print '2:  Indexes:'
+    logging.info('Initialised blocking index:')
+    logging.info('  Name:                %s' % (str(self.name)))
+    logging.info('  Data set:            %s' % (str(self.dataset.name)))
+    logging.info('  Skip missing values: %s' % (str(self.skip_missing)))
+    logging.info('  Used field names:    %s' % (str(self.field_names)))
+    logging.info('  Number of indexes:   %i' % (self.num_indexes))
+    logging.debug('  Indexes:')
     for i in self.index_definition:
-      print '2:      %s ' %(str(i))
+      logging.debug('      %s ' %(str(i)))
 
   # ---------------------------------------------------------------------------
 
@@ -549,11 +576,11 @@ class Indexing:
     # Check that index has not been compacted yet - - - - - - - - - - - - - - -
     #
     if (self.compacted == True):
-      print 'error:Index is already compacted, building not possible'
+      logging.exception('Index is already compacted, building not possible')
       raise Exception
 
     if (not isinstance(record_list, list)):
-      print 'error:Argument "record_list" is not a list'
+      logging.exception('Argument "record_list" is not a list')
       raise Exception
 
     num_empty_block_var = 0  # Number of records with empty block variable
@@ -566,13 +593,13 @@ class Indexing:
       # Make sure record is a dictionary
       #
       if (not isinstance(record, dict)):
-        print 'error:Illegal record type: "%s", must be a dictionary' % \
-              (str(type(record)))
+        logging.exception('Illegal record type: "%s", must be a dictionary' % \
+                          (str(type(record))))
         raise Exception
 
       record_id = '[RecID: %s/%s]' % \
                   (str(record['_rec_num_']),record['_dataset_name_'])
-      print '3:%s  Record: %s' % (record_id,str(record))
+      logging.debug('%s  Record: %s' % (record_id,str(record)))
 
       rec_num = record['_rec_num_']  # Get number of the current record
 
@@ -612,7 +639,7 @@ class Indexing:
                 if (len(self.index_definition[i][j]) == 2):
                   block_var += encode.soundex(field_value)
                 else:  # A length must have been given
-                  block_var += encode.soundex(field_value, 
+                  block_var += encode.soundex(field_value,
                                               self.index_definition[i][j][2])
 
               elif (self.index_definition[i][j][1] == 'mod_soundex'):
@@ -643,8 +670,8 @@ class Indexing:
                   block_var += encode.dmetaphone(field_value,
                                                self.index_definition[i][j][2])
               else:
-                print 'error:Illegal encoding method: %s' % \
-                      (str(self.index_definition[i][j][1]))
+                logging.exception('Illegal encoding method: %s' % \
+                                  (str(self.index_definition[i][j][1])))
                 raise Exception
 
           j += 1
@@ -663,17 +690,18 @@ class Indexing:
           self.index[i][block_var] = index_val
           num_rec_inserted += 1
 
-          print '3:%s    Inserted record number %s with index value ' % \
-                (record_id, str(rec_num))+ \
-                '"%s" into index %i' % (str(block_var), i)
+          logging.debug('%s    Inserted record number %s with index value ' % \
+                        (record_id, str(rec_num))+ \
+                        '"%s" into index %i' % (str(block_var), i))
 
-    print '1:      Inserted %i record numbers into index' % (num_rec_inserted)
+    logging.info('      Inserted %i record numbers into index' % \
+                 (num_rec_inserted))
     if (self.skip_missing == False):
-      print '1:        Number of empty blocking values: %i' % \
-            (num_empty_block_var) + ' (which were inserted)'
+      logging.info('        Number of empty blocking values: %i' % \
+                   (num_empty_block_var) + ' (which were inserted)')
     else:
-      print '1:        Number of empty blocking values: %i' % \
-            (num_empty_block_var) + ' (which were not inserted)'
+      logging.info('        Number of empty blocking values: %i' % \
+                   (num_empty_block_var) + ' (which were not inserted)')
 
     # Count and print the total number of blocks  - - - - - - - - - - - - - - -
     #
@@ -681,7 +709,7 @@ class Indexing:
     for i in range(self.num_indexes):
       self.num_blocks += len(self.index[i])
 
-    print '1:    Total number of blocks in index: %i' % (self.num_blocks)
+    logging.info('    Total number of blocks in index: %i' % (self.num_blocks))
 
   # ---------------------------------------------------------------------------
 
@@ -701,14 +729,15 @@ class Indexing:
     # for the other index)
     #
     if (self.compacted == True):
-      print 'error:Cannot merge compacted indexes'
+      logging.exception('Cannot merge compacted indexes')
       raise Exception
 
     # Check if both indexes have the same numbe rof index dictionaries
     #
     if (len(other_index) != self.num_indexes):
-      print 'error:Different number of index dictionaries in merge routine' + \
-            ': self: %i, other: %i' % (self.num_indexes, len(other_index))
+      logging.exception('Different number of index dictionaries in merge ' + \
+                        'routine: self: %i, other: %i' % \
+                        (self.num_indexes, len(other_index)))
 
     for i in range(self.num_indexes):
 
@@ -733,8 +762,8 @@ class Indexing:
     for i in range(self.num_indexes):
       self.num_blocks += len(self.index[i])
 
-    print '1:    Merged indexes (new total number of blocks in index: %i)' % \
-          (self.num_blocks)
+    logging.info('  Merged indexes (new total number of blocks in index: %i)' \
+                 % (self.num_blocks))
 
   # ---------------------------------------------------------------------------
 
@@ -743,7 +772,7 @@ class Indexing:
        See implementations in derived classes for details.
     """
 
-    print 'error:Override abstract method in derived class'
+    logging.exception('Override abstract method in derived class')
     raise Exception
 
   # ---------------------------------------------------------------------------
@@ -755,7 +784,7 @@ class Indexing:
        See implementations in derived classes for details.
     """
 
-    print 'error:Override abstract method in derived class'
+    logging.exception('Override abstract method in derived class')
     raise Exception
 
   # ---------------------------------------------------------------------------
@@ -766,7 +795,7 @@ class Indexing:
        the index.
     """
 
-    print 'error:Override abstract method in derived class'
+    logging.exception('Override abstract method in derived class')
     raise Exception
 
 # =============================================================================
@@ -786,7 +815,7 @@ class BlockingIndex(Indexing):
 
     Indexing.__init__(self, kwargs)  # Initialise base class
 
-    print '1:  Indexing type:       Classical blocking index'
+    logging.info('  Indexing type:       Classical blocking index')
 
   # ---------------------------------------------------------------------------
 
@@ -817,8 +846,9 @@ class BlockingIndex(Indexing):
     self.compact_index = self.index
     self.compacted = True
 
-    print '1:    Index compacted (nothing to be done)'
-    print '1:      Total number of blocks in index: %i' % (self.num_blocks)
+    logging.info('    Index compacted (nothing to be done)')
+    logging.info('      Total number of blocks in index: %i' % \
+                 (self.num_blocks))
 
   # ---------------------------------------------------------------------------
 
@@ -829,7 +859,8 @@ class BlockingIndex(Indexing):
     # Check if index has been compacted - - - - - - - - - - - - - - - - - - - -
     #
     if (self.compacted == False):
-      print 'error:Index has not been compacted, block iteration not possible'
+      logging.exception('Index has not been compacted, block iteration not' + \
+                        ' possible')
       raise Exception
 
     # Outer loop is over the index dictionaries - - - - - - - - - - - - - - - -
@@ -855,7 +886,8 @@ class BlockingIndex(Indexing):
     # Check if index has been compacted - - - - - - - - - - - - - - - - - - - -
     #
     if (self.compacted == False):
-      print 'error:Index has not been compacted, block iteration not possible'
+      logging.exception('Index has not been compacted, block iteration not' + \
+                        ' possible')
       raise Exception
 
     index_num = int(block_var[0])  # Get the number of the index
@@ -895,7 +927,7 @@ class SortingIndex(Indexing):
     for (keyword, value) in kwargs.items():
       if (keyword in ['window','window_size']):
         if (not isinstance(value, int)) or (value <= 0):
-          print 'error:Window size is not a positive integer'
+          logging.exception('Window size is not a positive integer')
           raise Exception
         self.window_size = value
 
@@ -903,13 +935,13 @@ class SortingIndex(Indexing):
         base_kwargs[keyword] = value
 
     if (self.window_size == None):
-      print 'error:Window size is not defined'
+      logging.exception('Window size is not defined')
       raise Exception
 
     Indexing.__init__(self, base_kwargs)  # Initialise base class
 
-    print '1:  Window size:         %i' % (self.window_size)
-    print '1:  Indexing type:       Sliding window index'
+    logging.info('  Window size:         %i' % (self.window_size))
+    logging.info('  Indexing type:       Sliding window index')
 
   # ---------------------------------------------------------------------------
 
@@ -954,8 +986,9 @@ class SortingIndex(Indexing):
 
     self.compacted = True
 
-    print '1:    Index compacted (sorted indexes)'
-    print '1:      Total number of blocks in index: %i' % (self.num_blocks)
+    logging.info('    Index compacted (sorted indexes)')
+    logging.info('      Total number of blocks in index: %i' % \
+                 (self.num_blocks))
 
   # ---------------------------------------------------------------------------
 
@@ -966,7 +999,8 @@ class SortingIndex(Indexing):
     # Check if index has been compacted - - - - - - - - - - - - - - - - - - - -
     #
     if (self.compacted == False):
-      print 'error:Index has not been compacted, block iteration not possible'
+      logging.exception('Index has not been compacted, block iteration not' + \
+                        ' possible')
       raise Exception
 
     # Loop over all block indexes
@@ -1012,7 +1046,8 @@ class SortingIndex(Indexing):
     # Check if index has been compacted - - - - - - - - - - - - - - - - - - - -
     #
     if (self.compacted == False):
-      print 'error:Index has not been compacted, block querying not possible'
+      logging.exception('Index has not been compacted, block querying not' + \
+                        ' possible')
       raise Exception
 
     index_num = int(block_var[0])  # Get the number of the index
@@ -1067,13 +1102,15 @@ class BigramIndex(Indexing):
   """Class that implements an indexing structure based on Bigrams and allows
      for fuzzy 'blocking'.
 
-     When the index is compacted, a value in a blocking variable will be
-     converted into a list of bigrams and permutations of sub-lists will be
-     built using the given threshold (a number between 0.0 and 1.0) of all
-     possible permutations. The resulting bigram lists will be inserted into
-     an inverted index, i.e. the record number will be inserted into
-     dictionaries for each bigram. This inverted index is then the compacted
-     index which will be used to retrieve the blocks.
+     This index implements a data structure based on bigrams and allows for
+     fuzzy blocking. The basic idea is that when the index is compacted, the
+     values of the blocking variables will be converted into a list of bigrams,
+     which is sorted alphabetically (and duplicate bigrams are removed), and
+     sub-lists will be built using a user provided threshold (a number between
+     0.0 and 1.0) of all possible combinations. These resulting bigram
+     sub-lists will be inserted into an inverted index, i.e. record numbers in
+     the blocks will be inserted into Python dictionaries for each bigram
+     sub-list. Such an inverted index will then be used to retrieve the blocks.
 
      When a bigram index is initialised, one argument (besides the base class
      arguments) that need to be given is:
@@ -1082,18 +1119,24 @@ class BigramIndex(Indexing):
 
      For example, assume a block definition contains the tuple:
 
-       block_definition = [[('sname','direct')], ...]
+       block_definition = [[('givname','direct')], ...]
 
-     and the bigram threshold is set to 0.8. If a value 'peter' is given in an
-     'sname' field, the corresponding bigram list is then ['pe','et','te','er']
-     with four elements, so using the 0.8 threshold results in 4*0.8 = 3.2
-     rounded to 3, which means all permutations of length 3 are calculated. For
-     the given example they are ['pe','et','te'], ['pe','et','er'],
-     ['pe','te','er'] and ['et','te','er']. So, the record number of this
-     example will be inserted into the inverted index blocks with keys
-     'peette', 'peeter', 'peteer, and 'etteer'.
+     and the bigram threshold is set to 0.8. If a value 'peter' is given in
+     the 'givname' (given name) field, the corresponding bigram list will be
+     ['pe','et','te','er'] with four elements. It will be sorted to
+     ['er','et','pe','te'], and using the 0.8 threshold results in 4*0.8 = 3.2
+     rounded to 3, which means all combinations of length 3 are calculated.
+     For the given example they are
 
-     The lower the threshold, the shorter the sub-lists, but also the more
+       ['et','pe','te']
+       ['er','pe','te']
+       ['er','et','te']
+       ['er','et','pe']
+
+     So, the corresponding record number will be inserted into the inverted
+     index blocks with keys 'etpete', 'erpete', 'erette', and 'eretpe'.
+
+     The lower the threshold, the shorter the sub-lists, but the more
      sub-lists there will be per field value, resulting in more (smaller
      blocks) in the inverted index.
   """
@@ -1114,8 +1157,9 @@ class BigramIndex(Indexing):
       if (keyword in ['thres','threshold']):
         if (not isinstance(value, float)) or (value <= 0.0) or \
            (value > 1.0):
-          print 'error:Threshold is not a valid floating-point number '+ \
-                '(must be between 0.0 and 1.0): %s' % (str(value))
+          logging.exception('Threshold is not a valid floating-point number ' \
+                            + '(must be between 0.0 and 1.0): %s' % \
+                            (str(value)))
           raise Exception
         self.threshold = value
 
@@ -1123,13 +1167,13 @@ class BigramIndex(Indexing):
         base_kwargs[keyword] = value
 
     if (self.threshold == None):
-      print 'error:Threshold is not defined'
+      logging.exception('Threshold is not defined')
       raise Exception
 
     Indexing.__init__(self, base_kwargs)  # Initialise base class
 
-    print '1:  Threshold:           %f' % (self.threshold)
-    print '1:  Indexing type:       Bigram index'
+    logging.info('  Threshold:           %f' % (self.threshold))
+    logging.info('  Indexing type:       Bigram index')
 
   # ---------------------------------------------------------------------------
 
@@ -1153,7 +1197,7 @@ class BigramIndex(Indexing):
   def compact(self):
     """Build a compacted version of the bigram indexes.
 
-       For each of the blocks in the original index, the bigram permutations
+       For each of the blocks in the original index, the bigram combinations
        are constructed and the record numbers in the block are inserted into
        the corresponding blocks in the inverted index.
     """
@@ -1213,8 +1257,9 @@ class BigramIndex(Indexing):
 
     self.compacted = True
 
-    print '1:    Index compacted (bigram indexes)'
-    print '1:      Total number of blocks in index: %i' % (self.num_blocks)
+    logging.info('    Index compacted (bigram indexes)')
+    logging.info('      Total number of blocks in index: %i' % \
+                 (self.num_blocks))
 
   # ---------------------------------------------------------------------------
 
@@ -1225,7 +1270,8 @@ class BigramIndex(Indexing):
     # Check if index has been compacted - - - - - - - - - - - - - - - - - - - -
     #
     if (self.compacted == False):
-      print 'error:Index has not been compacted, block iteration not possible'
+      logging.exception('Index has not been compacted, block iteration not' + \
+                        ' possible')
       raise Exception
 
     # Outer loop is over the index dictionaries - - - - - - - - - - - - - - - -
@@ -1256,7 +1302,8 @@ class BigramIndex(Indexing):
     # Check if index has been compacted - - - - - - - - - - - - - - - - - - - -
     #
     if (self.compacted == False):
-      print 'error:Index has not been compacted, block iteration not possible'
+      logging.exception('Index has not been compacted, block iteration not' + \
+                        ' possible')
       raise Exception
 
     index_num = int(block_var[0])  # Get the number of the index

@@ -1,25 +1,47 @@
 # =============================================================================
-# name.py - Routines for name cleaning and standardisation.
-#
-# Freely extensible biomedical record linkage (Febrl) Version 0.2.2
-# See http://datamining.anu.edu.au/projects/linkage.html
-#
-# =============================================================================
 # AUSTRALIAN NATIONAL UNIVERSITY OPEN SOURCE LICENSE (ANUOS LICENSE)
-# VERSION 1.1
-#
-# The contents of this file are subject to the ANUOS License Version 1.1 (the
-# "License"); you may not use this file except in compliance with the License.
-# Software distributed under the License is distributed on an "AS IS" basis,
-# WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License for
-# the specific language governing rights and limitations under the License.
-# The Original Software is "name.py".
-# The Initial Developers of the Original Software are Dr Peter Christen
-# (Department of Computer Science, Australian National University) and Dr Tim
-# Churches (Centre for Epidemiology and Research, New South Wales Department
-# of Health). Copyright (C) 2002, 2003 the Australian National University and
+# VERSION 1.2
+# 
+# The contents of this file are subject to the ANUOS License Version 1.2
+# (the "License"); you may not use this file except in compliance with
+# the License. You may obtain a copy of the License at:
+# 
+#   http://datamining.anu.edu.au/linkage.html
+# 
+# Software distributed under the License is distributed on an "AS IS"
+# basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See
+# the License for the specific language governing rights and limitations
+# under the License.
+# 
+# The Original Software is: "name.py"
+# 
+# The Initial Developers of the Original Software are:
+#   Dr Tim Churches (Centre for Epidemiology and Research, New South Wales
+#                    Department of Health)
+#   Dr Peter Christen (Department of Computer Science, Australian National
+#                      University)
+# 
+# Copyright (C) 2002 - 2005 the Australian National University and
 # others. All Rights Reserved.
+# 
 # Contributors:
+# 
+# Alternatively, the contents of this file may be used under the terms
+# of the GNU General Public License Version 2 or later (the "GPL"), in
+# which case the provisions of the GPL are applicable instead of those
+# above. The GPL is available at the following URL: http://www.gnu.org/
+# If you wish to allow use of your version of this file only under the
+# terms of the GPL, and not to allow others to use your version of this
+# file under the terms of the ANUOS License, indicate your decision by
+# deleting the provisions above and replace them with the notice and
+# other provisions required by the GPL. If you do not delete the
+# provisions above, a recipient may use your version of this file under
+# the terms of any one of the ANUOS License or the GPL.
+# =============================================================================
+#
+# Freely extensible biomedical record linkage (Febrl) - Version 0.3
+#
+# See: http://datamining.anu.edu.au/linkage.html
 #
 # =============================================================================
 
@@ -44,7 +66,9 @@
 # =============================================================================
 # Imports go here
 
+import logging
 import string
+
 import mymath
 
 # =============================================================================
@@ -136,11 +160,11 @@ def tag_name_component(name_str, tag_lookup_table, record_id):
     #
     org_list = org_list[tmp_len:]  # Remove processed elements
 
-  # A log message for high volume log output (level 3)  - - - - - - - - - - - -
+  # A log message - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   #
-  print '3:%s  Name string "%s"' % (record_id, name_str)
-  print '3:%s    Split into word list: %s' % (record_id, str(word_list))
-  print '3:%s            and tag list: %s' % (record_id, str(tag_list))
+  logging.debug('%s  Name string "%s"' % (record_id, name_str))
+  logging.debug('%s    Split into word list: %s' % (record_id, str(word_list)))
+  logging.debug('%s            and tag list: %s' % (record_id, str(tag_list)))
 
   return [word_list, tag_list]
 
@@ -206,11 +230,11 @@ def get_gender_guess(word_list, tag_list, male_titles, female_titles,
   else:
     gender = ''
 
-  # A log message for high volume log output (level 3)  - - - - - - - - - - - -
+  # A log message - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   #
-  print '3:%s  Word list: %s and tag list: %s' % \
-        (record_id, str(word_list), str(tag_list))
-  print '3:%s    Gender guess extracted: %s' % (record_id, gender)
+  logging.debug('%s  Word list: %s and tag list: %s' % \
+                (record_id, str(word_list), str(tag_list)))
+  logging.debug('%s    Gender guess extracted: %s' % (record_id, gender))
 
   return gender
 
@@ -265,13 +289,13 @@ def get_title(word_list, tag_list, record_id):
   title_list = title_dict.keys()
   title_list.sort()
 
-  # A log message for high volume log output (level 3)  - - - - - - - - - - - -
+  # A log message - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   #
-  print '3:%s  Word list: %s and tag list: %s' % \
-        (record_id, str(word_list), str(tag_list))
-  print '3:%s    Titles extracted:   %s' % (record_id, str(title_list))
-  print '3:%s    Modified word list: %s and tag list: %s' % \
-        (record_id, str(tmp_list), str(tmp_tags))
+  logging.debug('%s  Word list: %s and tag list: %s' % \
+                (record_id, str(word_list), str(tag_list)))
+  logging.debug('%s    Titles extracted:   %s' % (record_id, str(title_list)))
+  logging.debug('%s    Modified word list: %s and tag list: %s' % \
+                (record_id, str(tmp_list), str(tmp_tags)))
 
   return [tmp_list, tmp_tags, title_list]
 
@@ -344,29 +368,29 @@ def get_name_component(word_list, tag_list, record_id, fields_str):
     elif (t in ['NU', 'AN']):  # A Number or alphanumeric - - - - - - - - - - -
       names_list[curr_name_mode].append(w)
 
-      print 'warning:%s Number or alpha-numeric word in name: %s%s' % \
-            (record_id, str(word_list), fields_str)
+      logging.warn('%s Number or alpha-numeric word in name: %s%s' % \
+                   (record_id, str(word_list), fields_str))
 
     elif (t == 'HY'):  # Process hyphen - - - - - - - - - - - - - - - - - - - -
       if (i > 0):
         if (tag_list[i-1] not in ['HY','BO','CO','SP','VB']):
           names_list[curr_name_mode].append(w)  # Don't always append a hyphen
         else:
-          print 'warning:%s Strange hyphen situation: %s%s' % \
-                (record_id, str(word_list), fields_str)
+          logging.warn('%s Strange hyphen situation: %s%s' % \
+                       (record_id, str(word_list), fields_str))
       else:
-        print 'warning:%s Strange hyphen situation: %s%s' % \
-              (record_id, str(word_list), fields_str)
+        logging.warn('%s Strange hyphen situation: %s%s' % \
+                     (record_id, str(word_list), fields_str))
 
     elif (t == 'VB'):  # Vertical bar, switch vertical bar mode - - - - - - - -
       if (i == 0):
-        print 'warning:%s Strange situation: Vertical bar at beginning: %s%s' \
-              % (record_id, str(word_list), fields_str)
+        logging.warn('%s Strange situation: Vertical bar at beginning: %s%s' \
+                     % (record_id, str(word_list), fields_str))
 
       elif (tag_list[i-1] in ['HY','BO','CO','SP']) or \
            ((tag_list[i-1] == 'ST') and ('_' not in word_list[i-1])):
-         print 'warning:%s Strange vertical bar situation: %s%s' % \
-               (record_id, str(word_list), fields_str)
+         logging.warn('%s Strange vertical bar situation: %s%s' % \
+                      (record_id, str(word_list), fields_str))
 
       else:  # Switch vertical bar (from outside to inside or vice versa)
         if (curr_vb_mode == vb_mode_outside):
@@ -437,12 +461,14 @@ def get_name_component(word_list, tag_list, record_id, fields_str):
     if (w not in tmp_name_list11):
       tmp_name_list11.append(w)
 
-  # A log message for high volume log output (level 3)  - - - - - - - - - - - -
+  # A log message - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   #
-  print '3:%s  Word list: %s and tag list: %s' % \
-        (record_id, str(word_list), str(tag_list))
-  print '3:%s    Primary name(s):     %s' % (record_id, str(tmp_name_list0))
-  print '3:%s    Alternative name(s): %s' % (record_id, str(tmp_name_list11))
+  logging.debug('%s  Word list: %s and tag list: %s' % \
+                (record_id, str(word_list), str(tag_list)))
+  logging.debug('%s    Primary name(s):     %s' % \
+                (record_id, str(tmp_name_list0)))
+  logging.debug('%s    Alternative name(s): %s' % \
+                (record_id, str(tmp_name_list11)))
 
   return (tmp_name_list0, tmp_name_list11)
 
@@ -480,8 +506,8 @@ def get_name_rules(word_list, tag_list, first_name_comp, record_id,
   """
 
   if (first_name_comp not in ['gname', 'sname']):
-    print 'error:%s Illegal value for first_name_comp: %s' % \
-          (record_id, str(first_name_comp))
+    logging.exception('%s Illegal value for first_name_comp: %s' % \
+                      (record_id, str(first_name_comp)))
     raise Exception
 
   # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -539,14 +565,14 @@ def get_name_rules(word_list, tag_list, first_name_comp, record_id,
         if (i > 0) and (word_list[i] in ['known_as','nee']) and \
            (tag_list[i-1] != 'VB'):
           if (list_ptr == 4):
-            print 'warning:%s To many separators/vertical ' % (record_id) + \
-                  'bars in input: %s%s' % (str(word_list), fields_str)
+            logging.warn('%s To many separators/vertical ' % (record_id) + \
+                         'bars in input: %s%s' % (str(word_list), fields_str))
           else:
             list_ptr += 1  # Switch to next sub-list
 
         if (i == list_len-1):
-          print 'warning:%s Last element in input is a separator: %s%s' % \
-                (record_id, str(word_list), fields_str)
+          logging.warn('%s Last element in input is a separator: %s%s' % \
+                       (record_id, str(word_list), fields_str))
         else:
           i += 1  # Go to next word/tag, i.e. skip over separator
 
@@ -554,8 +580,8 @@ def get_name_rules(word_list, tag_list, first_name_comp, record_id,
             word_sub_list[list_ptr].append(word_list[i])  # Append next element
             tag_sub_list[list_ptr].append(tag_list[i])
           else:  # A strange situation
-            print 'warning:%s Strange separator situation: %s%s' % \
-                  (record_id, str(word_list), fields_str)
+            logging.warn('%s Strange separator situation: %s%s' % \
+                         (record_id, str(word_list), fields_str))
 
           # If current word is a name prefix append following word(s) as well
           #
@@ -582,8 +608,8 @@ def get_name_rules(word_list, tag_list, first_name_comp, record_id,
           #
           if (i < list_len-1) and (tag_list[i+1] != 'SP'):
             if (list_ptr == 4):
-              print 'warning:%s To many separators/vertical ' % (record_id) + \
-                    'bars in input: %s%s' % (str(word_list), fields_str)
+              logging.warn('%s To many separators/vertical ' % (record_id) + \
+                           'bars in input: %s%s' % (str(word_list),fields_str))
             else:
               list_ptr += 1  # Switch to next sub-list
 
@@ -601,8 +627,8 @@ def get_name_rules(word_list, tag_list, first_name_comp, record_id,
         #
         if (i > 0):
           if (list_ptr == 4):
-            print 'warning:%s To many separators/vertical ' % (record_id) + \
-                  'bars in input: %s%s' % (str(word_list), fields_str)
+            logging.warn('%s To many separators/vertical ' % (record_id) + \
+                         'bars in input: %s%s' % (str(word_list), fields_str))
           else:
             list_ptr += 1  # Switch to next sub-list
 
@@ -623,8 +649,8 @@ def get_name_rules(word_list, tag_list, first_name_comp, record_id,
         #
         if (i < list_len-1) and (word_list[i+1] != 'known_as'):
           if (list_ptr == 4):
-            print 'warning:%s To many separators/vertical ' % (record_id) + \
-                  'bars in input: %s%s' % (str(word_list), fields_str)
+            logging.warn('%s To many separators/vertical ' % (record_id) + \
+                         'bars in input: %s%s' % (str(word_list), fields_str))
           else:
             list_ptr += 1  # Switch to next sub-list
 
@@ -637,29 +663,29 @@ def get_name_rules(word_list, tag_list, first_name_comp, record_id,
       if (i < list_len):
         i += 1  # Go to next word/tag
 
-  # A log message for high volume log output (level 3)  - - - - - - - - - - - -
+  # A log message - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   #
-  print '3:%s  Extracted sub-lists:' % (record_id)
-  print '3:%s    Potential given names:                 %s' % \
-        (record_id, str(word_sub_list[0]))
-  print '3:%s                                           %s' % \
-        (record_id, str(tag_sub_list[0]))
-  print '3:%s    Potential alternative given names:     %s' % \
-        (record_id, str(word_sub_list[1]))
-  print '3:%s                                           %s' % \
-        (record_id, str(tag_sub_list[1]))
-  print '3:%s    Potential surnames:                    %s' % \
-        (record_id, str(word_sub_list[2]))
-  print '3:%s                                           %s' % \
-        (record_id, str(tag_sub_list[2]))
-  print '3:%s    Potential alternative surnames:        %s' % \
-        (record_id, str(word_sub_list[3]))
-  print '3:%s                                           %s' % \
-        (record_id, str(tag_sub_list[3]))
-  print '3:%s    Potential second alternative surnames: %s' % \
-        (record_id, str(word_sub_list[4]))
-  print '3:%s                                           %s' % \
-        (record_id, str(tag_sub_list[4]))
+  logging.debug('%s  Extracted sub-lists:' % (record_id))
+  logging.debug('%s    Potential given names:                 %s' % \
+                (record_id, str(word_sub_list[0])))
+  logging.debug('%s                                           %s' % \
+                (record_id, str(tag_sub_list[0])))
+  logging.debug('%s    Potential alternative given names:     %s' % \
+                (record_id, str(word_sub_list[1])))
+  logging.debug('%s                                           %s' % \
+                (record_id, str(tag_sub_list[1])))
+  logging.debug('%s    Potential surnames:                    %s' % \
+                (record_id, str(word_sub_list[2])))
+  logging.debug('%s                                           %s' % \
+                (record_id, str(tag_sub_list[2])))
+  logging.debug('%s    Potential alternative surnames:        %s' % \
+                (record_id, str(word_sub_list[3])))
+  logging.debug('%s                                           %s' % \
+                (record_id, str(tag_sub_list[3])))
+  logging.debug('%s    Potential second alternative surnames: %s' % \
+                (record_id, str(word_sub_list[4])))
+  logging.debug('%s                                           %s' % \
+                (record_id, str(tag_sub_list[4])))
 
   # Make sure there are no empty sub-lists between filled sub-lists
   #
@@ -667,11 +693,11 @@ def get_name_rules(word_list, tag_list, first_name_comp, record_id,
       ((word_sub_list[2] == []) and (word_sub_list[3] != [])) or \
       ((word_sub_list[1] == []) and (word_sub_list[2] != [])) or \
       ((word_sub_list[0] == []) and (word_sub_list[1] != []))):
-    print 'warning:%s Empty sub-lists between filled sub-lists: ' % \
-          (record_id) + '%s, %s, %s, %s, %s%s' % \
-          (str(word_sub_list[0]), str(word_sub_list[1]), \
-           str(word_sub_list[2]), str(word_sub_list[3]), \
-           str(word_sub_list[4]), fields_str)
+    logging.warn('%s Empty sub-lists between filled sub-lists: ' % \
+                 (record_id) + '%s, %s, %s, %s, %s%s' % \
+                 (str(word_sub_list[0]), str(word_sub_list[1]), \
+                 str(word_sub_list[2]), str(word_sub_list[3]), \
+                 str(word_sub_list[4]), fields_str))
 
   # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   # Phase two: Parse sub-lists and assign into four output name lists
@@ -760,8 +786,8 @@ def get_name_rules(word_list, tag_list, first_name_comp, record_id,
   #   this sub-list 0 contains both primary name components.
   #
   if (word_sub_list[0] == []):  # This should never happen!
-    print 'warning:%s Empty first sub-list (this should never happen): %s%s'% \
-          (record_id, str(word_sub_list), fields_str)
+    logging.warn('%s Empty first sub-list (this should never happen): %s%s'% \
+                 (record_id, str(word_sub_list), fields_str))
   else:
 
     if (word_sub_list[1] != []) and (word_sub_list[2] != []):
@@ -842,8 +868,8 @@ def get_name_rules(word_list, tag_list, first_name_comp, record_id,
           else:
             surname_list.append(w)
             sname_ass_count += 1
-          print 'warning:%s Number or alpha-numeric word in name: %s%s' % \
-                (record_id, str(word_list), fields_str)
+          logging.warn('%s Number or alpha-numeric word in name: %s%s' % \
+                       (record_id, str(word_list), fields_str))
 
         elif (t == 'HY'):  # Process hyphen - - - - - - - - - - - - - - - - - -
           if (i > 0):
@@ -853,8 +879,8 @@ def get_name_rules(word_list, tag_list, first_name_comp, record_id,
               else:
                 surname_list.append(w)
             else:
-              print 'warning:%s Strange hyphen situation: %s%s' % \
-                    (record_id, str(word_list), fields_str)
+              logging.warn('%s Strange hyphen situation: %s%s' % \
+                           (record_id, str(word_list), fields_str))
 
         elif (t == 'II'):  # A single character (initial) - - - - - - - - - - -
             # Append single letter to alternative givennames and switch
@@ -997,7 +1023,7 @@ def get_name_rules(word_list, tag_list, first_name_comp, record_id,
 
     # Check each word in the list if they are in surname dictionary, not
     # a name prefix, not in ('baby', 'son', 'daughter', 'of') or 'saint'
-    # 
+    #
   #  for sn in tmp_sname_list:  # Now check each component in this list
   #    if (not config.nameprefix_dict.has_key(sn)) and \
   #       (sn not in ['baby','son','daughter','of']):
@@ -1027,17 +1053,17 @@ def get_name_rules(word_list, tag_list, first_name_comp, record_id,
     if (n not in tmp_surname_list) and (n not in tmp_alt_surname_list):
       tmp_alt_surname_list.append(n)
 
-  # A log message for high volume log output (level 3)  - - - - - - - - - - - -
+  # A log message - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   #
-  print '3:%s  Extracted output name lists:' % (record_id)
-  print '3:%s    Given names:             %s' % \
-        (record_id, str(tmp_givenname_list))
-  print '3:%s    Alternative given names: %s' % \
-        (record_id, str(tmp_alt_givenname_list))
-  print '3:%s    Surnames:                %s' % \
-        (record_id, str(tmp_surname_list))
-  print '3:%s    Alternative surnames:    %s' % \
-        (record_id, str(tmp_alt_surname_list))
+  logging.debug('%s  Extracted output name lists:' % (record_id))
+  logging.debug('%s    Given names:             %s' % \
+                (record_id, str(tmp_givenname_list)))
+  logging.debug('%s    Alternative given names: %s' % \
+                (record_id, str(tmp_alt_givenname_list)))
+  logging.debug('%s    Surnames:                %s' % \
+                (record_id, str(tmp_surname_list)))
+  logging.debug('%s    Alternative surnames:    %s' % \
+                (record_id, str(tmp_alt_surname_list)))
 
   return [tmp_givenname_list, tmp_alt_givenname_list, tmp_surname_list, \
           tmp_alt_surname_list]
@@ -1078,8 +1104,8 @@ def get_name_hmm(word_list, tag_list, name_hmm, first_name_comp,
   """
 
   if (first_name_comp not in ['gname', 'sname']):
-    print 'error:%s Illegal value for first_name_comp: %s' % \
-          (record_id, str(first_name_comp))
+    logging.exception('%s Illegal value for first_name_comp: %s' % \
+                      (record_id, str(first_name_comp)))
     raise Exception
 
   # First, create all permutations of the input tag sequence
@@ -1100,24 +1126,24 @@ def get_name_hmm(word_list, tag_list, name_hmm, first_name_comp,
       best_tag_list = t
       max_prob = prob
 
-    print '3:%s  Sequence: %s has Viterbi probability: %f' % \
-          (record_id, str(t), prob)
+    logging.debug('%s  Sequence: %s has Viterbi probability: %f' % \
+                  (record_id, str(t), prob))
 
-  print '2:%s  Best observation sequence: %s with tag sequence %s' % \
-        (record_id, str(best_obs_seq), str(best_tag_list))
+  logging.debug('%s  Best observation sequence: %s with tag sequence %s' % \
+                (record_id, str(best_obs_seq), str(best_tag_list)))
 
   # Now process the observation sequence and add elements into dictionary - - -
   #
   if (len(tag_list) != len(word_list)):
-    print 'error:%s Length of word list and tag list differs: %s, %s%s' % \
-          (record_id, str(word_list), str(tag_list), fields_str)
+    logging.exception('%s Length of word list and tag list differs: %s, %s%s' \
+                      % (record_id, str(word_list), str(tag_list), fields_str))
     raise Exception
 
   tag_list_len = len(tag_list)
 
   if (tag_list_len == 0):
-    print 'warning:%s Empty tag list returned from HMM%s' % \
-          (record_id, fields_str)
+    logging.warn('%s Empty tag list returned from HMM%s' % \
+                 (record_id, fields_str))
     return [[],[],[],[],[]]  # Return empty name lists
 
   norm_max_prob = max_prob / float(tag_list_len)  # Normalise max. probability
@@ -1155,11 +1181,11 @@ def get_name_hmm(word_list, tag_list, name_hmm, first_name_comp,
           name_list[4].append(w)
 
         else:
-          print 'warning:%s Strange situation with "baby of": %s%s' % \
-                (record_id, str(word_list), fields_str)
+          logging.warn('%s Strange situation with "baby of": %s%s' % \
+                       (record_id, str(word_list), fields_str))
       else:
-        print 'warning:%s Strange situation with "baby of": %s%s' % \
-              (record_id, str(word_list), fields_str)
+        logging.warn('%s Strange situation with "baby of": %s%s' % \
+                     (record_id, str(word_list), fields_str))
 
     elif (s in ['gname1','gname2']):  # Givennames  - - - - - - - - - - - - - -
       name_list[1].append(w)  # Append to given name list
@@ -1172,18 +1198,20 @@ def get_name_hmm(word_list, tag_list, name_hmm, first_name_comp,
         if (name_list[1] != []):  # Only append hyphen after given name
           name_list[1].append(w)  # Append to given name list
         else:
-          print 'warning:%s Strange hyphen situation in given name: %s%s' % \
-                (record_id, str(word_list), fields_str)
+          logging.warn('%s Strange hyphen situation in given name: %s%s' % \
+                       (record_id, str(word_list), fields_str))
 
       elif (i > 0) and (best_obs_seq[i-1] in ['agname1','agname2']): # agname
         if (name_list[2] != []):  # Only append hyphen after alt. given name
           name_list[2].append(w)  # Append to alternative given name list
         else:
-          print 'warning:%s Strange hyphen situation in ' % (record_id) + \
-                'alternative given name: %s%s' % (str(word_list), fields_str)
+          logging.warn('%s Strange hyphen situation in ' % (record_id) + \
+                       'alternative given name: %s%s' % \
+                       (str(word_list), fields_str))
       else:
-        print 'warning:%s Strange hyphen situation in ' % (record_id) + \
-              'alternative given name: %s%s' % (str(word_list), fields_str)
+        logging.warn('%s Strange hyphen situation in ' % (record_id) + \
+                     'alternative given name: %s%s' % \
+                     (str(word_list), fields_str))
 
     elif (s in ['sname1','sname2']):  # Surnames  - - - - - - - - - - - - - - -
       name_list[3].append(w)  # Append to surname list
@@ -1196,18 +1224,18 @@ def get_name_hmm(word_list, tag_list, name_hmm, first_name_comp,
         if (name_list[3] != []):  # Only append hyphen after a surname
           name_list[3].append(w)  # Append to surname list
         else:
-          print 'warning:%s Strange hyphen situation in surname: %s%s' % \
-                (record_id, str(word_list), fields_str)
+          logging.warn('%s Strange hyphen situation in surname: %s%s' % \
+                       (record_id, str(word_list), fields_str))
 
       elif (i > 0) and (best_obs_seq[i-1] in ['asname1','asname2']):  # asname
         if (name_list[4] != []):  # Only append hyphen after a alt. surname
           name_list[4].append(w)  # Append to alternative surname list
         else:
-          print 'warning:'+record_id+'Strange hyphen situation in '+ \
-                'alternative surname: '+str(word_list)+fields_str
+          logging.warn(''+record_id+'Strange hyphen situation in '+ \
+                       'alternative surname: '+str(word_list)+fields_str)
       else:
-        print 'warning:%s Strange hyphen situation in surname: %s%s' % \
-              (record_id, str(word_list), fields_str)
+        logging.warn('%s Strange hyphen situation in surname: %s%s' % \
+                     (record_id, str(word_list), fields_str))
 
     elif (s in ['pref1','pref2']):  # Name prefix - - - - - - - - - - - - - - -
       if (i < list_len-1) and (best_obs_seq[i+1] in ['pref1','pref2']):
@@ -1219,42 +1247,44 @@ def get_name_hmm(word_list, tag_list, name_hmm, first_name_comp,
       if (i < list_len-1) and (best_obs_seq[i+1] in ['gname1','gname2']):
         if (name_list[1] != []):  # There is already a given name
           name_list[1].append(w)  # Append to given name list
-          print 'warning:%s Strange name prefix situation in' % (record_id) + \
-                ' given name: %s%s' % (str(word_list), fields_str)
+          logging.warn('%s Strange name prefix situation in' % (record_id) + \
+                       ' given name: %s%s' % (str(word_list), fields_str))
         else:
           name_list[1].append(w)  # Append to given name list
 
       elif (i < list_len-1) and (best_obs_seq[i+1] in ['agname1','agname2']):
         if (name_list[2] != []):  # There is already an alternative given name
           name_list[2].append(w)  # Append to alternative given name list
-          print 'warning:%s Strange name prefix situation in' % (record_id) + \
-                ' alternative given name: %s%s' % (str(word_list), fields_str)
+          logging.warn('%s Strange name prefix situation in' % (record_id) + \
+                       ' alternative given name: %s%s' % \
+                       (str(word_list), fields_str))
         else:
           name_list[2].append(w)  # Append to alternative given name list
 
       elif (i < list_len-1) and (best_obs_seq[i+1] in ['sname1','sname2']):
         if (name_list[3] != []):  # There is already a surname
           name_list[3].append(w)  # Append to surname list
-          print 'warning:%s Strange name prefix situation in' % (record_id) + \
-                ' surname: %s%s' % (str(word_list), fields_str)
+          logging.warn('%s Strange name prefix situation in' % (record_id) + \
+                       ' surname: %s%s' % (str(word_list), fields_str))
         else:
           name_list[3].append(w)  # Append to surname list
 
       elif (i < list_len-1) and (best_obs_seq[i+1] in ['asname1','asname2']):
         if (name_list[4] != []):  # There is already an alternative  surname
           name_list[4].append(w)  # Append to alternative surname list
-          print 'warning:%s Strange name prefix situation in' % (record_id) + \
-                ' alternative surname: %s%s' % (str(word_list), fields_str)
+          logging.warn('%s Strange name prefix situation in' % (record_id) + \
+                       ' alternative surname: %s%s' % \
+                       (str(word_list), fields_str))
         else:
           name_list[4].append(w)  # Append to alternative surname list
       else:
-        print 'warning:%s Strange name prefix situation: %s%s' % \
-              (record_id, str(word_list), fields_str)
+        logging.warn('%s Strange name prefix situation: %s%s' % \
+                     (record_id, str(word_list), fields_str))
 
     else:  # Should never happen
-      print 'warning:%s This should never happen! Tag: ' % (record_id) + \
-            '%s, word: %s, word list: %s, tag list: %s%s' % \
-            (str(s), w, str(word_list), str(tag_list), fields_str)
+      logging.warn('%s This should never happen! Tag: ' % (record_id) + \
+                   '%s, word: %s, word list: %s, tag list: %s%s' % \
+                   (str(s), w, str(word_list), str(tag_list), fields_str))
 
     i +=1
 
@@ -1264,20 +1294,21 @@ def get_name_hmm(word_list, tag_list, name_hmm, first_name_comp,
   #
   for i in name_list:
     if (len(i) > 3):
-      print 'warning:%s A name output field contains more than' % \
-            (record_id) + ' three elements: %s%s' % (str(i), fields_str)
+      logging.warn('%s A name output field contains more than' % \
+                   (record_id) + ' three elements: %s%s' % \
+                   (str(i), fields_str))
 
   # Check if a name component is not allocated but its alternative name is
   #
   if (name_list[1] == []) and (name_list[2] != []):
-    print '2:%s  No given name but an alternative given name: %s' % \
-          (record_id, str(name_list[2])) + ' -> Corrected'
+    logging.debug('%s  No given name but an alternative given name: %s' % \
+                  (record_id, str(name_list[2])) + ' -> Corrected')
     name_list[1] = name_list[2][:]  # Move alternative given name to given name
     name_list[2] = []
 
   if (name_list[3] == []) and (name_list[4] != []):
-    print '2:%s  No surname but an alternative surname: %s' % \
-          (record_id, str(name_list[4])) + ' -> Corrected'
+    logging.debug('%s  No surname but an alternative surname: %s' % \
+                  (record_id, str(name_list[4])) + ' -> Corrected')
     name_list[3] = name_list[4][:]  # Move alternative surname to given name
     name_list[4] = []
 
@@ -1286,14 +1317,14 @@ def get_name_hmm(word_list, tag_list, name_hmm, first_name_comp,
   if (name_list[1] != []) and (name_list[3] == []):
 
     if (name_list[2] != []):  # An alternative given name is availabe
-      print '2:%s  No surname but an alternative given name: %s' % \
-            (record_id, str(name_list)) + ' -> Corrected'
+      logging.debug('%s  No surname but an alternative given name: %s' % \
+                    (record_id, str(name_list)) + ' -> Corrected')
       name_list[3] = name_list[2][:]  # Move alternative given name to surname
       name_list[2] = []
 
     elif (len(name_list[1]) > 1):  # More than one given name available
-      print '2:%s  No surname but more than one given name: %s' % \
-            (record_id, str(name_list)) + ' -> Corrected'
+      logging.debug('%s  No surname but more than one given name: %s' % \
+                    (record_id, str(name_list)) + ' -> Corrected')
       name_list[3] = name_list[1][-1][:]  # Move last given name to surname
       name_list[1] = name_list[1][:-1][:]
 
@@ -1301,8 +1332,8 @@ def get_name_hmm(word_list, tag_list, name_hmm, first_name_comp,
   #
   for t in name_list[0]:
     if (not tag_lookup_table.has_key((t,'TI'))):
-      print 'warning:%s Title word: "%s" is not a known title%s' % \
-            (record_id, t, fields_str)
+      logging.warn('%s Title word: "%s" is not a known title%s' % \
+                   (record_id, t, fields_str))
 
   return name_list
 

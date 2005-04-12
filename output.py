@@ -1,30 +1,50 @@
 # =============================================================================
-# output.py - Classes for extracting output data sets for matches, non-matches,
-#             and clerical reviews.
-#
-# Freely extensible biomedical record linkage (Febrl) Version 0.2.2
-# See http://datamining.anu.edu.au/projects/linkage.html
-#
-# =============================================================================
 # AUSTRALIAN NATIONAL UNIVERSITY OPEN SOURCE LICENSE (ANUOS LICENSE)
-# VERSION 1.1
-#
-# The contents of this file are subject to the ANUOS License Version 1.1 (the
-# "License"); you may not use this file except in compliance with the License.
-# Software distributed under the License is distributed on an "AS IS" basis,
-# WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License for
-# the specific language governing rights and limitations under the License.
-# The Original Software is "output.py".
-# The Initial Developers of the Original Software are Dr Peter Christen
-# (Department of Computer Science, Australian National University) and Dr Tim
-# Churches (Centre for Epidemiology and Research, New South Wales Department
-# of Health). Copyright (C) 2002, 2003 the Australian National University and
+# VERSION 1.2
+# 
+# The contents of this file are subject to the ANUOS License Version 1.2
+# (the "License"); you may not use this file except in compliance with
+# the License. You may obtain a copy of the License at:
+# 
+#   http://datamining.anu.edu.au/linkage.html
+# 
+# Software distributed under the License is distributed on an "AS IS"
+# basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See
+# the License for the specific language governing rights and limitations
+# under the License.
+# 
+# The Original Software is: "output.py"
+# 
+# The Initial Developer of the Original Software is:
+#   Dr Peter Christen (Department of Computer Science, Australian National
+#                      University)
+# 
+# Copyright (C) 2002 - 2005 the Australian National University and
 # others. All Rights Reserved.
+# 
 # Contributors:
+# 
+# Alternatively, the contents of this file may be used under the terms
+# of the GNU General Public License Version 2 or later (the "GPL"), in
+# which case the provisions of the GPL are applicable instead of those
+# above. The GPL is available at the following URL: http://www.gnu.org/
+# If you wish to allow use of your version of this file only under the
+# terms of the GPL, and not to allow others to use your version of this
+# file under the terms of the ANUOS License, indicate your decision by
+# deleting the provisions above and replace them with the notice and
+# other provisions required by the GPL. If you do not delete the
+# provisions above, a recipient may use your version of this file under
+# the terms of any one of the ANUOS License or the GPL.
+# =============================================================================
+#
+# Freely extensible biomedical record linkage (Febrl) - Version 0.3
+#
+# See: http://datamining.anu.edu.au/linkage.html
 #
 # =============================================================================
 
-"""Module output.py - Classes for preparing output data sets.
+"""Module output.py - Classes for extracting output data sets for matches,
+                      non-matches, and clerical reviews.
 
    This module contains functions for printing and savinf to text files of
    record pairs (detailed and weights), and histograms,  compiling output data
@@ -32,12 +52,14 @@
 
    Still under development, the current version allows printing and saving of
    record pairs and histograms, and saving of simple text files containing
-   record pair numbers and corresponding weights.
+   record pair numbers and corresponding weights, as well as comma separated
+   file (CSV) output.
 """
 
 # =============================================================================
 # Imports go here
 
+import logging
 import os
 
 # =============================================================================
@@ -89,7 +111,8 @@ def histogram(results_dict, file_name=None):
     try:
       f = open(file_name, 'w')
     except:
-      print 'error:Can not open file "%s" for writing' % (str(file_name))
+      logging.exception('Can not open file "%s" for writing' % \
+                        (str(file_name)))
       raise IOError
 
     f.write('Weight histogram:' + os.linesep)
@@ -97,10 +120,10 @@ def histogram(results_dict, file_name=None):
     f.write(os.linesep)
 
   else:  # Print a header for the histogram - - - - - - - - - - - - - - - - - -
-    print '1:'
-    print '1:Weight histogram:'
-    print '1:-----------------'
-    print '1:'
+    print
+    print 'Weight histogram:'
+    print '-----------------'
+    print
 
   # Print or save the histogram (using ASCII characters) rotated 90 degrees - -
   # so the X axis is going downwards
@@ -111,14 +134,14 @@ def histogram(results_dict, file_name=None):
     if (file_name != None):
       f.write(hist_str + os.linesep)
     else:
-      print '1:'+hist_str
+      print hist_str
 
   if (file_name != None):
     f.close()
-    print '1:Histogram written to file "%s"' % (file_name)
+    print 'Histogram written to file "%s"' % (file_name)
 
   else:
-    print '1:'
+    print
 
 # =============================================================================
 
@@ -153,7 +176,8 @@ def rec_pair_details(dataset_a, dataset_b, results_dict, assigned_dict,
     try:
       f = open(file_name, 'w')
     except:
-      print 'error:Can not open file "%s" for writing' % (str(file_name))
+      logging.exception('Can not open file "%s" for writing' % \
+                        (str(file_name)))
       raise IOError
 
     f.write('Resulting record pairs:' + os.linesep)
@@ -163,12 +187,12 @@ def rec_pair_details(dataset_a, dataset_b, results_dict, assigned_dict,
     f.write('  Data set B:        %s' % (dataset_b.name) + os.linesep)
 
   else:  # Print a header for the histogram - - - - - - - - - - - - - - - - - -
-    print '1:'
-    print '1:Resulting record pairs:'
-    print '1:-----------------------'
-    print '1:  Output threshold:  %f' % (threshold)
-    print '1:  Data set A:        %s' % (dataset_a.name)
-    print '1:  Data set B:        %s' % (dataset_b.name)
+    print
+    print 'Resulting record pairs:'
+    print '-----------------------'
+    print '  Output threshold:  %f' % (threshold)
+    print '  Data set A:        %s' % (dataset_a.name)
+    print '  Data set B:        %s' % (dataset_b.name)
 
   if (threshold == None):  # Set threshold to a very negative number
     threshold == -9999999.9
@@ -185,8 +209,8 @@ def rec_pair_details(dataset_a, dataset_b, results_dict, assigned_dict,
       rec_pair = (rec_num, rec_num2)
 
       if (rec_pair_dict.has_key(rec_pair)):
-        print 'warning:Record pair %s more than once in results dictionary' % \
-              (str(rec_pair))
+        logging.warn('Record pair %s more than once in results dictionary' % \
+              (str(rec_pair)))
       else:
         rec_pair_dict[rec_pair] = weight
 
@@ -242,13 +266,13 @@ def rec_pair_details(dataset_a, dataset_b, results_dict, assigned_dict,
                 rec_b_id.ljust(rec_print_length)[:rec_print_length] + \
                 os.linesep)
       else:
-        print '1:'
-        print '1:'+'-'*77
-        print '1:Weight: %f %s' % (rec_pair_weight, assigned)
+        print
+        print '-'*77
+        print 'Weight: %f %s' % (rec_pair_weight, assigned)
 
-        print '1:Fields '+(key_print_length-7)*' '+' | '+ \
-                rec_a_id.ljust(rec_print_length)[:rec_print_length]+' | '+ \
-                rec_b_id.ljust(rec_print_length)[:rec_print_length]
+        print 'Fields '+(key_print_length-7)*' '+' | '+ \
+              rec_a_id.ljust(rec_print_length)[:rec_print_length]+' | '+ \
+              rec_b_id.ljust(rec_print_length)[:rec_print_length]
 
       for key in key_union:
         key_str = str(key)
@@ -262,27 +286,27 @@ def rec_pair_details(dataset_a, dataset_b, results_dict, assigned_dict,
                   ' | '+str_b.ljust(rec_print_length)[:rec_print_length] + \
                   os.linesep)
           else:
-            print '1:'+str(key).ljust(key_print_length)[:key_print_length] + \
+            print str(key).ljust(key_print_length)[:key_print_length] + \
                   ' | '+str_a.ljust(rec_print_length)[:rec_print_length] + \
                   ' | '+str_b.ljust(rec_print_length)[:rec_print_length]
 
   if (file_name != None):
     f.close()
-    print '1:Detailed record pairs written to file "%s"' % (file_name)
+    print 'Detailed record pairs written to file "%s"' % (file_name)
 
   else:
-    print '1:'
+    print
 
 # =============================================================================
 
 def rec_pair_weights(dataset_a_name, dataset_b_name, results_dict,
          assigned_dict, threshold, file_name=None):
-  """Print or save the results  as record number pairs with corresponding
+  """Print or save the results as record number pairs with corresponding
      weights.
 
-     Takes as input the names of the two datasets, a file name, a results
-     dictionary, a threshold and a dictionary that contains the assigned
-     record pairs.
+     Takes as input the names of the two datasets, a results dictionary, a
+     dictionary that contains the assigned record pairs, a threshold and a
+     file name (set to None as default).
 
      Both the threshold and the assigned record pairs dictionary can be set to
      None.
@@ -291,9 +315,12 @@ def rec_pair_weights(dataset_a_name, dataset_b_name, results_dict,
      this threshold are saved.
 
      If assigned record pairs are given then these record pairs are saved with
-     a comment "[assigned]".
+     a comment "[assigned]" (or a "assigned" in a CSV file).
 
      If a file name is given, the output will be written into this text file.
+     If the file extension of the given file name is '.csv', then the format of
+     the output file is comma separated values, otherwise it's a basic text
+     file.
   """
 
   # If a file name is given open it for writing - - - - - - - - - - - - - - - -
@@ -302,24 +329,39 @@ def rec_pair_weights(dataset_a_name, dataset_b_name, results_dict,
     try:
       f = open(file_name, 'w')
     except:
-      print 'error:Can not open file "%s" for writing' % (file_name)
+      logging.exception('Can not open file "%s" for writing' % (file_name))
       raise IOError
 
-    f.write('Resulting record pairs:' + os.linesep)
-    f.write('-----------------------' + os.linesep)
-    f.write('  Output threshold:  %f' % (threshold) + os.linesep)
-    f.write('  Data set A:        %s' % (dataset_a_name) + os.linesep)
-    f.write('  Data set B:        %s' % (dataset_b_name) + os.linesep)
-    f.write(os.linesep)
+    file_ext = file_name.split('.')[-1]  # Get the file extension
 
-  else:  # Print a header for the histogram - - - - - - - - - - - - - - - - - -
-    print '1:'
-    print '1:Resulting record pairs:'
-    print '1:-----------------------'
-    print '1:  Output threshold:  %f' % (threshold)
-    print '1:  Data set A:        %s' % (dataset_a_name)
-    print '1:  Data set B:        %s' % (dataset_b_name)
-    print '1:'
+    # Check the file type (CSV or not), set a flag and write a header
+    #
+    if (file_ext.lower().strip() == 'csv'):
+      do_csv_file = True  # Flag for CSV file output
+
+      f.write('Rec_ID_A, Rec_ID_B, Weight, Assigned' + os.linesep)
+
+    else:
+      do_csv_file = False
+
+      f.write('Resulting record pairs:' + os.linesep)
+      f.write('-----------------------' + os.linesep)
+      f.write('  Output threshold:  %f' % (threshold) + os.linesep)
+      f.write('  Data set A:        %s' % (dataset_a_name) + os.linesep)
+      f.write('  Data set B:        %s' % (dataset_b_name) + os.linesep)
+      f.write(os.linesep)
+
+  else:  # Print a header - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+    do_csv_file = False
+
+    print
+    print 'Resulting record pairs:'
+    print '-----------------------'
+    print '  Output threshold:  %f' % (threshold)
+    print '  Data set A:        %s' % (dataset_a_name)
+    print '  Data set B:        %s' % (dataset_b_name)
+    print
 
   if (threshold == None):  # Set threshold to a very negative number
     threshold == -9999999.9
@@ -332,13 +374,18 @@ def rec_pair_weights(dataset_a_name, dataset_b_name, results_dict,
 
   # For nice output, get the length (in digits) of the largest number
   #
-  max_len = len(str(rec_numbers[-1]))
+  max_len = len(str(rec_numbers[-1])) + 1
 
   for rec_num in rec_numbers:  # Loop over all records in results - - - - - - -
 
-    # Save all print lines for this record into a list
-    #
-    rec_line_print = [str(rec_num)]
+    if (do_csv_file == True):
+      csv_line = str(rec_num) + ','
+      csv_line_list = []
+
+    else:
+      # Save all print lines for this record into a list
+      #
+      rec_line_print = [str(rec_num)]
 
     rec_dict = results_dict[rec_num]
     rec_nums = rec_dict.keys()
@@ -355,39 +402,55 @@ def rec_pair_weights(dataset_a_name, dataset_b_name, results_dict,
       if (weight >= threshold):
 
         if (assigned_dict != None) and (assigned_dict.has_key((rec_num, rec))):
-          assigned = '  [assigned]'
+          assigned = 'assigned'
           num_rec_pairs_assig += 1
         else:
           assigned = ''
 
-        rec_line_print.append('   '+str(rec).rjust(max_len)+':  %f%s' % \
-                              (weight, assigned))
+        if (do_csv_file == True):
+          csv_line_list.append(csv_line+'%s,%f,%s' % (rec, weight, assigned))
+
+        else:
+          rec_line_print.append(max_len*' '+' '+str(rec).rjust(max_len)+ \
+                                ':  %f  %s' % (weight, assigned))
         num_rec_pairs_saved += 1
 
-    rec_line_print.append('')  # Append an empty line
+    if (do_csv_file == False):
+      rec_line_print.append('')  # Append an empty line
 
-    if (len(rec_line_print) > 2):  # There were record pairs for this record
-      for l in rec_line_print:
+      if (len(rec_line_print) > 2):  # There were record pairs for this record
+        for l in rec_line_print:
 
-        if (file_name != None):
-          f.write(l + os.linesep)
-        else:
-          print '1:' + l
+          if (file_name != None):
+            f.write(l + os.linesep)
+          else:
+            print l
+
+    elif ((do_csv_file == True) and (len(csv_line_list) > 0)):
+
+      for l in csv_line_list:  # There were record pairs for this record
+        f.write(l + os.linesep)
+
+  # Write final statistics (not for CSV files) - - - - - - - - - - - - - - - -
+  #
+  if (do_csv_file == False):
+    if (file_name != None):
+      f.write(os.linesep)
+      f.write('  Number of record pairs saved:    %i' % \
+              (num_rec_pairs_saved) + os.linesep)
+      f.write('  Number of record pairs assigned: %i' % \
+              (num_rec_pairs_assig) + os.linesep)
+      f.close()
+      print 'Record pair with weights written to file "%s"' % (file_name)
+
+    else:
+      print
+      print '  Number of record pairs printed:  %i' % (num_rec_pairs_saved)
+      print '  Number of record pairs assigned: %i' % (num_rec_pairs_assig)
+      print
 
   if (file_name != None):
-    f.write(os.linesep)
-    f.write('  Number of record pairs saved:    %i' % (num_rec_pairs_saved) + \
-            os.linesep)
-    f.write('  Number of record pairs assigned: %i' % (num_rec_pairs_assig) + \
-            os.linesep)
     f.close()
-    print '1:Record pair with weights written to file "%s"' % (file_name)
-
-  else:
-    print '1:'
-    print '1:  Number of record pairs printed:  %i' % (num_rec_pairs_saved)
-    print '1:  Number of record pairs assigned: %i' % (num_rec_pairs_assig)
-    print '1:'
 
 # =============================================================================
 

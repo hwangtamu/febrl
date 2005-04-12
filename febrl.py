@@ -1,29 +1,51 @@
 # =============================================================================
-# febrl.py - Main module and classes for febrl projects.
-#
-# Freely extensible biomedical record linkage (Febrl) Version 0.2.2
-# See http://datamining.anu.edu.au/projects/linkage.html
-#
-# =============================================================================
 # AUSTRALIAN NATIONAL UNIVERSITY OPEN SOURCE LICENSE (ANUOS LICENSE)
-# VERSION 1.1
-#
-# The contents of this file are subject to the ANUOS License Version 1.1 (the
-# "License"); you may not use this file except in compliance with the License.
-# Software distributed under the License is distributed on an "AS IS" basis,
-# WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License for
-# the specific language governing rights and limitations under the License.
-# The Original Software is "febrl.py".
-# The Initial Developers of the Original Software are Dr Peter Christen
-# (Department of Computer Science, Australian National University) and Dr Tim
-# Churches (Centre for Epidemiology and Research, New South Wales Department
-# of Health). Copyright (C) 2002, 2003 the Australian National University and
+# VERSION 1.2
+# 
+# The contents of this file are subject to the ANUOS License Version 1.2
+# (the "License"); you may not use this file except in compliance with
+# the License. You may obtain a copy of the License at:
+# 
+#   http://datamining.anu.edu.au/linkage.html
+# 
+# Software distributed under the License is distributed on an "AS IS"
+# basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See
+# the License for the specific language governing rights and limitations
+# under the License.
+# 
+# The Original Software is: "febrl.py"
+# 
+# The Initial Developers of the Original Software are:
+#   Dr Tim Churches (Centre for Epidemiology and Research, New South Wales
+#                    Department of Health)
+#   Dr Peter Christen (Department of Computer Science, Australian National
+#                      University)
+# 
+# Copyright (C) 2002 - 2005 the Australian National University and
 # others. All Rights Reserved.
+# 
 # Contributors:
+# 
+# Alternatively, the contents of this file may be used under the terms
+# of the GNU General Public License Version 2 or later (the "GPL"), in
+# which case the provisions of the GPL are applicable instead of those
+# above. The GPL is available at the following URL: http://www.gnu.org/
+# If you wish to allow use of your version of this file only under the
+# terms of the GPL, and not to allow others to use your version of this
+# file under the terms of the ANUOS License, indicate your decision by
+# deleting the provisions above and replace them with the notice and
+# other provisions required by the GPL. If you do not delete the
+# provisions above, a recipient may use your version of this file under
+# the terms of any one of the ANUOS License or the GPL.
+# =============================================================================
+#
+# Freely extensible biomedical record linkage (Febrl) - Version 0.3
+#
+# See: http://datamining.anu.edu.au/linkage.html
 #
 # =============================================================================
 
-"""Module febrl.py - Main module and classes for febrl projects.
+"""Module febrl.py - Main module and classes for Febrl projects.
 
    TODO
    - Allow saving and loading not only of pickled project files, but also XML,
@@ -45,18 +67,24 @@ SAVE_PARALLEL_TEST_FILES = False  # Write intermediate results to file for
 
 # =============================================================================
 
+import copy
 import cPickle
+import logging
 import os
 import sys
 import time
 import traceback
 import types
-import copy
 
 import parallel
 import indexing
 import output
 import lap
+
+# =============================================================================
+
+dirsep = os.sep  # Shorthand to the directory/folder separator character
+                 # (mainly '/', ':', or '\')
 
 # =============================================================================
 
@@ -68,17 +96,23 @@ class Febrl:
     """Constructor - Set attributes and load list of available projects.
     """
 
-    self.version_major =      '0.2.2'
+    linesep = os.linesep
+
+    self.version_major =      '0.3'
     self.version_minor =      ''
     self.version =            self.version_major+'.'+self.version_minor
-    self.license =            'ANUOS Version 1.1'
-    self.copyright =          '(C) 2002, 2003 the Australian National ' + \
-                              'University and others'
-    self.initial_developers = 'Dr Peter Christen (Department of Computer ' + \
-                              'Science, Australian National University) ' + \
-                              'and Dr Tim Churches (Centre for Epidemiology'+ \
-                              ' and Research, New South Wales Department ' + \
-                              'of Health)'
+    self.license =            'ANUOS Version 1.2'
+    self.copyright =          '(C) 2002 - 2005 the Australian National ' + \
+                              'University and others.'
+    self.initial_developers = linesep + '    Dr Peter Christen (Department' + \
+                              ' of Computer Science, Australian National' + \
+                              linesep + \
+                              '                       University) and' + \
+                              linesep + \
+                              '    Dr Tim Churches   (Centre for ' + \
+                              'Epidemiology and Research, New South Wales ' + \
+                              linesep + '                       Department' + \
+                              ' of Health)'
     self.contributors =       ''
 
     self.description = None
@@ -94,8 +128,8 @@ class Febrl:
         self.description = value
 
       else:
-        print 'error:Illegal constructor argument keyword: "%s"' % \
-              (str(keyword))
+        logging.exception('Illegal constructor argument keyword: "%s"' % \
+                          (str(keyword)))
         raise Exception
 
     # Check if Febrl projects are available in the 'project_path' directory by
@@ -107,6 +141,8 @@ class Febrl:
       if (file_name[-4:] == '.fbr'):
         self.project_names.append(file_name)
 
+    logging.info(self.__str__())  # Print header with license and copyright
+
   # ---------------------------------------------------------------------------
 
   def __str__(self):
@@ -115,11 +151,15 @@ class Febrl:
 
     linesep = os.linesep
 
-    rep = 'Febrl (Freely extensible biomedical record linkage)' + linesep
+    rep = linesep  # Start with an empty line
+    rep += '============================================================='
+    rep += '====================' + linesep
+    rep += linesep
+    rep += 'Febrl (Freely extensible biomedical record linkage)' + linesep
     rep += '---------------------------------------------------' + linesep
     rep += linesep
-    rep += '  Version: ' + self.version + linesep
-    rep += '  License: ' + self.license + linesep
+    rep += '  Version:   ' + self.version + linesep
+    rep += '  License:   ' + self.license + linesep
     rep += '  Copyright: ' + self.copyright + linesep + linesep
 
     rep += '  Initial developers: ' + self.initial_developers + linesep
@@ -136,8 +176,11 @@ class Febrl:
         rep += str(i).rjust(3) + ': ' + pn + linesep
         i += 1
       rep += linesep
+    rep += linesep
+    rep += '============================================================='
+    rep += '====================' + linesep
 
-    return rep                      
+    return rep
 
   # ---------------------------------------------------------------------------
 
@@ -164,14 +207,14 @@ class Febrl:
       try:
         file_name += self.project_names[project]  # Get project file name
       except:
-        print 'error:Illegal project number: %s' % (str(project))
+        logging.exception('Illegal project number: %s' % (str(project)))
         raise Exception
 
     elif (type(project) == types.StringType):
       file_name += project
     else:
-      print 'error:Illegal type for "project" argument, must be either of ' + \
-            'type string or integer'
+      logging.exception('Illegal type for "project" argument, must be ' + \
+                        'either of type string or integer')
       raise Exception
 
     # Open project file and load it - - - - - - - - - - - - - - - - - - - - - -
@@ -199,8 +242,7 @@ class Febrl:
     """Finalise a Febrl project.
     """
 
-    print '1:'
-    print '1:Febrl stopped.'
+    logging.info('Febrl stopped.')
 
     parallel.Barrier()  # Make sure all processes are here
 
@@ -240,21 +282,22 @@ class Project:
         self.project_path = value
 
       elif (keyword == 'block_size'):
-        if (not isinstance(value, int)) and (value > 0):
-          print 'error:Argument "block_size" is not a positive integer'
+        check_argument_is_integer(keyword, value)
+        if (value == 0):
+          logging.exception('Argument "block_size" is not a positive integer')
           raise Exception
         self.block_size = value
 
       elif (keyword == 'parallel_write'):
         if (value not in ['host','all']):
-          print 'error:Argument "parallel_write" must be set to "host"'+ \
-                ' or "all"'
+          logging.exception('Argument "parallel_write" must be set to ' + \
+                            '"host" or "all"')
           raise Exception
         self.parallel_write = value
 
       else:
-        print 'error:Illegal constructor argument keyword: "%s"' % \
-              (str(keyword))
+        logging.exception('Illegal constructor argument keyword: "%s"' % \
+                          (str(keyword)))
         raise Exception
 
     # Set the parallel writing/saving mode  - - - - - - - - - - - - - - - - - -
@@ -341,40 +384,41 @@ class Project:
 
       elif (keyword == 'first_record'):
         if (not isinstance(value, int)) or (value < 0):
-          print 'error:Argument "first_record" is not a valid integer number'
+          logging.exception('Argument "first_record" is not a valid ' + \
+                            'integer number')
           raise Exception
         self.first_record = value
       elif (keyword == 'number_records'):
         if (not isinstance(value, int)) or (value <= 0):
-          print 'error:Argument "number_records" is not a positive integer '+ \
-                'number'
+          logging.exception('Argument "number_records" is not a positive' + \
+                            ' integer number')
           raise Exception
         self.number_records = value
 
       else:
-        print 'error:Illegal constructor argument keyword: "%s"' % \
-              (str(keyword))
+        logging.exception('Illegal constructor argument keyword: "%s"' % \
+                          (str(keyword)))
         raise Exception
 
     # Do some checks on the input arguments - - - - - - - - - - - - - - - - - -
     #
     if (self.input_dataset == None):
-      print 'error:Input data set is not defined'
+      logging.exception('Input data set is not defined')
       raise Exception
 
     if (self.output_dataset == None):
-      print 'error:Output data set is not defined'
+      logging.exception('Output data set is not defined')
       raise Exception
     elif (self.output_dataset.dataset_type == 'MEMORY'):
-      print 'error:Output data set can not be a memory based data set'
+      logging.exception('Output data set can not be a memory based data set')
       raise Exception
     if (self.output_dataset.access_mode not in ['write','append','readwrite']):
-      print 'error:Output dataset must be initialised in one of the access' + \
-            ' modes: "write", "append", or "readwrite"'
+      logging.exception('Output dataset must be initialised in one of the' + \
+                        ' access modes: "write", "append", or "readwrite"')
       raise Exception
 
     if (self.rec_standardiser == None):
-      print 'error:Record standardiser is not defined'
+      logging.exception('Record standardiser is not defined')
       raise Exception
 
     if (self.first_record == None):
@@ -383,12 +427,10 @@ class Project:
     if (self.number_records == None):  # Process all records
       self.number_records = self.input_dataset.num_records
 
-    print '1:'
-    print '1:***** Standardise data set: "%s" (type "%s")' % \
-          (self.input_dataset.name, self.input_dataset.dataset_type)
-    print '1:*****        into data set: "%s" (type "%s")' % \
-          (self.output_dataset.name, self.output_dataset.dataset_type)
-    print '1:'
+    logging.info('***** Standardise data set: "%s" (type "%s")' % \
+                 (self.input_dataset.name, self.input_dataset.dataset_type))
+    logging.info('*****        into data set: "%s" (type "%s")' % \
+                 (self.output_dataset.name, self.output_dataset.dataset_type))
 
     # Call the main standardisation routine - - - - - - - - - - - - - - - - - -
     # (no indexing will be done)
@@ -400,6 +442,375 @@ class Project:
                                                         self.first_record,
                                                         self.number_records,
                                                         self.block_size)
+
+  # ---------------------------------------------------------------------------
+
+  def geocode(self, **kwargs):
+    """Geocode a data set using referenced geocoded data. If a record
+       standardiser is given, the input data set if first cleaned and
+       standardised, otherwise the input data set is geocoded directly without
+       cleaning and standardisation.
+
+       Records are loaded block wise from the input data set, and then geocoded
+       and written to the output data set.
+
+       ***** this below will change *****
+       For each record in the input data set, none, one or many matched
+       geocoded reference records are written to the output data set. If more
+       than one matching record are found, they are sorted with highest match
+       weight first.
+       *****
+
+       If the argument 'first_record' is not given, it will automatically be
+       set to the first record in the data set (i.e. record number 0).
+       Similarly, if the argument 'number_records' is not given, it will be set
+       to the total number of records in the input data set.
+
+       The output data set can be any data set type except a memory based data
+       set (as all standardised records would lost once the program finishes).
+       This output data set has to be initialised in 'write', 'append' or
+       'readwrite' access mode.
+    """
+
+    self.input_dataset =    None   # A reference ot the (raw) input data set
+                                   # data set
+    self.output_dataset =   None   # A reference to the output data set
+
+    self.rec_standardiser = None   # Reference to a record standardiser
+    self.rec_geocoder =     None   # Refernce to a record geocoder
+    self.first_record =     None   # Number of the first record to process
+    self.number_records =   None   # Number of records to process
+
+    for (keyword, value) in kwargs.items():
+      if (keyword == 'input_dataset'):
+        self.input_dataset = value
+      elif (keyword == 'output_dataset'):
+        self.output_dataset = value
+
+      elif (keyword == 'rec_standardiser'):
+        self.rec_standardiser = value
+
+      elif (keyword == 'rec_geocoder'):
+        self.rec_geocoder = value
+
+      elif (keyword == 'first_record'):
+        if (not isinstance(value, int)) or (value < 0):
+          logging.exception('Argument "first_record" is not a valid ' + \
+                            'integer number')
+          raise Exception
+        self.first_record = value
+      elif (keyword == 'number_records'):
+        if (not isinstance(value, int)) or (value <= 0):
+          logging.exception('Argument "number_records" is not a positive' + \
+                            ' integer number')
+          raise Exception
+        self.number_records = value
+
+      else:
+        logging.exception('Illegal constructor argument keyword: "%s"' % \
+                          (str(keyword)))
+        raise Exception
+
+    # Do some checks on the input arguments - - - - - - - - - - - - - - - - - -
+    #
+    if (self.input_dataset == None):
+      logging.exception('Input data set is not defined')
+      raise Exception
+
+    if (self.output_dataset == None):
+      logging.exception('Output data set is not defined')
+      raise Exception
+    elif (self.output_dataset.dataset_type == 'MEMORY'):
+      logging.exception('Output data set can not be a memory based data set')
+      raise Exception
+    if (self.output_dataset.access_mode not in ['write','append','readwrite']):
+      logging.exception('Output dataset must be initialised in one of the' + \
+                        ' access modes: "write", "append", or "readwrite"')
+      raise Exception
+
+    if (self.rec_geocoder == None):
+      logging.exception('Record geocoder is not defined')
+      raise Exception
+
+    if (self.first_record == None):
+      self.first_record = 0  # Take default first record in data set
+
+    if (self.number_records == None):  # Process all records
+      self.number_records = self.input_dataset.num_records
+
+    if (self.rec_standardiser == None):
+      logging.info('***** Geocode data set: "%s" (type "%s")' % \
+                   (self.input_dataset.name, self.input_dataset.dataset_type))
+      logging.info('*****    into data set: "%s" (type "%s")' % \
+                   (self.output_dataset.name,self.output_dataset.dataset_type))
+    else:
+      logging.info('***** Standardise and geocode data set: "%s" (type "%s")' \
+                   % (self.input_dataset.name,self.input_dataset.dataset_type))
+      logging.info('*****                    into data set: "%s" (type "%s")' \
+                   % (self.output_dataset.name, \
+                   self.output_dataset.dataset_type))
+
+    # Call the main standardisation and geocoding routine - - - - - - - - - - -
+    # (no indexing will be done)
+    #
+    [stand_time, comm_time] = do_load_standard_geocode(self.input_dataset,
+                                                       self.output_dataset,
+                                                       self.rec_standardiser,
+                                                       self.rec_geocoder,
+                                                       self.first_record,
+                                                       self.number_records,
+                                                       self.block_size)
+
+  # ---------------------------------------------------------------------------
+
+  def geocode_server_init(self, **kwargs):
+    """Initialise a geocode server engine.
+    """
+
+    self.input_dataset =          None  # A reference ot the (raw) input data
+                                        # set data set
+    self.output_dataset =         None  # A reference to the output data set
+
+    self.rec_standardiser =       None  # Reference to a record standardiser
+    self.rec_geocoder =           None  # Reference to a record geocoder
+    self.input_address_log_file = None  # A file for logging input addresses
+
+    for (keyword, value) in kwargs.items():
+      if (keyword == 'input_dataset'):
+        self.input_dataset = value
+      elif (keyword == 'output_dataset'):
+        self.output_dataset = value
+
+      elif (keyword == 'rec_standardiser'):
+        self.rec_standardiser = value
+
+      elif (keyword == 'rec_geocoder'):
+        self.rec_geocoder = value
+
+      elif (keyword == 'input_address_log_file'):
+        self.input_address_log_file = value
+
+      else:
+        logging.exception('Illegal constructor argument keyword: "%s"' % \
+                          (str(keyword)))
+        raise Exception
+
+    # Do some checks on the input arguments - - - - - - - - - - - - - - - - - -
+    #
+    if (self.input_dataset.dataset_type != 'MEMORY'):
+      logging.exception('Input data set is not defined as memory data set')
+      raise Exception
+
+    if (self.output_dataset.dataset_type != 'MEMORY'):
+      logging.exception('Output data set is not defined as memory data set')
+      raise Exception
+
+    if (self.input_dataset.access_mode != 'readwrite'):
+      logging.exception('Input data set must be initialised in access' + \
+                        ' mode: "readwrite"')
+      raise Exception
+
+    if (self.output_dataset.access_mode != 'readwrite'):
+      logging.exception('output data set must be initialised in access' + \
+                        ' mode: "readwrite"')
+      raise Exception
+
+    if (self.rec_geocoder == None):
+      logging.exception('Record geocoder is not defined')
+      raise Exception
+
+    if (self.rec_standardiser == None):
+      logging.exception('Record standardiser is not defined')
+      raise Exception
+
+    if (self.rec_standardiser == None):
+      logging.info('***** Geocode data set: "%s" (type "%s")' % \
+                   (self.input_dataset.name, self.input_dataset.dataset_type))
+      logging.info('*****    into data set: "%s" (type "%s")' % \
+                   (self.output_dataset.name, \
+                   self.output_dataset.dataset_type))
+    else:
+      logging.info('***** Standardise and geocode data set: "%s" (type "%s")' \
+                   % (self.input_dataset.name, \
+                   self.input_dataset.dataset_type))
+      logging.info('*****                    into data set: "%s" (type "%s")' \
+                   % (self.output_dataset.name, \
+                   self.output_dataset.dataset_type))
+
+    if (self.input_address_log_file != None):
+      logging.info('  Save received input addresses into log file "%s"' % \
+                   (self.input_address_log_file))
+
+    # -------------------------------------------------------------------------
+    # The request handler function which does the standardisation
+    # and geocoding.
+    # The input arguments are:
+    # - message_type ('text' or 'file')
+    # - input_data   (non-empty string containing one or more addresses,
+    #                 separated by '\n')
+    # - neighbour_level (integer 0, 1, or 2)
+    # - result_report   (integer 0, 1, or 2)
+
+    def do_geocoding(message_type, input_data, neighbour_level, \
+                     result_report_level):
+
+      start_time = time.time()  # Get current time
+
+      if (input_data == ''):
+        return 'Error:Received empty input data'
+
+      # Set the maximal neighbour level
+      #
+      self.rec_geocoder.maximal_neighbour_level = neighbour_level
+
+      # Save input data into input data set
+      #
+      input_data_list = input_data.split('\n')
+      org_input_records = {}
+
+      i = 0
+      for input_address in input_data_list:
+        input_address = input_address.strip()  # Remove whitespaces, new-lines
+        if (input_address != ''):
+          org_input_records[i] = input_address
+          input_record = {'_rec_num_':i, 'address':input_address.lower()}
+          self.input_dataset.write_record(input_record)
+          i += 1
+
+      num_input_addresses = i
+
+      logging.info('Received %d input address(es)' % (num_input_addresses))
+
+      if (self.input_address_log_file != None):
+        addr_log_file = open(self.input_address_log_file, 'a')
+
+        header_str = 'Received %d addresses on %s' % \
+                     (num_input_addresses, time.ctime(time.time()))
+        addr_log_file.write(header_str+os.linesep)
+
+        for i in range(num_input_addresses):
+          addr_dict = self.input_dataset.read_record(i)
+          addr_str = '  ' + addr_dict['address']
+          addr_log_file.write(addr_str+os.linesep)
+
+        addr_log_file.write(os.linesep)
+        addr_log_file.close()
+
+      if (message_type == 'text'):
+        result_str = ''  # String to be returned
+
+      elif (message_type == 'file'):
+
+        # Create a CSV file header with the field names
+        #
+        field_dict =    self.output_dataset.fields
+        field_names =   field_dict.keys()
+        field_columns = field_dict.values()
+
+        # Create sorted list of fields (according to column numbers)
+        #
+        field_list = map(None, field_columns, field_names)
+        field_list.sort()
+
+        csv_file_header = ''
+        for (p,fn) in field_list:
+          csv_file_header += fn + ','
+
+        result_str = csv_file_header[:-1]+'\n'
+
+      else:
+        logging.exception('Illegale message type received: "%s"' % \
+                          (message_type))
+        raise Exception
+
+      # Loop over all input addresses - - - - - - - - - - - - - - - - - - - - -
+      #
+      for i in range(num_input_addresses):
+
+        # Standardise the input records
+        #
+        input_record = self.input_dataset.read_record(i)
+        clean_record = self.rec_standardiser.standardise(input_record)
+
+        logging.debug('Standardised input record %3d: "%s"' % \
+                      (i, str(input_record)))
+        logging.debug('                         into: "%s"' % \
+                      (str(clean_record)))
+
+        # Geocode the standardised record
+        #
+        geocode_result = self.rec_geocoder.match_record(clean_record)
+        logging.debug('Geocoded standardised record: "%s"' % \
+                      (str(geocode_result)))
+
+        match_values = str(geocode_result[0][2])
+        match_status = geocode_result[0][3]
+        result_lati =  geocode_result[0][4]
+        result_long =  geocode_result[0][5]
+
+        clean_record['match_score'] =         str(geocode_result[0][0])
+        clean_record['gnaf_pid'] =            str(geocode_result[0][1])
+        clean_record['match_values'] =       str(match_values.replace(',',';'))
+        clean_record['match_status'] =        str(match_status)
+        clean_record['latitude'] =            str(result_lati)
+        clean_record['longitude'] =           str(result_long)
+        clean_record['collection_district'] = str(geocode_result[0][6])
+        clean_record['max_avrg_distance'] =   str(geocode_result[0][7])
+        clean_record['neighbour_level'] =     str(geocode_result[0][8])
+
+        if (message_type == 'text'):  # Create output for text message  - - -
+
+          # Compose result string (according to result_report_level)
+          # The location is returned first (for all result_report_levels)
+          #
+          result_str = result_str + 'Input record %d:\n' % (i)
+          result_str = result_str + '  Original input record:  "%s"\n' % \
+                       org_input_records[i]
+          result_str = result_str + '  Longitude and latitude: %s, %s\n' % \
+                       (str(result_long), str(result_lati))
+
+          # Add standardised record (level 1 and 2)
+          #
+          if (result_report_level > 0):
+            del clean_record['_dataset_name_']  # Remove 'hidden record fields'
+            del clean_record['_rec_num_']
+
+            # Format the record dictionary in a nice way
+            #
+            max_key_lengh = 0
+            for k in clean_record.keys():
+              if (len(k) > max_key_lengh):
+                max_key_lengh = len(k)
+
+            result_str = result_str + '  Standardised record:\n'
+            for (k, v) in clean_record.items():
+              result_str = result_str + '    ' + ' '*(max_key_lengh-len(k)) + \
+                           '"%s": "%s"\n' %(k,v)
+
+          # For level 2, also add meta information
+          #
+          if  (result_report_level == 2):
+            result_str = result_str + '  Matching information: ' + match_status
+
+          result_str = result_str + '\n-------------------------------------\n'
+
+        else:  # Create a CSV file  - - - - - - - - - - - - - - - - - - - - - -
+
+          csv_rec = ''
+          for (p,fn) in field_list:
+            csv_rec += str(clean_record.get(fn,''))+','
+
+          result_str += csv_rec[:-1]+'\n'
+
+      return result_str
+
+    # -------------------------------------------------------------------------
+
+    # Finally link the request handler routine to the geocode server object
+    #
+    self.handler = do_geocoding
+
+    return self
 
   # ---------------------------------------------------------------------------
 
@@ -428,6 +839,10 @@ class Project:
        'True' or to a file name (a string). The output can be filtered by
        setting the 'output_threshold' (meaning all record pairs with a weight
        less then this threshold are not printed or saved).
+
+       If a file name is given for the 'output_rec_pair_weights' argument, and
+       it's file extension is '.csv' then the output will be written as a
+       comma separated file (otherwise as a normal text file).
 
        In future versions, it will be possible to compile an output data set.
 
@@ -487,80 +902,77 @@ class Project:
 
       elif (keyword == 'first_record'):
         if (not isinstance(value, int)) or (value < 0):
-          print 'error:Argument "first_record" is not a valid integer number'
+          logging.exception('Argument "first_record" is not a valid ' + \
+                            'integer number')
           raise Exception
         self.first_record = value
       elif (keyword == 'number_records'):
         if (not isinstance(value, int)) or (value <= 0):
-          print 'error:Argument "number_records" is not a positive integer '+ \
-                'number'
+          logging.exception('Argument "number_records" is not a positive' + \
+                            ' integer number')
           raise Exception
         self.number_records = value
 
       elif (keyword == 'output_rec_pair_details'):
         if (not isinstance(value, str)) and (value not in [True, False]):
-          print 'error:Argument "output_rec_pair_details" must be ' + \
-                'a file name or "True" or "False"'
+          logging.exception('Argument "output_rec_pair_details" must be ' + \
+                            'a file name or "True" or "False"')
           raise Exception
         self.output_rec_pair_details = value
       elif (keyword == 'output_rec_pair_weights'):
         if (not isinstance(value, str)) and (value not in [True, False]):
-          print 'error:Argument "output_rec_pair_weights" must be ' + \
-                'a file name or "True" or "False"'
+          logging.exception('Argument "output_rec_pair_weights" must be ' + \
+                            'a file name or "True" or "False"')
           raise Exception
         self.output_rec_pair_weights = value
       elif (keyword == 'output_histogram'):
         if (not isinstance(value, str)) and (value not in [True, False]):
-          print 'error:Argument "output_histogram" must be ' + \
-                'a file name or "True" or "False"'
+          logging.exception('Argument "output_histogram" must be ' + \
+                            'a file name or "True" or "False"')
           raise Exception
         self.output_histogram = value
       elif (keyword == 'output_threshold'):
         if (not (isinstance(value, int) or isinstance(value, float))):
-          print 'error:Argument "output_threshold" is not a number: %s' % \
-                (str(value))
+          logging.exception('Argument "output_threshold" is not a number: %s' \
+                            % (str(value)))
         self.output_threshold = value
       elif (keyword == 'output_assignment'):
         if (value not in ['one2one', None]):
-          print 'error:Illegal value for argument "output_assignment": %s' % \
-                (str(value))
+          logging.exception('Illegal value for argument "output_assignment"' \
+                            + ': %s' % (str(value)))
           raise Exception
         else:
           self.output_assignment = value
 
       else:
-        print 'error:Illegal constructor argument keyword: "%s"' % \
-              (str(keyword))
+        logging.exception('Illegal constructor argument keyword: "%s"' % \
+                          (str(keyword)))
         raise Exception
 
     # Do some checks on the input arguments - - - - - - - - - - - - - - - - - -
     #
     if (self.input_dataset == None):
-      print 'error:Input data set is not defined'
+      logging.exception('Input data set is not defined')
       raise Exception
 
     if (self.tmp_dataset == None):
-      print 'error:Temporary data set is not defined'
+      logging.exception('Temporary data set is not defined')
       raise Exception
     elif (self.tmp_dataset.dataset_type not in ['SHELVE', 'MEMORY']):
-      print 'error:Temporary data set must be a random access data set' + \
-            ' (either Shelve or Memory)'
+      logging.exception('Temporary data set must be a random access data ' + \
+                        'set (either Shelve or Memory)')
       raise Exception
     if (self.tmp_dataset.access_mode not in ['write','append','readwrite']):
-      print 'error:Temporary data set must be initialised in one of the ' + \
-            'access  modes: "write", "append", or "readwrite"'
+      logging.exception('Temporary data set must be initialised in one of ' + \
+                        'the access  modes: "write", "append", or "readwrite"')
       raise Exception
-
-#    if (self.output_dataset == None):
-#      print 'error:Output data set is not defined'
-#      raise Exception
 
     # Make sure at least one output is defined
     #
     if (self.output_rec_pair_weights == False) and \
        (self.output_rec_pair_details == False) and \
        (self.output_histogram == False):
-      print 'error:No ouput of results is defined.'
+      logging.exception('No ouput of results is defined')
       raise Exception
     #
     # Code above to be removed once output data set functionality implemented
@@ -572,36 +984,33 @@ class Project:
       self.number_records = self.input_dataset.num_records
 
     if (self.rec_comparator == None):
-      print 'error:No record comparator defined'
+      logging.exception('No record comparator defined')
       raise Exception
     if (self.rec_comparator.dataset_a != self.tmp_dataset) or \
        (self.rec_comparator.dataset_b != self.tmp_dataset):
-      print 'error:Illegal data set definition in record comparator'
+      logging.exception('Illegal data set definition in record comparator')
       raise Exception
 
     if (self.blocking_index == None):
-      print 'error:No blocking index defined'
+      logging.exception('No blocking index defined')
       raise Exception
 
     if (self.classifier == None):
-      print 'error:No classifier defined'
+      logging.exception('No classifier defined')
       raise Exception
     if (self.classifier.dataset_a != self.tmp_dataset) or \
        (self.classifier.dataset_b != self.tmp_dataset):
-      print 'error:Illegal data set definition in classifier'
+      logging.exception('Illegal data set definition in classifier')
       raise Exception
 
     total_time = time.time()  # Get current time
 
-    print '1:'
-    print '1:***** Deduplicate data set: "%s" (type "%s")' % \
-          (self.input_dataset.name, self.input_dataset.dataset_type)
-    print '1:*****   Temporary data set: "%s" (type "%s")' % \
-          (self.tmp_dataset.name, self.tmp_dataset.dataset_type)
-    print '1:'
-    print '1:Step 1: Loading, standardisation and indexing'
-    print '1:-------'
-    print '1:'
+    logging.info('***** Deduplicate data set: "%s" (type "%s")' % \
+                 (self.input_dataset.name, self.input_dataset.dataset_type))
+    logging.info('*****   Temporary data set: "%s" (type "%s")' % \
+                 (self.tmp_dataset.name, self.tmp_dataset.dataset_type))
+    logging.info('Step 1: Loading, standardisation and indexing')
+    logging.info('-------')
 
     step_1_time = time.time()  # Get current time
 
@@ -622,7 +1031,7 @@ class Project:
         tmp_time = time.time()
         tmp_indexes = parallel.receive(p)
         step_1_comm_time += (time.time() - tmp_time)
-        print '1:    Received index from process %i' % (p)
+        logging.info('    Received index from process %i' % (p))
 
         self.blocking_index.merge(tmp_indexes)
 
@@ -630,7 +1039,7 @@ class Project:
       tmp_time = time.time()
       parallel.send(self.blocking_index.index, 0) # Send indexes to process 0
       step_1_comm_time += (time.time() - tmp_time)
-      print '1:    Sent index to process 0'
+      logging.info('    Sent index to process 0')
 
     # If run in parallel, broadcast the blocking index from process 0 - - - - -
     #
@@ -640,13 +1049,13 @@ class Project:
           tmp_time = time.time()
           parallel.send(self.blocking_index.index, p)
           step_1_comm_time += (time.time() - tmp_time)
-          print '1:    Sent index to process %i' % (p)
+          logging.info('    Sent index to process %i' % (p))
 
       else:
         tmp_time = time.time()
         tmp_indexes = parallel.receive(0)
         step_1_comm_time += (time.time() - tmp_time)
-        print '1:    Received index from process 0'
+        logging.info('    Received index from process 0')
 
         self.blocking_index.merge(tmp_indexes)
 
@@ -657,8 +1066,7 @@ class Project:
     step_1_time = time.time() - step_1_time  # Calculate time for step 1
     step_1_time_string = output.time_string(step_1_time)
 
-    print '1:'
-    print '1:Step 1 finished in %s' % (step_1_time_string)
+    logging.info('Step 1 finished in %s' % (step_1_time_string))
 
     # End of step 1 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     #
@@ -703,10 +1111,8 @@ class Project:
 
     #################### END PARALLEL TEST CODE ###############################
 
-    print '1:'
-    print '1:Step 2: Perform deduplication within blocks'
-    print '1:-------'
-    print '1:'
+    logging.info('Step 2: Perform deduplication within blocks')
+    logging.info('-------')
 
     step_2_time = time.time()  # Get current time
     step_2_comm_time = 0.0
@@ -719,9 +1125,8 @@ class Project:
     rec_pair_time = time.time() - tmp_time
     rec_pair_time_string = output.time_string(rec_pair_time)
 
-    print '1:'
-    print '1:  Built record pair dictionary with %i entries in %s' % \
-          (rec_pair_cnt, rec_pair_time_string)
+    logging.info('  Built record pair dictionary with %i entries in %s' % \
+                 (rec_pair_cnt, rec_pair_time_string))
 
     # And do the comparisons of record pairs into classifer - - - - - - - - - -
     #
@@ -737,8 +1142,8 @@ class Project:
           tmp_time = time.time()
           tmp_classifier_results = parallel.receive(p)
           step_2_comm_time += (time.time() - tmp_time)
-          print '1:    Received classifier from process %i and merged it' % (p)
-
+          logging.info('    Received classifier from process %i and merge it' \
+                       % (p))
           self.classifier.merge(tmp_classifier_results)
 
       else:
@@ -746,7 +1151,7 @@ class Project:
         parallel.send(self.classifier.results, 0) # Send classifier results to
                                                   # process 0
         step_2_comm_time += (time.time() - tmp_time)
-        print '1:    Sent classifier to process 0'
+        logging.info('    Sent classifier to process 0')
 
     # If run in parallel, broadcast the classifier results from process 0 - - -
     #
@@ -756,13 +1161,13 @@ class Project:
           tmp_time = time.time()
           parallel.send(self.classifier.results, p)
           step_2_comm_time += (time.time() - tmp_time)
-          print '1:    Sent classifier to process %i' % (p)
+          logging.info('    Sent classifier to process %i' % (p))
 
       else:
         tmp_time = time.time()
         self.classifier.results = parallel.receive(0)
         step_2_comm_time += (time.time() - tmp_time)
-        print '1:    Received classifier from process 0'
+        logging.info('    Received classifier from process 0')
 
     #################### START PARALLEL TEST CODE #############################
     # Save classifiers and weight vectors to files (only process 0)
@@ -795,16 +1200,14 @@ class Project:
     step_2_time = time.time() - step_2_time  # Calculate time for step 2
     step_2_time_string = output.time_string(step_2_time)
 
-    print '1:'
-    print '1:Step 2 (deduplication) finished in %s' % (step_2_time_string)
-    print '1:  Totally %i record pair comparisons' % (rec_pair_cnt)
+    logging.info('Step 2 (deduplication) finished in %s' % \
+                 (step_2_time_string))
+    logging.info('  Totally %i record pair comparisons' % (rec_pair_cnt))
 
     # Output the results  - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-    print '1:'
-    print '1:Step 3: Output and assignment procedures'
-    print '1:-------'
-    print '1:'
+    logging.info('Step 3: Output and assignment procedures')
+    logging.info('-------')
 
     step_3_time = time.time()  # Get current time
 
@@ -813,7 +1216,7 @@ class Project:
     results_dict = self.classifier.results
 
     if (results_dict == {}):
-      print 'warning:Results dictionary empty'
+      logging.warn('Results dictionary empty')
 
     else:  # There are results
 
@@ -881,10 +1284,8 @@ class Project:
     step_3_time = time.time() - step_3_time  # Calculate time for step 3
     step_3_time_string = output.time_string(step_3_time)
 
-    print '1:'
-    print '1:Step 3 (output and assignments) finished in %s' % \
-          (step_3_time_string)
-    print '1:'
+    logging.info('Step 3 (output and assignments) finished in %s' % \
+                 (step_3_time_string))
 
     parallel.Barrier()  # Wait here for all processes - - - - - - - - - - - - -
 
@@ -894,18 +1295,18 @@ class Project:
     step_1_comm_time_string = output.time_string(step_1_comm_time)
     step_2_comm_time_string = output.time_string(step_2_comm_time)
 
-    print '1:Total time needed for deduplication of %i records: %s' % \
-          (self.number_records, total_time_string)
-    print '1:  Time for step 1 (standardisation):       %s' % \
-          (step_1_time_string)
-    print '1:  Time for step 2 (deduplication):         %s' % \
-          (step_2_time_string)
-    print '1:  Time for step 3 (assignment and output): %s' % \
-          (step_3_time_string)
-    print '1:  Time for communication in step 1: %s' % \
-          (step_1_comm_time_string)
-    print '1:  Time for communication in step 2: %s' % \
-          (step_2_comm_time_string)
+    logging.info('Total time needed for deduplication of %i records: %s' % \
+                 (self.number_records, total_time_string))
+    logging.info('  Time for step 1 (standardisation):       %s' % \
+                 (step_1_time_string))
+    logging.info('  Time for step 2 (deduplication):         %s' % \
+                 (step_2_time_string))
+    logging.info('  Time for step 3 (assignment and output): %s' % \
+                 (step_3_time_string))
+    logging.info('  Time for communication in step 1: %s' % \
+                 (step_1_comm_time_string))
+    logging.info('  Time for communication in step 2: %s' % \
+                 (step_2_comm_time_string))
 
   # ---------------------------------------------------------------------------
 
@@ -935,6 +1336,10 @@ class Project:
        'True' or to a file name (a string). The output can be filtered by
        setting the 'output_threshold' (meaning all record pairs with a weight
        less then this threshold are not printed or saved).
+
+       If a file name is given for the 'output_rec_pair_weights' argument, and
+       it's file extension is '.csv' then the output will be written as a
+       comma separated file (otherwise as a normal text file).
 
        In future versions, it will be possible to compile an output data set.
 
@@ -1017,94 +1422,98 @@ class Project:
 
       elif (keyword == 'first_record_a'):
         if (not isinstance(value, int)) or (value < 0):
-          print 'error:Argument "first_record_a" is not a valid integer number'
+          logging.exception('Argument "first_record_a" is not a valid ' + \
+                            'integer number')
           raise Exception
         self.first_record_a = value
       elif (keyword == 'first_record_b'):
         if (not isinstance(value, int)) or (value < 0):
-          print 'error:Argument "first_record_b" is not a valid integer number'
+          logging.exception('Argument "first_record_b" is not a valid ' + \
+                            'integer number')
           raise Exception
         self.first_record_b = value
       elif (keyword == 'number_records_a'):
         if (not isinstance(value, int)) or (value <= 0):
-          print 'error:Argument "number_records_a" is not a positive '+ \
-                'integer number'
+          logging.exception('Argument "number_records_a" is not a positive '+ \
+                            'integer number')
           raise Exception
         self.number_records_a = value
       elif (keyword == 'number_records_b'):
         if (not isinstance(value, int)) or (value <= 0):
-          print 'error:Argument "number_records_b" is not a positive '+ \
-                'integer number'
+          logging.exception('Argument "number_records_b" is not a positive '+ \
+                            'integer number')
           raise Exception
         self.number_records_b = value
 
       elif (keyword == 'output_rec_pair_details'):
         if (not isinstance(value, str)) and (value not in [True, False]):
-          print 'error:Argument "output_rec_pair_details" must be ' + \
-                'a file name or "True" or "False"'
+          logging.exception('Argument "output_rec_pair_details" must be ' + \
+                            'a file name or "True" or "False"')
           raise Exception
         self.output_rec_pair_details = value
       elif (keyword == 'output_rec_pair_weights'):
         if (not isinstance(value, str)) and (value not in [True, False]):
-          print 'error:Argument "output_rec_pair_weights" must be ' + \
-                'a file name or "True" or "False"'
+          logging.exception('Argument "output_rec_pair_weights" must be ' + \
+                            'a file name or "True" or "False"')
           raise Exception
         self.output_rec_pair_weights = value
       elif (keyword == 'output_histogram'):
         if (not isinstance(value, str)) and (value not in [True, False]):
-          print 'error:Argument "output_histogram" must be ' + \
-                'a file name or "True" or "False"'
+          logging.exception('Argument "output_histogram" must be ' + \
+                            'a file name or "True" or "False"')
           raise Exception
         self.output_histogram = value
       elif (keyword == 'output_threshold'):
         if (not (isinstance(value, int) or isinstance(value, float))):
-          print 'error:Argument "output_threshold" is not a number: %s' % \
-                (str(value))
+          logging.exception('Argument "output_threshold" is not a number: %s' \
+                            % (str(value)))
         self.output_threshold = value
       elif (keyword == 'output_assignment'):
         if (value not in ['one2one', None]):
-          print 'error:Illegal value for argument "output_assignment": %s' % \
-                (str(value))
+          logging.exception('Illegal value for argument "output_assignment"' \
+                            + ': %s' % (str(value)))
           raise Exception
         else:
           self.output_assignment = value
 
       else:
-        print 'error:Illegal constructor argument keyword: "%s"' % \
-              (str(keyword))
+        logging.exception('Illegal constructor argument keyword: "%s"' % \
+                          (str(keyword)))
         raise Exception
 
     # Check if the needed attributes are set  - - - - - - - - - - - - - - - - -
     #
     if (self.input_dataset_a == None):
-      print 'error:Input data set A is not defined'
+      logging.exception('Input data set A is not defined')
       raise Exception
     if (self.input_dataset_b == None):
-      print 'error:Input data set B is not defined'
+      logging.exception('Input data set B is not defined')
       raise Exception
 
     if (self.tmp_dataset_a == None):
-      print 'error:Temporary data set A is not defined'
+      logging.exception('Temporary data set A is not defined')
       raise Exception
     elif (self.tmp_dataset_a.dataset_type not in ['SHELVE', 'MEMORY']):
-      print 'error:Temporary data set A must be a random access data set' + \
-            ' (either Shelve or Memory)'
+      logging.exception('Temporary data set A must be a random access data' + \
+                        'set (either Shelve or Memory)')
       raise Exception
     if (self.tmp_dataset_a.access_mode not in ['write','append','readwrite']):
-      print 'error:Temporary data set A must be initialised in one of the ' + \
-            'access  modes: "write", "append", or "readwrite"'
+      logging.exception('Temporary data set A must be initialised in one ' + \
+                        'of the access  modes: "write", "append", or ' + \
+                        '"readwrite"')
       raise Exception
 
     if (self.tmp_dataset_b == None):
-      print 'error:Temporary data set B is not defined'
+      logging.exception('Temporary data set B is not defined')
       raise Exception
     elif (self.tmp_dataset_b.dataset_type not in ['SHELVE', 'MEMORY']):
-      print 'error:Temporary data set B must be a random access data set' + \
-            ' (either Shelve or Memory)'
+      logging.exception('Temporary data set B must be a random access ' + \
+                        'data set (either Shelve or Memory)')
       raise Exception
     if (self.tmp_dataset_b.access_mode not in ['write','append','readwrite']):
-      print 'error:Temporary data set B must be initialised in one of the ' + \
-            'access  modes: "write", "append", or "readwrite"'
+      logging.exception('Temporary data set B must be initialised in one ' + \
+                        'of the access  modes: "write", "append", or ' + \
+                        '"readwrite"')
       raise Exception
 
     # Check if there are file names for the temporary data sets and - - - - - -
@@ -1114,19 +1523,15 @@ class Project:
     tmp_file_name_b = getattr(self.tmp_dataset_b, 'file_name', None)
     if (tmp_file_name_a != None) and (tmp_file_name_b != None):
       if (tmp_file_name_a == tmp_file_name_b):
-        print 'error:The same file names for both temporary data sets'
+        logging.exception('The same file names for both temporary data sets')
         raise Exception
-
-#    if (self.output_dataset == None):
-#      print 'error:Output data set is not defined'
-#      raise Exception
 
     # Make sure at least one output is defined
     #
     if (self.output_rec_pair_weights == False) and \
        (self.output_rec_pair_details == False) and \
        (self.output_histogram == False):
-      print 'error:No ouput of results is defined.'
+      logging.exception('No ouput of results is defined')
       raise Exception
     #
     # Code above to be removed once output data set functionality implemented
@@ -1142,100 +1547,41 @@ class Project:
       self.number_records_b = self.input_dataset_b.num_records
 
     if (self.rec_comparator == None):
-      print 'error:No record comparator defined'
+      logging.exception('No record comparator defined')
       raise Exception
     if (self.rec_comparator.dataset_a != self.tmp_dataset_a) or \
        (self.rec_comparator.dataset_b != self.tmp_dataset_b):
-      print 'error:Illegal data set definition in record comparator'
+      logging.exception('Illegal data set definition in record comparator')
       raise Exception
 
     if (self.blocking_index_a == None):
-      print 'error:No blocking index for data set A defined'
+      logging.exception('No blocking index for data set A defined')
       raise Exception
     if (self.blocking_index_b == None):
-      print 'error:No blocking index for data set B defined'
+      logging.exception('No blocking index for data set B defined')
       raise Exception
 
     if (self.classifier == None):
-      print 'error:No classifier defined'
+      logging.exception('No classifier defined')
       raise Exception
     if (self.classifier.dataset_a != self.tmp_dataset_a) or \
        (self.classifier.dataset_b != self.tmp_dataset_b):
-      print 'error:Illegal data set definition in classifier'
+      logging.exception('Illegal data set definition in classifier')
       raise Exception
-
-#    if (self.rec_standardiser_a != None):
-#      if (self.rec_standardiser_a.input_dataset != self.input_dataset_a):
-#        print 'error:Illegal input data set definition in record '+ \
-#              'standardiser A: %s (should be: %s)' % \
-#              (str(self.rec_standardiser_a.input_dataset.name), \
-#               str(self.input_dataset_a.name))
-#        raise Exception
-#      if (self.rec_standardiser_a.output_dataset != self.tmp_dataset_a):
-#        print 'error:Illegal output data set definition in record '+ \
-#              'standardiser A: %s (should be: %s)' % \
-#              (str(self.rec_standardiser_a.output_dataset.name), \
-#               str(self.tmp_dataset_a.name))
-#        raise Exception
-
-#    else:  # No standardiser for data set A defined, so field names in input
-#           # and temporary data sets must be the same
-#      input_field_name_list = self.input_dataset_a.fields.keys()
-#      input_field_name_list.sort()
-#      tmp_field_name_list = self.tmp_dataset_a.fields.keys()
-#      tmp_field_name_list.sort()
-#
-#      if (input_field_name_list != tmp_field_name_list):
-#        print 'error:Field names differ in input and temporary data sets ' + \
-#              '(with no record standardiser for data set A defined)'
-#
-#    if (self.rec_standardiser_b != None):
-#      if (self.rec_standardiser_b.input_dataset != self.input_dataset_b):
-#        print 'error:Illegal input data set definition in record '+ \
-#              'standardiser B: %s (should be: %s)' % \
-#              (str(self.rec_standardiser_b.input_dataset.name), \
-#               str(self.input_dataset_b.name))
-#        raise Exception
-#      if (self.rec_standardiser_b.output_dataset != self.tmp_dataset_b):
-#        print 'error:Illegal output data set definition in record '+ \
-#              'standardiser B: %s (should be: %s)' % \
-#              (str(self.rec_standardiser_b.output_dataset.name), \
-#               str(self.tmp_dataset_b.name))
-#        raise Exception
-#
-#    else:  # No standardiser for data set B defined, so field names in input
-#           # and temporary data sets must be the same
-#      input_field_name_list = self.input_dataset_b.fields.keys()
-#      input_field_name_list.sort()
-#      tmp_field_name_list = self.tmp_dataset_b.fields.keys()
-#      tmp_field_name_list.sort()
-#
-#      if (input_field_name_list != tmp_field_name_list):
-#        print 'error:Field names differ in input and temporary data sets ' + \
-#              '(with no record standardiser for data set B defined)'
-#
-#    if (self.blocking_index_a.dataset != self.tmp_dataset_a):
-#      print 'error:Illegal data set definition in blocking index A'
-#      raise Exception
-#    if (self.blocking_index_b.dataset != self.tmp_dataset_b):
-#      print 'error:Illegal data set definition in blocking index B'
-#      raise Exception
 
     total_time = time.time()  # Get current time
 
-    print '1:'
-    print '1:***** Link data set: %s (type "%s") with data set: %s ' % \
-           (self.input_dataset_a.name, self.input_dataset_a.dataset_type, \
-           self.input_dataset_b.name) + '(type "%s")' % \
-           (self.input_dataset_b.dataset_type)
-    print '1:*****   Temporary data set A: "%s" (type "%s")' % \
-          (self.tmp_dataset_a.name, self.tmp_dataset_a.dataset_type)
-    print '1:*****   Temporary data set B: "%s" (type "%s")' % \
-          (self.tmp_dataset_b.name, self.tmp_dataset_b.dataset_type)
-    print '1:'
-    print '1:Step 1: Loading, standardisation and indexing'
-    print '1:-------'
-    print '1:'
+    logging.info('***** Link data set: %s (type "%s") with data set: %s ' % \
+                 (self.input_dataset_a.name, \
+                 self.input_dataset_a.dataset_type, \
+                 self.input_dataset_b.name) + '(type "%s")' % \
+                 (self.input_dataset_b.dataset_type))
+    logging.info('*****   Temporary data set A: "%s" (type "%s")' % \
+                 (self.tmp_dataset_a.name, self.tmp_dataset_a.dataset_type))
+    logging.info('*****   Temporary data set B: "%s" (type "%s")' % \
+                 (self.tmp_dataset_b.name, self.tmp_dataset_b.dataset_type))
+    logging.info('Step 1: Loading, standardisation and indexing')
+    logging.info('-------')
 
     step_1_time = time.time()  # Get current time
 
@@ -1256,7 +1602,7 @@ class Project:
         tmp_time = time.time()
         tmp_indexes = parallel.receive(p)
         step_1_comm_time += (time.time() - tmp_time)
-        print '1:    Received index A from process %i' % (p)
+        logging.info('    Received index A from process %i' % (p))
 
         self.blocking_index_a.merge(tmp_indexes)
 
@@ -1264,7 +1610,7 @@ class Project:
       tmp_time = time.time()
       parallel.send(self.blocking_index_a.index, 0) # Send indexes to process 0
       step_1_comm_time += (time.time() - tmp_time)
-      print '1:    Sent index A to process 0'
+      logging.info('    Sent index A to process 0')
 
     # If run in parallel, broadcast the blocking index from process 0 - - - - -
     #
@@ -1274,21 +1620,19 @@ class Project:
           tmp_time = time.time()
           parallel.send(self.blocking_index_a.index, p)
           step_1_comm_time += (time.time() - tmp_time)
-          print '1:    Sent index A to process %i' % (p)
+          logging.info('    Sent index A to process %i' % (p))
 
       else:
         tmp_time = time.time()
         tmp_indexes = parallel.receive(0)
         step_1_comm_time += (time.time() - tmp_time)
-        print '1:    Received index A from process 0'
+        logging.info('    Received index A from process 0')
 
         self.blocking_index_a.merge(tmp_indexes)
 
     # Compact the blocking index  - - - - - - - - - - - - - - - - - - - - - - -
     #
     self.blocking_index_a.compact()
-
-    print '1:'
 
     # Call the main standardisation routine for data set B  - - - - - - - - - -
     #
@@ -1308,7 +1652,7 @@ class Project:
         tmp_time = time.time()
         tmp_indexes = parallel.receive(p)
         step_1_comm_time += (time.time() - tmp_time)
-        print '1:    Received index B from process %i' % (p)
+        logging.info('    Received index B from process %i' % (p))
 
         self.blocking_index_b.merge(tmp_indexes)
 
@@ -1316,7 +1660,7 @@ class Project:
       tmp_time = time.time()
       parallel.send(self.blocking_index_b.index, 0) # Send indexes to process 0
       step_1_comm_time += (time.time() - tmp_time)
-      print '1:    Sent index B to process 0'
+      logging.info('    Sent index B to process 0')
 
     # If run in parallel, broadcast the blocking index from process 0 - - - - -
     #
@@ -1326,13 +1670,13 @@ class Project:
           tmp_time = time.time()
           parallel.send(self.blocking_index_b.index, p)
           step_1_comm_time += (time.time() - tmp_time)
-          print '1:    Sent index B to process %i' % (p)
+          logging.info('    Sent index B to process %i' % (p))
 
       else:
         tmp_time = time.time()
         tmp_indexes = parallel.receive(0)
         step_1_comm_time += (time.time() - tmp_time)
-        print '1:    Received index B from process 0'
+        logging.info('    Received index B from process 0')
 
         self.blocking_index_b.merge(tmp_indexes)
 
@@ -1343,8 +1687,7 @@ class Project:
     step_1_time = time.time() - step_1_time  # Calculate time for step 1
     step_1_time_string = output.time_string(step_1_time)
 
-    print '1:'
-    print '1:Step 1 finished in %s' % (step_1_time_string)
+    logging.info('Step 1 finished in %s' % (step_1_time_string))
 
     # End of step 1 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     #
@@ -1406,10 +1749,8 @@ class Project:
 
     #################### END PARALLEL TEST CODE ###############################
 
-    print '1:'
-    print '1:Step 2: Perform linkage within blocks'
-    print '1:-------'
-    print '1:'
+    logging.info('Step 2: Perform linkage within blocks')
+    logging.info('-------')
 
     step_2_time = time.time()  # Get current time
     step_2_comm_time = 0.0
@@ -1423,9 +1764,8 @@ class Project:
     rec_pair_time = time.time() - tmp_time
     rec_pair_time_string = output.time_string(rec_pair_time)
 
-    print '1:'
-    print '1:  Built record pair dictionary with %i entries in %s' % \
-          (rec_pair_cnt, rec_pair_time_string)
+    logging.info('  Built record pair dictionary with %i entries in %s' % \
+                 (rec_pair_cnt, rec_pair_time_string))
 
     # And do the comparisons of record pairs into classifer - - - - - - - - - -
     #
@@ -1441,7 +1781,8 @@ class Project:
           tmp_time = time.time()
           tmp_classifier_results = parallel.receive(p)
           step_2_comm_time += (time.time() - tmp_time)
-          print '1:    Received classifier from process %i and merged it' % (p)
+          logging.info('    Received classifier from process %i and merge it' \
+                       % (p))
 
           self.classifier.merge(tmp_classifier_results)
 
@@ -1450,7 +1791,7 @@ class Project:
         parallel.send(self.classifier.results, 0) # Send classifier results to
                                                   # process 0
         step_2_comm_time += (time.time() - tmp_time)
-        print '1:    Sent classifier to process 0'
+        logging.info('    Sent classifier to process 0')
 
     # If run in parallel, broadcast the classifier results from process 0 - - -
     #
@@ -1460,13 +1801,13 @@ class Project:
           tmp_time = time.time()
           parallel.send(self.classifier.results, p)
           step_2_comm_time += (time.time() - tmp_time)
-          print '1:    Sent classifier to process %i' % (p)
+          logging.info('    Sent classifier to process %i' % (p))
 
       else:
         tmp_time = time.time()
         self.classifier.results = parallel.receive(0)
         step_2_comm_time += (time.time() - tmp_time)
-        print '1:    Received classifier from process 0'
+        logging.info('    Received classifier from process 0')
 
     #################### START PARALLEL TEST CODE #############################
     # Save classifiers and weight vectors to files (only process 0)
@@ -1499,16 +1840,13 @@ class Project:
     step_2_time = time.time() - step_2_time  # Calculate time for step 2
     step_2_time_string = output.time_string(step_2_time)
 
-    print '1:'
-    print '1:Step 2 (linkage) finished in %s' % (step_2_time_string)
-    print '1:  Totally %i record pair comparisons' % (rec_pair_cnt)
+    logging.info('Step 2 (linkage) finished in %s' % (step_2_time_string))
+    logging.info('  Totally %i record pair comparisons' % (rec_pair_cnt))
 
     # Output the results  - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-    print '1:'
-    print '1:Step 3: Output and assignment procedures'
-    print '1:-------'
-    print '1:'
+    logging.info('Step 3: Output and assignment procedures')
+    logging.info('-------')
 
     step_3_time = time.time()  # Get current time
 
@@ -1517,7 +1855,7 @@ class Project:
     results_dict = self.classifier.results
 
     if (results_dict == {}):
-      print 'warning:Results dictionary empty'
+      logging.warn('Results dictionary empty')
 
     else:  # There are results
 
@@ -1585,10 +1923,8 @@ class Project:
     step_3_time = time.time() - step_3_time  # Calculate time for step 3
     step_3_time_string = output.time_string(step_3_time)
 
-    print '1:'
-    print '1:Step 3 (output and assignments) finished in %s' % \
-          (step_3_time_string)
-    print '1:'
+    logging.info('Step 3 (output and assignments) finished in %s' % \
+                 (step_3_time_string))
 
     parallel.Barrier()  # Wait here for all processes - - - - - - - - - - - - -
 
@@ -1598,469 +1934,24 @@ class Project:
     step_1_comm_time_string = output.time_string(step_1_comm_time)
     step_2_comm_time_string = output.time_string(step_2_comm_time)
 
-    print '1:Total time needed for linkage of %i records with %i records: %s' \
-          % (self.number_records_a, self.number_records_b, total_time_string)
-    print '1:  Time for step 1 (standardisation):       %s' % \
-          (step_1_time_string)
-    print '1:  Time for step 2 (linkage):               %s' % \
-          (step_2_time_string)
-    print '1:  Time for step 3 (assignment and output): %s' % \
-          (step_3_time_string)
-    print '1:  Time for communication in step 1: %s' % \
-          (step_1_comm_time_string)
-    print '1:  Time for communication in step 2: %s' % \
-          (step_2_comm_time_string)
+    logging.info('Total time needed for linkage of %i records with %i ' % \
+                 (self.number_records_a, self.number_records_b,) + \
+                 'records: %s' % (total_time_string))
+    logging.info('  Time for step 1 (standardisation):       %s' % \
+                 (step_1_time_string))
+    logging.info('  Time for step 2 (linkage):               %s' % \
+                 (step_2_time_string))
+    logging.info('  Time for step 3 (assignment and output): %s' % \
+                 (step_3_time_string))
+    logging.info('  Time for communication in step 1: %s' % \
+                 (step_1_comm_time_string))
+    logging.info('  Time for communication in step 2: %s' % \
+                 (step_2_comm_time_string))
 
 # =============================================================================
-
-class ProjectLog:
-  """Class for Febrl project logs.
-
-     Project logs capture print statements with a special form as well as
-     Python exceptions and warnings, and writes them to a log file and prints
-     them to the standard terminal output.
-
-     A log file name can be given with the attribute 'file_name' when a project
-     log is initialised. If no file name is given, no logging information is
-     written to a file (but still printed to standard output).
-
-     When a project log is specified, the user needs to set both a verbose and
-     a log level in the range 0 to 3 using the attributes 'log_level' and
-     'verbose_level'. A level of 0 means nothing no log messages are logged or
-     printed to standard output, level one means only important messages are
-     logged/printed, level 2 means medium output and level 3 finally means a
-     high volume output.
-
-     Error messages are looged and printed in any case.
-
-     Logging and printing of warning massages can be suppressed by setting the
-     flag 'no_warnings' to 'True' when the project log file is initialised.
-     The default is 'False' meaning that warning messages are printed.
-
-     With the flag 'clear_log' the user can clear the contents of a log file
-     when it is initialised by setting the value of this flag to 'True'. The
-     default is 'False', in which case logging messages are appended to the
-     given log file.
-
-     Within Febrl modules, log messages are normal Python statements that must
-     start with either of the following substrings followed by the message:
-
-       '1:'        (a high priority log message)
-       '2:'        (a medium priority log message)
-       '3:'        (a low priority log message)
-       'warning:'  (a warning message)
-       'error:'    (an error message)
-
-     All other print statements are handled like normal prints and sent to
-     standard output 'sys.stdout'.
-
-     The 'parallel_print' defines how printing and logging is done when Febrl
-     is run in parallel. Possible are either 'host' (the default) in which case
-     only the host node (where Febrl was started on) is printing and logging
-     messages, or 'all' in which case all processes are printing and logging.
-     Note that currently both error and warning messages are printed by all
-     processes.
-     The 'parallel_print' is used to set 'printmode' in the parallel.py module.
-
-     The 'message' is the string that is printed to standard output and written
-     to the log file if 'level' is equal to smaller than the 'verbose_level' or
-     the 'log_level' respectively.
-  """
-
-  # ---------------------------------------------------------------------------
-
-  def __init__(self, **kwargs):
-    """Constructor - Create a new project log object.
-    """
-
-    self.febrl =          None    # A reference to the febrl object.
-    self.project =        None    # A reference to the project object.
-    self.log_level =      0       # Level of looging to file.
-    self.verbose_level =  0       # Level of verbose printing.
-    self.no_warnings =    False   # Supress warning messages
-    self.clear_log =      False   # A flag (True/False), if set to True all
-                                  # content of the log will be cleared first.
-                                  # Default value is False, i.e. messages will
-                                  # be appended to the existing log file.
-    self.file_name =      None    # The log file name.
-    self.log_file =       None    # The log file pointer
-    self.parallel_print = 'host'  # Either set to 'host' (default) or 'all'
-
-    # Process all keyword arguments
-    #
-    for (keyword, value) in kwargs.items():
-      if (keyword == 'project'):
-        self.project = value
-        if (self.project.febrl != None):
-          self.febrl = self.project.febrl  # Reference to the febrl object
-        else:
-          print 'error:Febrl object not defined'
-          raise Exception
-
-      elif (keyword == 'file_name'):
-        if (not isinstance(value,str)):
-          print 'error:Argument "file_name" is not a string'
-          raise Exception
-        self.file_name = value
-
-      elif (keyword == 'clear_log'):
-        if (value not in [True, False]):
-          print 'error:Argument "clear_log" must be "True" or "False"'
-          raise Exception
-        self.clear_log = value
-
-      elif (keyword in ['no_warnings','no_warn']):
-        if (value not in [True, False]):
-          print 'error:Argument "no_warnings" must be "True" or "False"'
-          raise Exception
-        self.no_warnings = value
-
-      elif (keyword == 'parallel_print'):
-        if (value not in ['host','all']):
-          print 'error:Argument "parallel_print" must be set to "host"'+ \
-                ' or "all"'
-          raise Exception
-        self.parallel_print = value
-
-      elif (keyword == 'log_level'):
-        if (not isinstance(value,int)) or (value < 0) or (value > 3):
-          print 'error:Argument "log_level" must zero or a positive integer'
-          raise Exception
-        self.log_level = value
-
-      elif (keyword == 'verbose_level'):
-        if (not isinstance(value,int)) or (value < 0) or (value > 3):
-          print 'error:Argument "verbose_level" must zero or a positive '+ \
-                'integer'
-          raise Exception
-        self.verbose_level = value
-
-      else:
-        print 'error:Illegal constructor argument keyword: "%s"' % \
-              (str(keyword))
-        raise Exception
-
-    # Check if the needed attributes are set  - - - - - - - - - - - - - - - - -
-    #
-    if (self.project == None):
-      print 'error:Project not defined'
-      raise Exception
-
-    # Set the parallel printing mode  - - - - - - - - - - - - - - - - - - - - -
-    #
-    parallel.printmode = self.parallel_print
-
-    # Check if file can be opened - - - - - - - - - - - - - - - - - - - - - - -
-    #
-    if (self.file_name != None):  # File logging activated
-
-      if (self.clear_log == True):  # Open log file in 'write' mode
-        try:
-          self.log_file = open(self.file_name,'w')
-        except:
-          print 'error:Can not open log file "%s" for writing' % \
-                (self.file_name)
-          raise IOError
-
-      else:  # Open log file in 'append' mode (don't delete old content)
-        try:
-          self.log_file = open(self.file_name,'a')
-        except:
-          print 'error:Can not open log file "%s" for appending' % \
-                (self.file_name)
-          raise IOError
-
-      # Write a header to the log file - - - - - - - - - - - - - - - - - - - -
-      #
-      self.append('#'*75)
-      self.append('# Febrl project log file')
-      self.append('#')
-      self.append('# Project name: '+self.project.name)
-      self.append('# Project log file name: '+self.file_name)
-      self.append('#')
-      self.append('# Time and date: '+time.strftime('%d %b %Y %H:%M:%S', \
-                                      time.localtime(time.time())))
-      self.append('#')
-      self.append('# Febrl version:   '+self.febrl.version)
-      self.append('# Febrl license:   '+self.febrl.license)
-      self.append('# Febrl copyright: '+self.febrl.copyright)
-      self.append('#')
-      self.append('# Febrl description: '+self.febrl.description)
-      self.append('# Febrl path:        '+self.febrl.febrl_path)
-      self.append('#'*75)
-      self.append('')
-      self.flush()
-
-      # Redirect the system stdout so prints can be logged - - - - - - - - - -
-      #
-      sys.stdout = LogPrinter(self)
-
-      # Set the system exception hook so exceptions and warnings are logged - -
-      #
-      sys.excepthook = self.except_hook
-
-  # ---------------------------------------------------------------------------
-
-  def except_hook(self, exc_type, value, trace_back):
-    """A routine to catch exceptions and warnings and process them.
-    """
-
-    bug_report1 = 'Please submit an error report by sending an e-mail'+ \
-                  ' to the Febrl authors'
-    bug_report2 = 'and attach this error message.'
-
-    time_stamp = time.strftime('%d %b %Y %H:%M:%S',time.localtime(time.time()))
-
-    # Get complete trace stack
-    #
-    trace_list = traceback.extract_tb(trace_back)
-    trace_stack_size = len(trace_list)
-
-    # Create a message list (one element is one line) - - - - - - - - - - - - -
-    #
-    except_msg = []
-    except_msg.append(parallel.prompt+'#'*75)
-    except_msg.append(parallel.prompt+'### Exception: '+str(exc_type))
-    except_msg.append(parallel.prompt+'###   Time:       '+time_stamp)
-    except_msg.append(parallel.prompt+'###   Message:    '+str(value))
-    except_msg.append(parallel.prompt+'###   Trace stack:')
-    for lev in range(trace_stack_size):
-      spc = '  '*lev
-      except_msg.append(parallel.prompt+'###     '+spc+'-'*(67-lev*2))
-      except_msg.append(parallel.prompt+'###     '+spc+'Module:   '+ \
-                  str(trace_list[lev][0]))
-      except_msg.append(parallel.prompt+'###     '+spc+'Function: '+ \
-                  str(trace_list[lev][2]))
-      except_msg.append(parallel.prompt+'###     '+spc+'Line:     '+ \
-                  str(trace_list[lev][1]))
-      except_msg.append(parallel.prompt+'###     '+spc+'Text:     '+ \
-                  str(trace_list[lev][3]))
-    except_msg.append(parallel.prompt+'#'*75)
-    except_msg.append(parallel.prompt+'### '+bug_report1)
-    except_msg.append(parallel.prompt+'### '+bug_report2)
-    except_msg.append(parallel.prompt+'#'*75)
-
-    # Print and log the message - - - - - - - - - - - - - - - - - - - - - - - -
-    #
-    for msg_line in except_msg:
-      self.append(msg_line)
-      sys.__stdout__.write(msg_line+os.linesep)
-
-    # And flush the standard out and the log file - - - - - - - - - - - - - - -
-    #
-    self.flush()
-    sys.__stdout__.flush()
-
-  # ---------------------------------------------------------------------------
-
-  def close(self):
-    """Close the log file if it was opened.
-    """
-
-    if (self.log_file != None):
-      self.log_file.close()
-      self.log_file = None
-
-  # ---------------------------------------------------------------------------
-
-  def append(self, message):
-    """Write the given message to the log file if logging is activated (i.e. if
-       the log file is opened).
-
-       The message can be a string or a list of strings, in which case each
-       list element will be written as one line. A line separator is appended
-       to the end of each line.
-    """
-
-    if (self.log_file != None):  # Only if the log file is open
-      if (isinstance(message, str)):
-        if (len(message) > 0) and (message[-1] == os.linesep):
-          self.log_file.write(message)
-        else:
-          self.log_file.write(message+os.linesep)
-
-      elif (isinstance(message, list)):
-        for m in message:
-          if (isinstance(m, str)):
-            if (len(m) > 0) and (message[-1] == os.linesep):
-              self.log_file.write(m)
-            else:
-              self.log_file.write(m+os.linesep)
-
-          else:
-            print 'error:Element in log file message list is not a ' + \
-                  'string: %s' % (str(m))
-            raise Exception
-      else:
-        print 'error:Log file message is not a string or a list: %s' % \
-              (str(message))
-        raise Exception
-
-  # ---------------------------------------------------------------------------
-
-  def flush(self):
-    """Flush the log file if it is opened to make sure it is written out.
-    """
-
-    if (self.log_file != None):
-      self.log_file.flush()
-
-  # ---------------------------------------------------------------------------
-
-  def print_log(self, print_type):
-    """Print the contents of the log file in various types:
-       Text, HTML, LaTex, XML
-    """
-
-    pass
-
-    # Check if file is open
-
-    # re-open in read mode
-
-    # print all lines in format
-
-    # close in read mode
-
-# =============================================================================
-
-class LogPrinter:
-  """Class that replaces sys.stdout
-
-     Each normal print statement is analysed in the 'write' method, if it
-     starts with a 'error:', 'warning:' or '1:', '2:', '3:' it will also be
-     passed to the project logger.
-     Otherwise, it will simply be given to the original standard out.
-
-     For parallel runs, error and warning message will be printed (and logged)
-     from all processes, but normal verbose message are printed acording to the
-     value of 'printmode' ('all' or 'host') as defined in parallel.py
-
-     Messages which are neither error nor warning message, nor have a level at
-     the beginning are also printed on all processes (if Febrl is run in
-     parallel).
-  """
-
-  def __init__(self, project_log):
-    self.project_log = project_log
-
-    # Now check if printing of level messages is done - - - - - - - - - - - - -
-    #
-    if ((parallel.printmode == 'host') and (parallel.rank() == 0)) or \
-       (parallel.printmode == 'all'):
-      self.level_print = True  # Do print level messages
-    else:
-      self.level_print = False  # Don't print level messages
-
-  def write(self, msg): # - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
-    #if (len(msg) > 0) and (msg[-1] != os.linesep):  # Append a line separator
-    #  msg += os.linesep
-
-    call_function =   sys._getframe(1).f_code.co_name
-    call_linenumber = str(sys._getframe(1).f_lineno)
-    call_module =     sys._getframe(1).f_code.co_filename
-    time_stamp = time.strftime('%d %b %Y %H:%M:%S',time.localtime(time.time()))
-
-    # Get message type and split message at line separators
-    #
-    if (msg[:6].lower() == 'error:'):  # An error message - - - - - - - - - - -
-
-      msg = msg[6:]
-      msg_list = msg.split(os.linesep)
-
-      bug_report1 = 'Please submit an error report by sending an e-mail'+ \
-                    ' to the Febrl authors'
-      bug_report2 = 'and attach this error message.'
-
-      error_msg = []  # Create a message list (one element is one line)
-
-      error_msg.append(parallel.prompt+'#'*75)
-      error_msg.append(parallel.prompt+'### Error')
-      error_msg.append(parallel.prompt+'###   Module:  '+ call_module + \
-                       ', function: ' + call_function + ', line number: ' + \
-                       call_linenumber)
-      error_msg.append(parallel.prompt+'###   Time:    '+time_stamp)
-      error_msg.append(parallel.prompt+'###   Message: '+msg_list[0])
-      for msg_line in msg_list[1:]:
-        error_msg.append(parallel.prompt+'###            '+msg_line)
-      error_msg.append(parallel.prompt+'#'*75)
-      error_msg.append(parallel.prompt+'### '+bug_report1)
-      error_msg.append(parallel.prompt+'### '+bug_report2)
-      error_msg.append(parallel.prompt+'#'*75)
-
-      for msg_line in error_msg:  # Print and log the message
-        self.project_log.append(msg_line)
-        sys.__stdout__.write(msg_line+os.linesep)
-
-      self.project_log.flush()  # And flush the standard out and the log file
-      sys.__stdout__.flush()
-
-    elif (msg[:8].lower() == 'warning:'):  # A warning message  - - - - - - - -
-
-      if (self.project_log.no_warnings == False):
-
-        msg = msg[8:]
-        msg_list = msg.split(os.linesep)
-
-        warn_msg = []  # Create a message list (one element is one line)
-
-        warn_msg.append(parallel.prompt)
-        warn_msg.append(parallel.prompt+'### Warning')
-        warn_msg.append(parallel.prompt+'###   Module:  '+  call_module + \
-                        ', function: ' + call_function + ', line number: ' + \
-                        call_linenumber)
-        warn_msg.append(parallel.prompt+'###   Time:    '+time_stamp)
-        warn_msg.append(parallel.prompt+'###   Message: '+msg_list[0])
-        for msg_line in msg_list[1:]:
-          warn_msg.append(parallel.prompt+'###            '+msg_line)
-
-      for msg_line in warn_msg:  # Print and log the message
-        self.project_log.append(msg_line)
-        sys.__stdout__.write(msg_line+os.linesep)
-
-      self.project_log.flush()  # And flush the standard out and the log file
-      sys.__stdout__.flush()
-
-    # A verbose level message - - - - - - - - - - - - - - - - - - - - - - - - -
-    #
-    elif (msg[0] in '123') and (len(msg) >= 2) and (msg[1] == ':'): 
-
-      if (self.level_print == True):
-
-        msg_level = int(msg[0])
-        msg = msg[2:]
-        msg_list = msg.split(os.linesep)
-
-        # Check if the level of the message is good for printing and/or logging
-        #
-        if (msg_level <= self.project_log.log_level):
-          for msg_line in msg_list:
-            self.project_log.append(parallel.prompt+msg_line)
-          self.project_log.flush()
-
-        if (msg_level <= self.project_log.verbose_level):
-          for msg_line in msg_list:
-            sys.__stdout__.write(parallel.prompt+msg_line+os.linesep)
-          sys.__stdout__.flush()
-
-    else:  # Print 'normal' print commands  - - - - - - - - - - - - - - - - - -
-
-      msg_list = msg.split(os.linesep)
-
-      for msg_line in msg_list:
-
-        if ((len(msg_line) == 1) and (ord(msg_line) != 10)) or \
-            (len(msg_line) > 1):
-          if (sys.platform[:3] == 'win'): # No line separator needed on Windows
-            sys.__stdout__.write(parallel.prompt+msg_line)
-          else:
-            sys.__stdout__.write(parallel.prompt+msg_line+os.linesep)
-      sys.__stdout__.flush()
-
-# =============================================================================
-# The following are the main routines for standardisation and record linkage as
-# used withing the project methods 'standardise', 'deduplicate' and 'link'
+# The following are the main routines for standardisation, geocoding and record
+# linkage as used withing the project methods 'standardise', 'geocode',
+# 'deduplicate' and 'link'
 
 def do_load_standard_indexing(input_dataset, output_dataset,
                               record_standardiser, blocking_index,
@@ -2068,7 +1959,7 @@ def do_load_standard_indexing(input_dataset, output_dataset,
                               febrl_block_size):
 
   """The main routine that does the loading of records from the input data set
-     into the output data set, if a record standardsier is given these records
+     into the output data set, if a record standardiser is given these records
      are cleaned and standardised, and if a blocking index is given such a
      index will be built and returned as well.
 
@@ -2076,8 +1967,7 @@ def do_load_standard_indexing(input_dataset, output_dataset,
      be set to None, and if no indexing is needed the 'blocking_index' argument
      has to be set to None.
 
-     The output dataset must not be a Memory based data set. And of course the
-     output data set must be initialised in access mode "write", "append" or
+     The output dataset must be initialised in access mode "write", "append" or
      "readwrite".
 
      If run in parallel, all processes will open the input data set and read
@@ -2091,24 +1981,24 @@ def do_load_standard_indexing(input_dataset, output_dataset,
   last_record = first_record + number_records
 
   if (first_record < 0) or (last_record > input_dataset.num_records):
-    print 'error:Record range too large: (%i,%i)' % \
-          (first_record, last_record)
+    logging.exception('Record range too large: (%i,%i)' % \
+                      (first_record, last_record))
     raise Exception
 
   # Check if the data sets are set correctly within the record standardiser - -
   #
   if (record_standardiser != None):
     if (record_standardiser.input_dataset != input_dataset):
-      print 'error:Illegal input data set definition in record '+ \
-            'standardiser: %s (should be: %s)' % \
-            (str(record_standardiser.input_dataset.name), \
-            str(input_dataset.name))
+      logging.exception('Illegal input data set definition in record '+ \
+                        'standardiser: %s (should be: %s)' % \
+                        (str(record_standardiser.input_dataset.name), \
+                        str(input_dataset.name)))
       raise Exception
     if (record_standardiser.output_dataset != output_dataset):
-      print 'error:Illegal output data set definition in record '+ \
-            'standardiser: %s (should be: %s)' % \
-            (str(record_standardiser.output_dataset.name), \
-             str(output_dataset.name))
+      logging.exception('Illegal output data set definition in record '+ \
+                        'standardiser: %s (should be: %s)' % \
+                        (str(record_standardiser.output_dataset.name), \
+                        str(output_dataset.name)))
       raise Exception
 
   else:
@@ -2121,15 +2011,15 @@ def do_load_standard_indexing(input_dataset, output_dataset,
     output_field_name_list.sort()
 
     if (input_field_name_list != output_field_name_list):
-      print 'error:Field names differ in input and output data sets ' + \
-            '(with no record standardiser defined)'
+      logging.exception('Field names differ in input and output data sets ' + \
+                        '(with no record standardiser defined)')
       raise Exception
 
   # Check if the data set defined in the blocking index (if defined) is correct
   #
   if (blocking_index != None):
     if (blocking_index.dataset != output_dataset):
-      print 'error:Illegal data set definition in blocking index'
+      logging.exception('Illegal data set definition in blocking index')
       raise Exception
 
   if (record_standardiser != None) and (blocking_index != None):
@@ -2140,11 +2030,10 @@ def do_load_standard_indexing(input_dataset, output_dataset,
     do_string = 'Load and index records'
   else:
     do_string = 'Load records'
-  print '1:'
-  print '1:  %s, write them into output data set' % (do_string)
-  print '1:    First record: %i' % (first_record)
-  print '1:    Last record:  %i' % (last_record-1)
-  print '1:'
+
+  logging.info('  %s, then write them into output data set' % (do_string))
+  logging.info('    First record: %i' % (first_record))
+  logging.info('    Last record:  %i' % (last_record-1))
 
   start_time = time.time()  # Get current time
   comm_time  = 0.0          # Communication time
@@ -2166,15 +2055,15 @@ def do_load_standard_indexing(input_dataset, output_dataset,
       # Load original records from input data set
       #
       input_recs = input_dataset.read_records(input_rec_counter, block_size)
-      print '1:    Loaded records %i to %i' % \
-              (input_rec_counter, input_rec_counter+block_size)
+      logging.info('    Loaded records %i to %i' % \
+                   (input_rec_counter, input_rec_counter+block_size))
 
       # Standardise them if a standardiser is defined - - - - - - - - - - - - -
       #
       if (record_standardiser != None):
         clean_recs = record_standardiser.standardise_block(input_recs)
-        print '1:      Standardised records %i to %i' % \
-              (input_rec_counter, input_rec_counter+block_size)
+        logging.info('      Standardised records %i to %i' % \
+                     (input_rec_counter, input_rec_counter+block_size))
       else:
         clean_recs = input_recs  # Take the original records directly
 
@@ -2225,9 +2114,9 @@ def do_load_standard_indexing(input_dataset, output_dataset,
       todo_time_string = output.time_string(todo_time)
       rec_time_string  = output.time_string(rec_time)
 
-      print '1:      Processed %.1f%% of records in %s (%s per record)' % \
-            (perc_done, used_time_string, rec_time_string)
-      print '1:        Estimated %s until finished' % (todo_time_string)
+      logging.info('      Processed %.1f%% of records in %s (%s per record)' \
+                   % (perc_done, used_time_string, rec_time_string))
+      logging.info('        Estimated %s until finished' % (todo_time_string))
 
   # End of standardisation  - - - - - - - - - - - - - - - - - - - - - - - - - -
   #
@@ -2235,12 +2124,186 @@ def do_load_standard_indexing(input_dataset, output_dataset,
 
   total_time = time.time() - start_time  # Calculate total time
   total_time_string = output.time_string(total_time)
-  print '1:  Total time needed for standardisation of %i records: %s' % \
-        (number_records, total_time_string)
+  logging.info('  Total time needed for standardisation of %i records: %s' % \
+               (number_records, total_time_string))
 
   if (parallel.size() > 1):
     comm_time_string = output.time_string(comm_time)
-    print '1:    Time for communication: %s' % (comm_time_string)
+    logging.info('    Time for communication: %s' % (comm_time_string))
+
+  return [total_time, comm_time]
+
+# =============================================================================
+
+def do_load_standard_geocode(input_dataset, output_dataset,
+                             record_standardiser, record_geocoder,
+                             first_record, number_records,
+                             febrl_block_size):
+
+  """The main routine that does the loading of records from the input data set
+     into the output data set, if a record standardiser is given these records
+     are cleaned and standardised, and then geocoded using the given geocoder.
+
+     If no standardisation is needed the argument 'record_standardiser' has to
+     be set to None.
+
+     The output dataset must be initialised in access mode "write", "append" or
+     "readwrite".
+
+     If run in parallel, all processes will open the input data set and read
+     records from it (and clean and standardised them if defined so), and then
+     geocoded, before the processed records will be sent to process 0 (the host
+     process) and saved into the output data set.
+  """
+
+  # Check if the given record numbers are valid - - - - - - - - - - - - - - - -
+  #
+  last_record = first_record + number_records
+
+  if (first_record < 0) or (last_record > input_dataset.num_records):
+    logging.exception('Record range too large: (%i,%i)' % \
+                      (first_record, last_record))
+    raise Exception
+
+  # Check if the data sets are set correctly within the record standardiser - -
+  #
+  if (record_standardiser != None):
+    if (record_standardiser.input_dataset != input_dataset):
+      logging.exception('Illegal input data set definition in record '+ \
+                        'standardiser: %s (should be: %s)' % \
+                        (str(record_standardiser.input_dataset.name), \
+                        str(input_dataset.name)))
+      raise Exception
+    if (record_standardiser.output_dataset != output_dataset):
+      logging.exception('Illegal output data set definition in record '+ \
+                        'standardiser: %s (should be: %s)' % \
+                        (str(record_standardiser.output_dataset.name), \
+                        str(output_dataset.name)))
+      raise Exception
+
+  else:
+    # If no record standardiser for the data set is defined, the field names in
+    # the input and the output data sets must be the same
+    #
+    input_field_name_list = input_dataset.fields.keys()
+    input_field_name_list.sort()
+    output_field_name_list = output_dataset.fields.keys()
+    output_field_name_list.sort()
+
+    if (input_field_name_list != output_field_name_list):
+      logging.exception('Field names differ in input and output data sets ' + \
+                        '(with no record standardiser defined)')
+      raise Exception
+
+  # Check if the geocoder is defined  - - - - - - - - - - - - - - - - - - - - -
+  #
+  if (record_geocoder == None):
+    logging.exception('No record geocoder defined')
+    raise Exception
+
+  if (record_standardiser != None):
+    do_string = 'Load, standardise and geocode records'
+  else:
+    do_string = 'Load and geocode records'
+
+  logging.info('  %s, then write them into output data set' % (do_string))
+  logging.info('    First record: %i' % (first_record))
+  logging.info('    Last record:  %i' % (last_record-1))
+
+  start_time = time.time()  # Get current time
+  comm_time  = 0.0          # Communication time
+
+  input_rec_counter = first_record  # Current record pointer
+
+  block_cnt = 0  # A round robin block counter, used for parallelism
+
+  # Load records in a blocked fashion - - - - - - - - - - - - - - - - - - - - -
+
+  while (input_rec_counter < last_record):
+
+    block_size = min(febrl_block_size, (last_record - input_rec_counter))
+
+    # Distribute blocks equally to all processors
+    #
+    if ((block_cnt % parallel.size()) == parallel.rank()):
+
+      # Load original records from input data set
+      #
+      input_recs = input_dataset.read_records(input_rec_counter, block_size)
+      logging.info('    Loaded records %i to %i' % \
+                   (input_rec_counter, input_rec_counter+block_size))
+
+      # Standardise them if a standardiser is defined - - - - - - - - - - - - -
+      #
+      if (record_standardiser != None):
+        clean_recs = record_standardiser.standardise_block(input_recs)
+        logging.info('      Standardised records %i to %i' % \
+                     (input_rec_counter, input_rec_counter+block_size))
+      else:
+        clean_recs = input_recs  # Take the original records directly
+
+      # Geocode records - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+      geocoded_recs = record_geocoder.match_records(clean_recs)
+
+      # If Febrl is run in parallel, send cleaned records to process 0
+      #
+      if (parallel.rank() > 0):
+        tmp_time = time.time()
+        parallel.send(clean_recs, 0)
+        comm_time += (time.time() - tmp_time)
+
+      else:  # Process 0, store standardised records
+
+        # Store records in output data set
+        #
+        output_dataset.write_records(geocoded_recs)
+
+    # If Febrl is run in parallel, process 0 receives cleaned records
+    #
+    if (parallel.rank() == 0) and (block_cnt % parallel.size() != 0):
+
+      p = (block_cnt % parallel.size())  # Process number to receive from
+      tmp_time = time.time()
+      tmp_recs = parallel.receive(p)
+      comm_time += (time.time() - tmp_time)
+
+      # Store records in output data set
+      #
+      output_dataset.write_records(tmp_recs)
+
+    input_rec_counter += block_size  # Increment current record pointer
+    block_cnt += 1
+
+    # Now determine timing and print progress report  - - - - - - - - - - - - -
+    #
+    if ((block_cnt % parallel.size()) == 0):
+      used_time = time.time() - start_time
+      recs_done = input_rec_counter - first_record
+      perc_done = 100.0 * recs_done / number_records
+      rec_time  = used_time / recs_done
+      todo_time = (number_records - recs_done) * rec_time
+
+      used_time_string = output.time_string(used_time)
+      todo_time_string = output.time_string(todo_time)
+      rec_time_string  = output.time_string(rec_time)
+
+      logging.info('      Processed %.1f%% of records in %s (%s per record)' \
+                   % (perc_done, used_time_string, rec_time_string))
+      logging.info('        Estimated %s until finished' % (todo_time_string))
+
+  # End of standardisation  - - - - - - - - - - - - - - - - - - - - - - - - - -
+  #
+  parallel.Barrier()  # Make sure all processes are here
+
+  total_time = time.time() - start_time  # Calculate total time
+  total_time_string = output.time_string(total_time)
+  logging.info('  Total time needed for standardisation of %i records: %s' % \
+               (number_records, total_time_string))
+
+  if (parallel.size() > 1):
+    comm_time_string = output.time_string(comm_time)
+    logging.info('    Time for communication: %s' % (comm_time_string))
 
   return [total_time, comm_time]
 
@@ -2269,7 +2332,8 @@ def do_comparison(dataset_a, dataset_b, record_comparator, classifier,
 
     for rec_num_b in rec_num_a_dict:
 
-      print '2:          Compare records %i with %i' % (rec_num_a, rec_num_b)
+      logging.debug('          Compare records %i with %i' % \
+                    (rec_num_a, rec_num_b))
 
       # Read the records from the data set
       #
@@ -2308,14 +2372,16 @@ def do_comparison(dataset_a, dataset_b, record_comparator, classifier,
         avrg_comp_time_string =  output.time_string(avrg_comp_time)
         avrg_class_time_string = output.time_string(avrg_class_time)
 
-        print '1:      Processed %.1f%% (%i/%i) of record pairs in %s' % \
-                (perc_done, rec_pair_cnt, num_rec_pairs, used_time_string) + \
-                ' (%s per record pair)' % (rec_pair_time_string)
-        print '1:        Average comparison time:     %s' % \
-              (avrg_comp_time_string)
-        print '1:        Average classification time: %s' % \
-              (avrg_class_time_string)
-        print '1:        Estimated %s until finished' % (todo_time_string)
+        logging.info('      Processed %.1f%% (%i/%i) of record pairs in %s' % \
+                     (perc_done, rec_pair_cnt, num_rec_pairs, \
+                     used_time_string) + ' (%s per record pair)' % \
+                     (rec_pair_time_string))
+        logging.info('        Average comparison time:     %s' % \
+                     (avrg_comp_time_string))
+        logging.info('        Average classification time: %s' % \
+                     (avrg_class_time_string))
+        logging.info('        Estimated %s until finished' % \
+                     (todo_time_string))
 
   # Print final time for record pair comparison
   #
@@ -2329,10 +2395,218 @@ def do_comparison(dataset_a, dataset_b, record_comparator, classifier,
   total_time_string =    output.time_string(total_time)
   rec_pair_time_string = output.time_string(rec_pair_time)
 
-  print '1:  Total time needed for comparison and classification of ' + \
-        '%i record pairs: %s' % (rec_pair_cnt, total_time_string)
-  print '1:    (%s per record pair)' % (rec_pair_time_string)
+  logging.info('  Total time needed for comparison and classification of ' + \
+               '%i record pairs: %s' % (rec_pair_cnt, total_time_string))
+  logging.info('    (%s per record pair)' % (rec_pair_time_string))
 
   return [total_time]
+
+# =============================================================================
+# Initialise the logging system
+
+def init_febrl_logger(log_file_name = None, file_level = None,
+                      console_level = 'WARNING', clear_log = False,
+                      parallel_output = 'host'):
+  """Function to set up the Python logging system for both file logging and
+     console (terminal) output.
+
+     ARGUMENTS:
+       log_file_name    Name of a log file, default is set to None, meaning no
+                        log information is written to file.
+       file_level       Set to one of the logging levels (see below) or None
+                        (which is default).
+       console_level    Set to one of the logging levels (see below), default
+                        is 'WARNING'.
+       clear_log        A flag, set to True if you want to clear (delete) the
+                        old content of the log file. Set to False to keep the
+                        old content.
+       parallel_output  Defines how printing is done when Febrl is run in
+                        parallel, can either be set to 'host' (only host
+                        process is logging - except errors and exceptions), or
+                        'all' (in which case all processes are logging). If
+                        run in parallel each process writes into it's own log
+                        file.
+
+     DESCRIPTION:
+       The following logging levels are possible:
+
+       NOTSET, DEBUG, INFO, WARNING, ERROR, CRITICAL
+
+       If set to a certain level only logging messages with a higher level will
+       be logged.
+
+       A current limitation is that the file log level can only be equal to or
+       higher than the console level. If the console level is higher then the
+       file level is set to this level as well by the Python logging system.
+  """
+
+  # Check and set the parallel printing mode  - - - - - - - - - - - - - - - - -
+  #
+  if (parallel_output not in ['host','all']):
+    logging.exception('Illegal value for argument "parallel_output": %s' % \
+                      (str(arallel_print)) + ', must beither "host" or "all"')
+    raise Exception
+
+  parallel.printmode = parallel_output
+
+  # Define the formats for file and console logging, and date and time - - - -
+  #
+  file_format = parallel.prompt+'%(levelname)s [%(asctime)s; %(filename)s,' + \
+                ' line %(lineno)s] %(message)s'
+
+  #console_format = parallel.prompt+'%(levelname)s [%(filename)s, ' + \
+  #                 'line %(lineno)s] %(message)s'
+  console_format = parallel.prompt+'%(levelname)s [%(filename)s] %(message)s'
+
+  datetime_format = '%d/%m/%y %H:%m'
+
+  # A dictionary with mappings from string log levels to logging module levels
+  # (including various aliases)
+  #
+  log_level_dict = {'NOTSET':logging.NOTSET, 'DEBUG':logging.DEBUG,
+                    'INFO':logging.INFO, 'WARNING':logging.WARNING,
+                    'ERROR':logging.ERROR, 'CRITICAL':logging.CRITICAL,
+                    'WARN':logging.WARNING, 'ERR':logging.ERROR,
+                    'FATAL':logging.CRITICAL,'ALL':logging.NOTSET}
+
+  # Check and set console log level - - - - - - - - - - - - - - - - - - - - - -
+  #
+  if ((parallel_output == 'host') and (parallel.rank() > 0)):
+    console_log_level = logging.ERROR  # Only log errors for parallel runs
+  else:
+    if (console_level in log_level_dict):
+      console_log_level = log_level_dict[console_level]
+    else:
+      logging.warn('Illegal console logging level given: "%s"' % \
+                   (console_level))
+      console_log_level = logging.WARNING  # Set to default warning
+
+  # Check and set file log level if given - - - - - - - - - - - - - - - - - - -
+  #
+  if (file_level != None):
+    if ((parallel_output == 'host') and (parallel.rank() > 0)):
+      file_log_level = logging.ERROR  # Only log errors for parallel runs
+    else:
+      if (file_level in log_level_dict):
+        file_log_level = log_level_dict[file_level]
+      else:
+        logging.warn('Illegal file logging level given: "%s"' % (file_level))
+        file_log_level = logging.WARNING  # Set to default warning
+
+  # Intialise the root logger, which is also the console logger - - - - - - - -
+  #
+  febrl_logger = logging.getLogger()  # New logger at root level
+  febrl_logger.setLevel(console_log_level)
+
+  # Define a formater for it and set format in the logger
+  #
+  console_log_formatter = logging.Formatter(console_format, datetime_format)
+  febrl_logger.handlers[0].setFormatter(console_log_formatter)
+
+  print parallel.prompt + 'Initialised console logger with level "%s"' % \
+        (logging.getLevelName(console_log_level))
+
+  # Add file logger if defined - - - - - - - - - - - - - - - - - - - - - - - -
+  #
+  if (log_file_name != None):
+    if (clear_log == True):
+      file_mode = 'w'
+    else:
+      file_mode = 'a'
+
+    # Modify file name, check for parallel runs and add '.log' if not given
+    #
+    if (parallel.size() > 1):
+      if (log_file_name[-4:] in ['.log', '.LOG']):
+        log_file_name = log_file_name[:-4]  # Remove log extension
+
+      log_file_name += '_P%d' % (parallel.rank())  # Add process qualifier
+
+    if (log_file_name[-4:] not in ['.log', '.LOG']):  # Add .log' extension
+      log_file_name += '.log'
+
+    file_log_handler =   logging.FileHandler(log_file_name, file_mode)
+    file_log_formatter = logging.Formatter(file_format, datetime_format)
+    file_log_handler.setFormatter(file_log_formatter)
+    file_log_handler.setLevel(file_log_level)
+    febrl_logger.addHandler(file_log_handler)
+    print parallel.prompt + \
+          'Initialised file logger with level "%s" into file "%s"' % \
+          (logging.getLevelName(file_log_level), log_file_name)
+
+# =============================================================================
+# Various short functions
+
+# -----------------------------------------------------------------------------
+
+def check_argument_is_string(keyword, value):
+  """Check if the type of the given value is a string, otherwise raise an
+     exception.
+  """
+
+  if (not isinstance(value, str)):
+    logging.exception('Value of argument "%s" is not a string: %s (%s)' % \
+                      (keyword, str(value), type(value)))
+    raise Exception
+
+# -----------------------------------------------------------------------------
+
+def check_argument_is_integer(keyword, value):
+  """Check if the type of the given value is an integer, otherwise raise an
+     exception.
+  """
+
+  if (not isinstance(value, int)):
+    logging.exception('Value of argument "%s" is not an integer: %s (%s)' % \
+                      (keyword, str(value), type(value)))
+    raise Exception
+
+# -----------------------------------------------------------------------------
+
+def check_argument_is_float(keyword, value):
+  """Check if the type of the given value is a floating point number,
+     otherwise raise an exception.
+  """
+
+  if (not isinstance(value, float)):
+    logging.exception('Value of argument "%s" is not a floating point ' % \
+                      (keyword) + 'number: %s (%s)' % (str(value),type(value)))
+    raise Exception
+
+# -----------------------------------------------------------------------------
+
+def check_argument_is_dictionary(keyword, value):
+  """Check if the type of the given value is a dictionary, otherwise raise an
+     exception.
+  """
+
+  if (not isinstance(value, dict)):
+    logging.exception('Value of argument "%s" is not a dictionary: %s' % \
+                      (keyword, type(value)))
+    raise Exception
+
+# -----------------------------------------------------------------------------
+
+def check_argument_is_list(keyword, value):
+  """Check if the type of the given value is a list, otherwise raise an
+     exception.
+  """
+
+  if (not isinstance(value, list)):
+    logging.exception('Value of argument "%s" is not a list: %s' % \
+                      (keyword, type(value)))
+    raise Exception
+
+# -----------------------------------------------------------------------------
+
+def check_argument_is_flag(keyword, value):
+  """Check if the given value is either True or False, otherwise raise an
+     exception.
+  """
+
+  if (value not in [True, False]):
+    logging.exception('Value of argument "%s" is not True or False: %s' % \
+                      (keyword, str(value)))
+    raise Exception
 
 # =============================================================================

@@ -1,25 +1,47 @@
 # =============================================================================
-# dataset.py - Access to various data set implementations (CSV, SQL, etc.)
-#
-# Freely extensible biomedical record linkage (Febrl) Version 0.2.2
-# See http://datamining.anu.edu.au/projects/linkage.html
-#
-# =============================================================================
 # AUSTRALIAN NATIONAL UNIVERSITY OPEN SOURCE LICENSE (ANUOS LICENSE)
-# VERSION 1.1
-#
-# The contents of this file are subject to the ANUOS License Version 1.1 (the
-# "License"); you may not use this file except in compliance with the License.
-# Software distributed under the License is distributed on an "AS IS" basis,
-# WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License for
-# the specific language governing rights and limitations under the License.
-# The Original Software is "dataset.py".
-# The Initial Developers of the Original Software are Dr Peter Christen
-# (Department of Computer Science, Australian National University) and Dr Tim
-# Churches (Centre for Epidemiology and Research, New South Wales Department
-# of Health). Copyright (C) 2002, 2003 the Australian National University and
+# VERSION 1.2
+# 
+# The contents of this file are subject to the ANUOS License Version 1.2
+# (the "License"); you may not use this file except in compliance with
+# the License. You may obtain a copy of the License at:
+# 
+#   http://datamining.anu.edu.au/linkage.html
+# 
+# Software distributed under the License is distributed on an "AS IS"
+# basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See
+# the License for the specific language governing rights and limitations
+# under the License.
+# 
+# The Original Software is: "dataset.py"
+# 
+# The Initial Developers of the Original Software are:
+#   Dr Tim Churches (Centre for Epidemiology and Research, New South Wales
+#                    Department of Health)
+#   Dr Peter Christen (Department of Computer Science, Australian National
+#                      University)
+# 
+# Copyright (C) 2002 - 2005 the Australian National University and
 # others. All Rights Reserved.
-# Contributors:
+# 
+# Contributors: scaredycat@swiftdsl.com.au
+# 
+# Alternatively, the contents of this file may be used under the terms
+# of the GNU General Public License Version 2 or later (the "GPL"), in
+# which case the provisions of the GPL are applicable instead of those
+# above. The GPL is available at the following URL: http://www.gnu.org/
+# If you wish to allow use of your version of this file only under the
+# terms of the GPL, and not to allow others to use your version of this
+# file under the terms of the ANUOS License, indicate your decision by
+# deleting the provisions above and replace them with the notice and
+# other provisions required by the GPL. If you do not delete the
+# provisions above, a recipient may use your version of this file under
+# the terms of any one of the ANUOS License or the GPL.
+# =============================================================================
+#
+# Freely extensible biomedical record linkage (Febrl) - Version 0.3
+#
+# See: http://datamining.anu.edu.au/linkage.html
 #
 # =============================================================================
 
@@ -31,6 +53,8 @@
      COL     Column wise fields (with fixed width) text files
      CSV     Comma Separated Values text files
      SQL     SQL database access to MySQL
+     PQSQL   SQL database access to PostgreSQL (contributed by
+                                                scaredycat@swiftdsl.com.au)
 
    For random (direct) access:
      Shelve  Python 'shelve' based (files based dictionary)
@@ -52,29 +76,37 @@
 # =============================================================================
 # Imports go here
 
+import logging
 import string
 import sys
 import os
-import xreadlines
 import shelve
 
 import parallel  # Needed to determine parallel write mode ('host' or 'all')
-import tcsv      # Tim Churches' CSV parser
+
+import csv         # Use standard Python module (new since version 2.3)
+## import tcsv      # Tim Churches' CSV parser  (not used anymore)
 
 try:
   import MySQLdb  # Python database API for MySQL
-  # print '1:***** Using "MySQLdb" module for DataSetSQL *****'
+  logging.info('***** Using "MySQLdb" module for DataSetSQL *****')
 except:
-  print 'warning:No mySQL module available'
+  logging.warn('No MySQLdb module available')
 
 try:
-  import bsddb3  # Import Berkely database module
-  shelve_type = 'BSDDB3'
-  # print '1:***** using "bsddb3" module for DataSetShelve *****'
-
+  import pgdb
 except:
-  print 'warning:No bsddb3 available, use normal shelve'
-  shelve_type = 'SHELVE'
+  logging.warn('No pgdb module (PostgreSQL) available')
+
+#try:
+#  import bsddb3  # Import Berkely database module
+#  shelve_type = 'BSDDB3'
+#  logging.info('***** using "bsddb3" module for DataSetShelve *****')
+#
+#except:
+#  logging.warn('No bsddb3 available, use normal shelve')
+
+shelve_type = 'SHELVE'  # use standard shelve, not bsddb3 based
 
 # =============================================================================
 
@@ -175,7 +207,7 @@ class DataSet:
     for (keyword, value) in base_kwargs.items():
       if (keyword == 'name'):
         if (not isinstance(value, str)):
-          print 'error:Argument "name" must be of type string'
+          logging.exception('Argument "name" must be of type string')
           raise Exception
         self.name = value
 
@@ -184,25 +216,26 @@ class DataSet:
 
       elif (keyword == 'access_mode'):
         if (value not in ['read','write','append']):
-          print 'error:Illegal mode for "access_mode": %s' % (str(value))
+          logging.exception('Illegal mode for "access_mode": %s' % \
+                            (str(value)))
           raise Exception
         self.access_mode = value
 
       elif (keyword == 'fields'):
         if (not isinstance(value, dict)):
-          print 'error:Argument "fields" must be a dictionary'
+          logging.exception('Argument "fields" must be a dictionary')
           raise Exception
         self.fields = value
 
       elif (keyword == 'fields_default'):
         if (not isinstance(value, str)):
-          print 'error:Argument "fields_default" must be of type string'
+          logging.exception('Argument "fields_default" must be of type string')
           raise Exception
         self.fields_default = value
 
       elif (keyword == 'strip_fields'):
         if (value not in [True, False]):
-          print 'error:Argument "strip_fields" must be "True" or "False"'
+          logging.exception('Argument "strip_fields" must be True or False')
           raise Exception
         self.strip_fields = value
 
@@ -210,28 +243,28 @@ class DataSet:
         if (isinstance(value, str)):
           value = [value]  # Make it a list
         if (not isinstance(value, list)):
-          print 'error:Argument "missing_values" must be a string or a '+ \
-                'list of strings'
+          logging.exception('Argument "missing_values" must be a string or' + \
+                            ' a list of strings')
           raise Exception
         self.missing_values = value
 
       else:
-        print 'error:Illegal constructor argument keyword: "%s"' % \
-              (str(keyword))
+        logging.exception('Illegal constructor argument keyword: "%s"' % \
+              (str(keyword)))
         raise Exception
 
     # Check if name, access mode and fields are defined - - - - - - - - - - - -
     #
     if (self.name == None):
-      print 'error:Data set "name" is not defined'
+      logging.exception('Data set "name" is not defined')
       raise Exception
 
     if (self.fields == None):
-      print 'error:Data set "fields" are not defined'
+      logging.exception('Data set "fields" are not defined')
       raise Exception
 
     if (self.access_mode == None):
-      print 'error:Data set "access_mode" not defined'
+      logging.exception('Data set "access_mode" not defined')
       raise Exception
 
   # ---------------------------------------------------------------------------
@@ -241,7 +274,7 @@ class DataSet:
        See implementations in derived classes for details.
     """
 
-    print 'error:Override abstract method in derived class'
+    logging.exception('Override abstract method in derived class')
     raise Exception
 
   # ---------------------------------------------------------------------------
@@ -251,7 +284,7 @@ class DataSet:
        See implementations in derived classes for details.
     """
 
-    print 'error:Override abstract method in derived class'
+    logging.exception('Override abstract method in derived class')
     raise Exception
 
   # ---------------------------------------------------------------------------
@@ -261,7 +294,7 @@ class DataSet:
        See implementations in derived classes for details.
     """
 
-    print 'error:Override abstract method in derived class'
+    logging.exception('Override abstract method in derived class')
     raise Exception
 
   # ---------------------------------------------------------------------------
@@ -271,7 +304,7 @@ class DataSet:
        See implementations in derived classes for details.
     """
 
-    print 'error:Override abstract method in derived class'
+    logging.exception('Override abstract method in derived class')
     raise Exception
 
   # ---------------------------------------------------------------------------
@@ -281,7 +314,7 @@ class DataSet:
        See implementations in derived classes for details.
     """
 
-    print 'error:Override abstract method in derived class'
+    logging.exception('Override abstract method in derived class')
     raise Exception
 
 # =============================================================================
@@ -298,7 +331,7 @@ class DataSetCOL(DataSet):
      start (starting from zero) and length values (start,length).
 
      DERIVED CLASS ATTRIBUTES
-       file_name         A string containing the name of the underlying CSV
+       file_name         A string containing the name of the underlying text
                          file.
        header_lines      Number of header lines in the file to be skipped in
                          read access mode. Default is no header line (value 0).
@@ -332,21 +365,21 @@ class DataSetCOL(DataSet):
     for (keyword, value) in kwargs.items():
       if (keyword == 'file_name'):
         if (not isinstance(value, str)):
-          print 'error:Argument "file_name" is not a string'
+          logging.exception('Argument "file_name" is not a string')
           raise Exception
         self.file_name = value
 
       elif (keyword == 'header_lines'):
         if (not isinstance(value, int) or (value < 0)):
-          print 'error:Argument "header_lines" is not a positive integer '+ \
-                'number'
+          logging.exception('Argument "header_lines" is not a positive ' + \
+                            'integer number')
           raise Exception
         self.header_lines = value
 
       elif (keyword == 'write_header'):
         if (value not in [True, False]):
-          print 'error:Value of argument "write_header" must be "True" or '+ \
-                '"False"'
+          logging.exception('Value of argument "write_header" must be True' + \
+                            ' or False')
           raise Exception
         self.write_header = value
 
@@ -354,7 +387,7 @@ class DataSetCOL(DataSet):
         base_kwargs[keyword] = value
 
     if (self.file_name == None):
-      print 'error:File name not defined'
+      logging.exception('File name not defined')
       raise Exception
 
     DataSet.__init__(self, base_kwargs)  # Process base arguments
@@ -372,13 +405,13 @@ class DataSetCOL(DataSet):
       length_val = field_values[1]
 
       if (not isinstance(start_val, int) or (start_val < 0)):
-        print 'error:Start value of field "%s" must be zero or positive' % \
-              (field_name)
+        logging.exception('Start value of field "%s" must be zero or ' % \
+                          (field_name) + ' positive')
         raise Exception
 
       if (not isinstance(length_val, int) or (length_val <= 0)):
-        print 'error:Length value of field "%s" must be positive' % \
-              (field_name)
+        logging.exception('Length value of field "%s" must be positive' % \
+              (field_name))
         raise Exception
 
       fields_names.append(field_name)
@@ -402,7 +435,8 @@ class DataSetCOL(DataSet):
       try:
         self.file = open(self.file_name,'r')
       except:
-        print 'error:Can not open file: "%s" for reading' % (self.file_name)
+        logging.exception('Can not open file: "%s" for reading' % \
+                          (self.file_name))
         raise IOError
 
       # Count number of records in the file
@@ -414,7 +448,7 @@ class DataSetCOL(DataSet):
       else:  # Slow line counting method
         num_rows = 0
         fp = open(self.file_name,'r')
-        for l in fp.xreadlines():
+        for l in fp:
           num_rows += 1
         fp.close()
 
@@ -424,7 +458,7 @@ class DataSetCOL(DataSet):
       # Check that there are records in the data set
       #
       if (self.num_records <= 0):
-        print 'error:No records in data set'
+        logging.exception('No records in data set')
         raise Exception
 
       # Skip over header lines if there are
@@ -447,8 +481,8 @@ class DataSetCOL(DataSet):
       for (field_start, field_length, field_name) in self.field_list:
 
         if (col_count != field_start):
-          print 'error:Illegal field start value %i for field "%s"' % \
-                (field_start, field_name)
+          logging.exception('Illegal field start value %i for field "%s"' % \
+                (field_start, field_name))
           raise Exception
 
         col_count += field_length  # Increase column counter by field length,
@@ -464,7 +498,8 @@ class DataSetCOL(DataSet):
         try:
           self.file = open(self.file_name,'w')
         except:
-          print 'error:Can not open file: "%s" for writing' % (self.file_name)
+          logging.exception('Can not open file: "%s" for writing' % \
+                            (self.file_name))
           raise IOError
 
         # Write the header line with field names if desired
@@ -480,9 +515,6 @@ class DataSetCOL(DataSet):
             # Make sure field names have length of fields
             #
             header_line += field_name[:field_length].ljust(field_length)
-
-          #print '1:####write: '+str(self.field_list)
-          #print '1:####       '+header_line
 
           self.file.write(header_line+os.linesep)  # Write header line
           self.file.flush()
@@ -508,8 +540,8 @@ class DataSetCOL(DataSet):
       for (field_start, field_length, field_name) in self.field_list:
 
         if (col_count != field_start):
-          print 'error:Illegal field start value %i for field "%s"' % \
-                (field_start, field_name)
+          logging.exception('Illegal field start value %i for field "%s"' % \
+                (field_start, field_name))
           raise Exception
 
         col_count += field_length  # Increase column counter by field length,
@@ -525,8 +557,8 @@ class DataSetCOL(DataSet):
         try:
           self.file = open(self.file_name,'a')
         except:
-          print 'error:Can not open file: "%s" for appending' % \
-                (self.file_name)
+          logging.exception('Can not open file: "%s" for appending' % \
+                (self.file_name))
           raise IOError
 
         # Count number of records in the file
@@ -538,7 +570,7 @@ class DataSetCOL(DataSet):
         else:  # Slow line counting method
           num_rows = 0
           fp = open(self.file_name,'r')
-          for l in fp.xreadlines():
+          for l in fp:
             num_rows += 1
           fp.close()
 
@@ -556,9 +588,6 @@ class DataSetCOL(DataSet):
             #
             header_line += field_name[:field_length].ljust(field_length)
 
-          #print '1:####append: '+str(self.field_list)
-          #print '1:####        '+header_line
-
           self.file.write(header_line+os.linesep)  # Write header line
           self.file.flush()
 
@@ -573,24 +602,24 @@ class DataSetCOL(DataSet):
         self.next_record_num = 0
 
     else:  # Illegal data set access mode - - - - - - - - - - - - - - - - - - -
-      print 'error:Illegal data set access mode: "%s"' % \
-            (str(self.access_mode))
+
+      logging.exception('Illegal data set access mode: "%s"' % \
+            (str(self.access_mode)))
       raise Exception
 
-    # A log message for low volume log output (level 1) - - - - - - - - - - - -
+    # A log message - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     #
-    print '1:'
-    print '1:Initialised COL data set "%s"' % (self.name)
-    print '1:  In access mode: %s' % (self.access_mode)
-    print '1:  Parallel write: %s' % (self.parallelwrite)
-    print '1:  File name:      %s' % (self.file_name)
-    print '1:  Fields:         %s' % (str(self.fields))
-    print '2:  Fields list:    %s' % (str(self.field_list))
-    print '2:  Write header:   %s' % (str(self.write_header))
-    print '2:  Header lines:   %i' % (self.header_lines)
-    print '2:  Strip fields:   %s' % (str(self.strip_fields))
-    print '2:  Missing values: %s' % (str(self.missing_values))
-    print '1:  Number of records: %i' % (self.num_records)
+    logging.info('Initialised COL data set "%s"' % (self.name))
+    logging.info('  In access mode: %s' % (self.access_mode))
+    logging.info('  Parallel write: %s' % (self.parallelwrite))
+    logging.info('  File name:      %s' % (self.file_name))
+    logging.info('  Fields:         %s' % (str(self.fields)))
+    logging.debug('  Fields list:    %s' % (str(self.field_list)))
+    logging.debug('  Write header:   %s' % (str(self.write_header)))
+    logging.debug('  Header lines:   %i' % (self.header_lines))
+    logging.debug('  Strip fields:   %s' % (str(self.strip_fields)))
+    logging.debug('  Missing values: %s' % (str(self.missing_values)))
+    logging.info('  Number of records: %i' % (self.num_records))
 
   # ---------------------------------------------------------------------------
 
@@ -612,10 +641,9 @@ class DataSetCOL(DataSet):
     self.num_records =     None
     self.last_col_number = 0
 
-    # A log message for low volume log output (level 1) - - - - - - - - - - - -
+    # A log message - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     #
-    print '1:'
-    print '1:Finalised COL data set "%s"' % (self.name)
+    logging.info('Finalised COL data set "%s"' % (self.name))
 
   # ---------------------------------------------------------------------------
 
@@ -624,15 +652,15 @@ class DataSetCOL(DataSet):
     """
 
     if (self.file == None):
-      print 'error:Data set not initialised'
+      logging.exception('Data set not initialised')
       raise Exception
 
     if (self.access_mode != 'read'):
-      print 'error:Data set not initialised for "read" access'
+      logging.exception('Data set not initialised for "read" access')
       raise Exception
 
     if (first < 0) or ((first+number) > self.num_records):
-      print 'error:Selected block of records out of range'
+      logging.exception('Selected block of records out of range')
       raise Exception
 
     # Check if the block is at the current position. If not, we have to change
@@ -683,13 +711,13 @@ class DataSetCOL(DataSet):
 
       self.next_record_num += 1  # Set counter to next record
 
-      # A log message for high volume log output (level 3)  - - - - - - - - - -
+      # A log message - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
       #
-      print '3:    Read record from data set: %s ' % (str(rec_dict))
+      logging.debug('    Read record from data set: %s ' % (str(rec_dict)))
 
-    # A log message for medium volume log output (level 2)  - - - - - - - - - -
+    # A log message - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     #
-    print '2:  Read record block %i to %i' % (first, first+number-1)
+    logging.debug('  Read record block %i to %i' % (first, first+number-1))
 
     return rec_list
 
@@ -700,11 +728,11 @@ class DataSetCOL(DataSet):
     """
 
     if (self.file == None):
-      print 'error:Data set not initialised'
+      logging.exception('Data set not initialised')
       raise Exception
 
     if (self.access_mode != 'read'):
-      print 'error:Data set not initialised for "read" access'
+      logging.exception('Data set not initialised for "read" access')
       raise Exception
 
     file_line = self.file.readline()  # Read one line
@@ -733,9 +761,9 @@ class DataSetCOL(DataSet):
       return_rec['_rec_num_'] = self.next_record_num
       return_rec['_dataset_name_'] = self.name
 
-    # A log message for high volume log output (level 3)  - - - - - - - - - - -
+    # A log message - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     #
-    print '3:    Read record %i' % (self.next_record_num-1)
+    logging.debug('    Read record %i' % (self.next_record_num-1))
 
     return return_rec
 
@@ -751,18 +779,19 @@ class DataSetCOL(DataSet):
       return  # Don't write if not host process
 
     if (self.file == None):
-      print 'error:Data set not initialised'
+      logging.exception('Data set not initialised')
       raise Exception
 
     if (self.access_mode not in ['write','append']):
-      print 'error:Data set not initialised for  "write" or "append" access'
+      logging.exception('Data set not initialised for  "write" or "append"' + \
+                        ' access')
       raise Exception
 
     for rec in record_list:
 
       if (not isinstance(rec, dict)):
-        print 'error:Illegal record type: "%s", must be a dictionary' % \
-              (str(type(rec)))
+        logging.exception('Illegal record type: "%s", must be a dictionary' % \
+              (str(type(rec))))
         raise Exception
 
       # Convert record dictionary into a line to be written to file
@@ -775,24 +804,21 @@ class DataSetCOL(DataSet):
 
         rec_line += field_data[:field_length].ljust(field_length)
 
-      #print '1:####write: '+str(rec)
-      #print '1:####       '+rec_line
-
       self.file.write(rec_line+os.linesep)  # Write record to file
 
-      # A log message for high volume log output (level 3)  - - - - - - - - - -
+      # A log message - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
       #
-      print '3:    Wrote record to data set: %s' % (str(rec))
+      logging.debug('    Wrote record to data set: %s' % (str(rec)))
 
     self.next_record_num += len(record_list)
     self.num_records +=     len(record_list)
 
     self.file.flush()
 
-    # A log message for medium volume log output (level 2)  - - - - - - - - - -
+    # A log message - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     #
-    print '2:  Wrote record block %i to %i' % \
-          (self.next_record_num-len(record_list), self.next_record_num-1)
+    logging.debug('  Wrote record block %i to %i' % \
+          (self.next_record_num-len(record_list), self.next_record_num-1))
 
   # ---------------------------------------------------------------------------
 
@@ -853,27 +879,27 @@ class DataSetCSV(DataSet):
     for (keyword, value) in kwargs.items():
       if (keyword == 'file_name'):
         if (not isinstance(value, str)):
-          print 'error:Argument "file_name" is not a string'
+          logging.exception('Argument "file_name" is not a string')
           raise Exception
         self.file_name = value
 
       elif (keyword == 'header_lines'):
         if (not isinstance(value, int) or (value < 0)):
-          print 'error:Argument "header_lines" is not a positive integer '+ \
-                'number'
+          logging.exception('Argument "header_lines" is not a positive ' + \
+                            'integer number')
           raise Exception
         self.header_lines = value
 
       elif (keyword == 'write_header'):
         if (value not in [True, False]):
-          print 'error:Value of argument "write_header" must be "True" or '+ \
-                '"False"'
+          logging.exception('Value of argument "write_header" must be True' + \
+                            ' or False')
           raise Exception
         self.write_header = value
 
       elif (keyword == 'write_quote_char'):
         if (not isinstance(value, str)):
-          print 'error:Argument "write_quote_char" must be a string'
+          logging.exception('Argument "write_quote_char" must be a string')
           raise Exception
         self.write_quote_char = value
 
@@ -881,7 +907,7 @@ class DataSetCSV(DataSet):
         base_kwargs[keyword] = value
 
     if (self.file_name == None):
-      print 'error:File name not defined'
+      logging.exception('File name not defined')
       raise Exception
 
     DataSet.__init__(self, base_kwargs)  # Process base arguments
@@ -896,8 +922,8 @@ class DataSetCSV(DataSet):
       fields_names.append(field_name)
 
       if (not isinstance(field_col, int) or (field_col < 0)):
-        print 'error:Value of field column "%s" must be zero or positive' % \
-              (field_name)
+        logging.exception('Value of field column "%s" must be zero or ' % \
+                          (field_name) + ' positive')
         raise Exception
       fields_positions.append(field_col)
 
@@ -908,11 +934,7 @@ class DataSetCSV(DataSet):
     self.field_list = map(None, fields_positions, fields_names)
     self.field_list.sort()
 
-    # Initialise the CSV line parser
-    #
-    self.csv_parser = tcsv.delimited_parser(delimiter_chars=',', as_strings=1)
-
-    # Now perform various checks for each access mode - - - - - - - - - - - - -
+    # Now perform various checks for each access mode and open file - - - - - -
 
     if (self.access_mode == 'read'):  # - - - - - - - - - - - - - - - - - - - -
 
@@ -921,7 +943,8 @@ class DataSetCSV(DataSet):
       try:
         self.file = open(self.file_name,'r')
       except:
-        print 'error:Can not open file: "%s" for reading' % (self.file_name)
+        logging.exception('Can not open file: "%s" for reading' % \
+                          (self.file_name))
         raise IOError
 
       # Count number of records in the file
@@ -933,7 +956,7 @@ class DataSetCSV(DataSet):
       else:  # Slow line counting method
         num_rows = 0
         fp = open(self.file_name,'r')
-        for l in fp.xreadlines():
+        for l in fp:
           num_rows += 1
         fp.close()
 
@@ -943,14 +966,18 @@ class DataSetCSV(DataSet):
       # Check that there are records in the data set
       #
       if (self.num_records <= 0):
-        print 'error:No records in data set'
+        logging.exception('No records in CSV data set')
         raise Exception
+
+      # Initialise the CSV parser as reader
+      #
+      self.csv_parser = csv.reader(self.file)
 
       # Skip over header lines if there are
       #
       if (self.header_lines > 0):
         for i in range(self.header_lines):
-          self.file.readline()
+          self.csv_parser.next()
 
     elif (self.access_mode == 'write'):   # - - - - - - - - - - - - - - - - - -
 
@@ -959,7 +986,7 @@ class DataSetCSV(DataSet):
       if (self.parallelwrite == 'all'):
         self.file_name = self.file_name+'-P%i' % (parallel.rank())
 
-      # Now only initialse file according to parallel write mode
+      # Now only initialise file according to parallel write mode
       #
       if (self.parallelwrite == 'all') or \
          ((self.parallelwrite == 'host') and (parallel.rank() == 0)):
@@ -969,25 +996,30 @@ class DataSetCSV(DataSet):
         try:
           self.file = open(self.file_name,'w')
         except:
-          print 'error:Can not open file: "%s" for writing' % (self.file_name)
+          logging.exception('Can not open file: "%s" for writing' % \
+                            (self.file_name))
           raise IOError
+
+        # Initialise the CSV parser as reader
+        #
+        self.csv_parser = csv.writer(self.file)
 
         # Write the header line with field names if desired
         #
         if (self.write_header == True):
-          header_line = ''
+          header_list = []
           j = 0  # Index into fields list
           for i in range(self.tot_field_number):
             if (i == self.field_list[j][0]):
               field_name = self.field_list[j][1]
               if (self.strip_fields == True):
                 field_name = field_name.strip()
-              header_line = header_line + self.write_quote_char + \
-                            field_name + self.write_quote_char + ', '
+              header_list.append(self.write_quote_char + field_name + \
+                                 self.write_quote_char)
               j += 1
             else:
-              header_line = header_line + ', '  # Not specified field
-          self.file.write(header_line[:-2]+os.linesep)  # Write header line
+              header_list.append('')  # Not specified field
+          self.csv_parser.writerow(header_list)
           self.file.flush()
 
       else:  # Don't initialise file
@@ -1014,8 +1046,8 @@ class DataSetCSV(DataSet):
         try:
           self.file = open(self.file_name,'a')
         except:
-          print 'error:Can not open file: "%s" for appending' % \
-                (self.file_name)
+          logging.exception('Can not open file: "%s" for appending' % \
+                (self.file_name))
           raise IOError
 
         # Count number of records in the file
@@ -1027,25 +1059,30 @@ class DataSetCSV(DataSet):
         else:  # Slow line counting method
           num_rows = 0
           fp = open(self.file_name,'r')
-          for l in fp.xreadlines():
+          for l in fp:
             num_rows += 1
           fp.close()
+
+        # Initialise the CSV parser as reader
+        #
+        self.csv_parser = csv.writer(self.file)
 
         # If no records are stored write header if needed
         #
         if (num_rows == 0) and (self.write_header == True):
-          header_line = ''
+          header_list = []
           j = 0  # Index into fields list
           for i in range(self.tot_field_number):
             if (i == self.field_list[j][0]):
               field_name = self.field_list[j][1]
               if (self.strip_fields == True):
                 field_name = field_name.strip()
-              header_line = header_line + field_name + ', '
+              header_list.append(self.write_quote_char + field_name + \
+                                 self.write_quote_char)
               j += 1
             else:
-              header_line = header_line + ', '  # Not specified field
-          self.file.write(header_line[:-2]+os.linesep)  # Write header line
+              header_list.append('')  # Not specified field
+          self.csv_parser.writerow(header_list)
           self.file.flush()
 
         self.num_records =     num_rows - self.header_lines
@@ -1059,24 +1096,23 @@ class DataSetCSV(DataSet):
         self.next_record_num = 0
 
     else:  # Illegal data set access mode - - - - - - - - - - - - - - - - - - -
-      print 'error:Illegal data set access mode: "%s"' % \
-            (str(self.access_mode))
+      logging.exception('Illegal data set access mode: "%s"' % \
+            (str(self.access_mode)))
       raise Exception
 
-    # A log message for low volume log output (level 1) - - - - - - - - - - - -
+    # A log message - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     #
-    print '1:'
-    print '1:Initialised CSV data set "%s"' % (self.name)
-    print '1:  In access mode: %s' % (self.access_mode)
-    print '1:  Parallel write: %s' % (self.parallelwrite)
-    print '1:  File name:      %s' % (self.file_name)
-    print '1:  Fields:         %s' % (str(self.fields))
-    print '2:  Fields list:    %s' % (str(self.field_list))
-    print '2:  Write header:   %s' % (str(self.write_header))
-    print '2:  Header lines:   %i' % (self.header_lines)
-    print '2:  Strip fields:   %s' % (str(self.strip_fields))
-    print '2:  Missing values: %s' % (str(self.missing_values))
-    print '1:  Number of records: %i' % (self.num_records)
+    logging.info('Initialised CSV data set "%s"' % (self.name))
+    logging.info('  In access mode: %s' % (self.access_mode))
+    logging.info('  Parallel write: %s' % (self.parallelwrite))
+    logging.info('  File name:      %s' % (self.file_name))
+    logging.info('  Fields:         %s' % (str(self.fields)))
+    logging.debug('  Fields list:    %s' % (str(self.field_list)))
+    logging.debug('  Write header:   %s' % (str(self.write_header)))
+    logging.debug('  Header lines:   %i' % (self.header_lines))
+    logging.debug('  Strip fields:   %s' % (str(self.strip_fields)))
+    logging.debug('  Missing values: %s' % (str(self.missing_values)))
+    logging.info('  Number of records: %i' % (self.num_records))
 
   # ---------------------------------------------------------------------------
 
@@ -1088,6 +1124,7 @@ class DataSetCSV(DataSet):
     # Close file if it is open
     #
     if (self.file != None):
+
       self.file.close()
       self.file = None
 
@@ -1097,10 +1134,9 @@ class DataSetCSV(DataSet):
     self.next_record_num = None
     self.num_records =     None
 
-    # A log message for low volume log output (level 1) - - - - - - - - - - - -
+    # A log message - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     #
-    print '1:'
-    print '1:Finalised CSV data set "%s"' % (self.name)
+    logging.info('Finalised CSV data set "%s"' % (self.name))
 
   # ---------------------------------------------------------------------------
 
@@ -1109,15 +1145,15 @@ class DataSetCSV(DataSet):
     """
 
     if (self.file == None):
-      print 'error:Data set not initialised'
+      logging.exception('Data set not initialised')
       raise Exception
 
     if (self.access_mode != 'read'):
-      print 'error:Data set not initialised for "read" access'
+      logging.exception('Data set not initialised for "read" access')
       raise Exception
 
     if (first < 0) or ((first+number) > self.num_records):
-      print 'error:Selected block of records out of range'
+      logging.exception('Selected block of records out of range')
       raise Exception
 
     # Check if the block is at the current position. If not, we have to change
@@ -1129,10 +1165,14 @@ class DataSetCSV(DataSet):
 
       self.file = open(self.file_name,'r')  # Re-open file
 
+      # Initialise the CSV parser as reader
+      #
+      self.csv_parser = csv.reader(self.file)
+
       # Skip over header (if there is one) and skip to first record
       #
       for i in range(self.header_lines+first):
-        self.file.readline()
+          self.csv_parser.next()
 
     self.next_record_num = first  # Update record counter
 
@@ -1142,23 +1182,20 @@ class DataSetCSV(DataSet):
 
     for i in range(number):
 
-      file_line = self.file.readline()  # Read one line
+      line_list = self.csv_parser.next()
 
-      # Process the file line (make lower case, split, make a dictionary) - - -
+      # Process the file line (make a dictionary) - - - - - - - - - - - - - - -
       #
-      file_line = file_line.lower()
-
-      line_list = self.csv_parser.parse(file_line)
       if (len(line_list) < self.tot_field_number):
-        # print 'line_list original:', line_list  #########
-        line_list += [''] * (self.tot_field_number-len(line_list))
-        # print 'line_list expanded:', line_list  ############
-        # print self.tot_field_number  ########
+        line_list += [str(self.missing_values)] * \
+                     (self.tot_field_number-len(line_list))
+        logging.warn('Read CSV record did not have enough fields, ' + \
+                     'expanded with "%s"' % (str(self.missing_values)))
 
       rec_dict = {}  # A new dictionary for this record
 
       for (key,value) in self.fields.items():
-        field_data = line_list[value]  # Extract field
+        field_data = line_list[value].lower()  # Extract field
         if (self.strip_fields == True):  # Strip off white spaces first
           field_data = field_data.strip()
         if (field_data != ''):  # Only add non-empty fields to dictionary
@@ -1175,11 +1212,11 @@ class DataSetCSV(DataSet):
 
       # A log message for high volume log output (level 3)  - - - - - - - - - -
       #
-      print '3:    Read record from data set: %s ' % (str(rec_dict))
+      logging.debug('    Read record from data set: %s ' % (str(rec_dict)))
 
     # A log message for medium volume log output (level 2)  - - - - - - - - - -
     #
-    print '2:  Read record block %i to %i' % (first, first+number-1)
+    logging.debug('  Read record block %i to %i' % (first, first+number-1))
 
     return rec_list
 
@@ -1190,28 +1227,34 @@ class DataSetCSV(DataSet):
     """
 
     if (self.file == None):
-      print 'error:Data set not initialised'
+      logging.exception('Data set not initialised')
       raise Exception
 
     if (self.access_mode != 'read'):
-      print 'error:Data set not initialised for "read" access'
+      logging.exception('Data set not initialised for "read" access')
       raise Exception
 
-    file_line = self.file.readline()  # Read one line
+    try:
+      line_list = self.csv_parser.next()  # Read one line
+    except:
+      line_list = []
 
-    if (file_line == ''):  # Empty line, corresponds to end of file (EOF)
+    if (line_list == []):  # Empty line, corresponds to end of file (EOF)
       return None
 
     else:
       self.next_record_num += 1  # Set counter to next record
 
-      file_line = file_line.lower()  # Make it all lowercase
-      line_list = self.csv_parser.parse(file_line)
+      if (len(line_list) < self.tot_field_number):
+        line_list += [str(self.missing_values)] * \
+                     (self.tot_field_number-len(line_list))
+        logging.warn('Read CSV record did not have enough fields, ' + \
+                     'expanded with "%s"' % (str(self.missing_values)))
 
       return_rec = {}  # Return record as a dictionary
 
       for (key,value) in self.fields.items():
-        field_data = line_list[value]  # Extract field
+        field_data = line_list[value].lower()  # Extract field
         if (self.strip_fields == True):  # Strip whitespaces of first
           field_data = field_data.strip()
         if (field_data != ''):  # Only add non-empty fields to dictionary
@@ -1224,7 +1267,7 @@ class DataSetCSV(DataSet):
 
     # A log message for high volume log output (level 3)  - - - - - - - - - - -
     #
-    print '3:    Read record %i' % (self.next_record_num-1)
+    logging.debug('    Read record %i' % (self.next_record_num-1))
 
     return return_rec
 
@@ -1240,49 +1283,49 @@ class DataSetCSV(DataSet):
       return  # Don't write if not host process
 
     if (self.file == None):
-      print 'error:Data set not initialised'
+      logging.exception('Data set not initialised')
       raise Exception
 
     if (self.access_mode not in ['write','append']):
-      print 'error:Data set not initialised for  "write" or "append" access'
+      logging.exception('Data set not initialised for "write" or "append" ' + \
+                        'access')
       raise Exception
 
     for rec in record_list:
 
       if (not isinstance(rec, dict)):
-        print 'error:Illegal record type: "%s", must be a dictionary' % \
-              (str(type(rec)))
+        logging.exception('Illegal record type: "%s", must be a dictionary' % \
+                          (str(type(rec))))
         raise Exception
 
-      # Convert record dictionary into a line to be written to file
+      # Convert record dictionary into a list to be written to file
       #
-      rec_line = ''
+      rec_list = []
       j = 0  # Index into fields list
       for i in range(self.tot_field_number):
         if (i == self.field_list[j][0]):
           field_data = rec.get(self.field_list[j][1],self.fields_default)
           if (self.strip_fields == True):
             field_data = field_data.strip()  # Strip off whitespace
-          rec_line = rec_line + self.write_quote_char + field_data + \
-                     self.write_quote_char
+          rec_list.append(self.write_quote_char + field_data + \
+                          self.write_quote_char)
           j += 1
-        rec_line = rec_line + ', '
 
-      self.file.write(rec_line[:-2]+os.linesep)  # Write record to file
+      self.csv_parser.writerow(rec_list)  # Write record to file
 
-      # A log message for high volume log output (level 3)  - - - - - - - - - -
+      # A log message - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
       #
-      print '3:    Wrote record to data set: %s' % (str(rec))
+      logging.debug('    Wrote record to data set: %s' % (str(rec)))
 
     self.next_record_num += len(record_list)
     self.num_records +=     len(record_list)
 
     self.file.flush()
 
-    # A log message for medium volume log output (level 2)  - - - - - - - - - -
+    # A log message - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     #
-    print '2:  Wrote record block %i to %i' % \
-          (self.next_record_num-len(record_list), self.next_record_num-1)
+    logging.debug('  Wrote record block %i to %i' % \
+          (self.next_record_num-len(record_list), self.next_record_num-1))
 
   # ---------------------------------------------------------------------------
 
@@ -1324,8 +1367,8 @@ class DataSetSQL(DataSet):
   def __init__(self, **kwargs):
 
     if (not sys.modules.has_key('MySQLdb')):
-      print 'error:MySQLdb module not available, so SQL data set can not be'+ \
-            ' used'
+      logging.exception('MySQLdb module not available, so SQL data set ' + \
+                        'can not be used')
       raise Exception
 
     self.dataset_type =       'SQL'
@@ -1346,32 +1389,32 @@ class DataSetSQL(DataSet):
     for (keyword, value) in kwargs.items():
       if (keyword == 'database_name'):
         if (not isinstance(value, str)):
-          print 'error:Argument "database_name" is not a string'
+          logging.exception('Argument "database_name" is not a string')
           raise Exception
         self.database_name = value
 
       elif (keyword == 'database_user'):
         if (not isinstance(value, str)):
-          print 'error:Argument "database_user" is not a string'
+          logging.exception('Argument "database_user" is not a string')
           raise Exception
         self.database_user = value
 
       elif (keyword == 'database_password'):
         if (not isinstance(value, str)):
-          print 'error:Argument "database_password" is not a string'
+          logging.exception('Argument "database_password" is not a string')
           raise Exception
         self.database_password = value
 
       elif (keyword == 'table_name'):
         if (not isinstance(value, str)):
-          print 'error:Argument "table_name" is not a string'
+          logging.exception('Argument "table_name" is not a string')
           raise Exception
         self.table_name = value
 
       elif (keyword == 'database_block_size'):
         if (not isinstance(value, int) or (value <= 0)):
-          print 'error:Argument "database_block_size" must be a positive '+ \
-                'integer'
+          logging.exception('Argument "database_block_size" must be a ' + \
+                            'positive integer')
           raise Exception
         self.database_block_size = value
 
@@ -1381,15 +1424,15 @@ class DataSetSQL(DataSet):
     # Check if database attributes are set  - - - - - - - - - - - - - - - - - -
     #
     if (self.database_name == ''):
-      print 'error:No database name given'
+      logging.exception('No database name given')
       raise Exception
 
     if (self.database_user == ''):
-      print 'error:No database user given'
+      logging.exception('No database user given')
       raise Exception
 
     if (self.table_name == ''):
-      print 'error:Table name is not defined'
+      logging.exception('Table name is not defined')
       raise Exception
 
     DataSet.__init__(self, base_kwargs)
@@ -1397,8 +1440,8 @@ class DataSetSQL(DataSet):
     # Check if parallel write is set to 'host'  - - - - - - - - - - - - - - - -
     #
     if (self.parallelwrite != 'host'):
-      print 'warning:Parallel write mode for  SQL data set is not "host": %s' \
-            % (self.parallelwrite)
+      logging.warn('Parallel write mode for  SQL data set is not "host": %s' \
+                   % (self.parallelwrite))
 
     # Only host process will access SQL data base
     #
@@ -1410,7 +1453,8 @@ class DataSetSQL(DataSet):
     #
     for (field_name, field_col) in self.fields.items():
       if (not isinstance(field_col, str)):
-        print 'error:Field column "%s" is not a string' % (str(field_col))
+        logging.exception('Field column "%s" is not a string' % \
+                          (str(field_col)))
         raise Exception
 
     # if no database password is given, query it interactively  - - - - - - - -
@@ -1441,8 +1485,8 @@ class DataSetSQL(DataSet):
       table_name_list = []  # 'fetchall' returned an empty tuple
 
     if ((self.table_name,) not in table_name_list):
-      print 'error:Table "%s" is not in database "%s"' % \
-            (t, self.database_name)
+      logging.exception('Table "%s" is not in database "%s"' % \
+                        (self.table_name, self.database_name))
       raise Exception
 
     # Check if columns are available in the table - - - - - - - - - - - - - - -
@@ -1471,7 +1515,7 @@ class DataSetSQL(DataSet):
 
     for (field_name, field_sql) in self.fields.items():
       if (field_sql not in column_names):
-        print 'error:Column "%s" not in table "%s"' % (field_sql, t)
+        logging.exception('Column "%s" not in table "%s"' % (field_sql, t))
         raise Exception
 
       fields_names.append(field_name)
@@ -1498,7 +1542,7 @@ class DataSetSQL(DataSet):
         num_records = []  # 'fetchall' returned an empty tuple
 
       if (num_records == []):
-        print 'error:Query "%s" returns empty result' % (query)
+        logging.exception('Query "%s" returns empty result' % (query))
         raise Exception
 
       self.num_records =     int(num_records[0][0])
@@ -1530,34 +1574,33 @@ class DataSetSQL(DataSet):
         num_records = []  # 'fetchall' returned an empty tuple
 
       if (num_records == []):
-        print 'error:Query "%s" returns empty result' % (query)
+        logging.exception('Query "%s" returns empty result' % (query))
         raise Exception
 
       self.num_records =     int(num_records[0][0])
       self.next_record_num = self.num_records
 
     else:  # Illegal data set access mode - - - - - - - - - - - - - - - - - - -
-      print 'error:Illegal data set access mode: "%s"' % \
-            (str(self.access_mode))
+      logging.exception('Illegal data set access mode: "%s"' % \
+                        (str(self.access_mode)))
       raise Exception
 
     dbcu.close()
 
-    # A log message for low volume log output (level 1) - - - - - - - - - - - -
+    # A log message - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     #
-    print '1:'
-    print '1:Initialised SQL data set "%s"' % (self.name)
-    print '1:  In access mode: %s' % (self.access_mode)
-    print '1:  Parallel write: %s' % (self.parallelwrite)
-    print '1:  Database name:  %s' % (self.database_name)
-    print '1:  Database user:  %s' % (self.database_user)
-    print '1:  Table name:     %s' % (self.table_name)
-    print '1:  Fields:         %s' % (str(self.fields))
-    print '2:  Fields list:    %s' % (str(self.field_list))
-    print '2:  Block size:     %i' % (self.database_block_size)
-    print '2:  Strip fields:   %s' % (str(self.strip_fields))
-    print '2:  Missing values: %s' % (str(self.missing_values))
-    print '1:  Number of records: %i' % (self.num_records)
+    logging.info('Initialised SQL data set "%s"' % (self.name))
+    logging.info('  In access mode: %s' % (self.access_mode))
+    logging.info('  Parallel write: %s' % (self.parallelwrite))
+    logging.info('  Database name:  %s' % (self.database_name))
+    logging.info('  Database user:  %s' % (self.database_user))
+    logging.info('  Table name:     %s' % (self.table_name))
+    logging.info('  Fields:         %s' % (str(self.fields)))
+    logging.debug('  Fields list:    %s' % (str(self.field_list)))
+    logging.debug('  Block size:     %i' % (self.database_block_size))
+    logging.debug('  Strip fields:   %s' % (str(self.strip_fields)))
+    logging.debug('  Missing values: %s' % (str(self.missing_values)))
+    logging.info('  Number of records: %i' % (self.num_records))
 
   # ---------------------------------------------------------------------------
 
@@ -1574,10 +1617,9 @@ class DataSetSQL(DataSet):
     self.current_table =   None
     self.next_record_num = None
 
-    # A log message for low volume log output (level 1) - - - - - - - - - - - -
+    # A log message - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     #
-    print '1:'
-    print '1:Finalised SQL data set "%s"' % (self.name)
+    logging.info('Finalised SQL data set "%s"' % (self.name))
 
   # ---------------------------------------------------------------------------
 
@@ -1586,15 +1628,15 @@ class DataSetSQL(DataSet):
     """
 
     if (self.database == None):
-      print 'error:Data set not initialised'
+      logging.exception('Data set not initialised')
       raise Exception
 
     if (self.access_mode != 'read'):
-      print 'error:Data set not initialised for "read" access'
+      logging.exception('Data set not initialised for "read" access')
       raise Exception
 
     if (first < 0) or ((first+number) > self.num_records):
-      print 'error:Selected block of records out of range'
+      logging.exception('Selected block of records out of range')
       raise Exception
 
     dbcu = self.database.cursor()  # Get a database cursor
@@ -1614,7 +1656,7 @@ class DataSetSQL(DataSet):
         result_list = []  # 'fetchall' returned an empty tuple
 
       if (result_list == []):
-        print 'error:Query "%s" returns empty result' % (query)
+        logging.exception('Query "%s" returns empty result' % (query))
         raise Exception
 
     else:
@@ -1634,7 +1676,7 @@ class DataSetSQL(DataSet):
           tmp_list = []  # 'fetchall' returned an empty tuple
 
         if (tmp_list == []):
-          print 'error:Query "%s" returns empty result' % (query)
+          logging.exception('Query "%s" returns empty result' % (query))
           raise Exception
 
         result_list += tmp_list
@@ -1670,15 +1712,15 @@ class DataSetSQL(DataSet):
 
       # A log message for high volume log output (level 3)  - - - - - - - - - -
       #
-      print '3:    Read record from data set: %s' % (str(rec_dict))
+      logging.debug('    Read record from data set: %s' % (str(rec_dict)))
 
-    self.next_record_num += number
+      self.next_record_num += 1
 
     dbcu.close()
 
-    # A log message for medium volume log output (level 2)  - - - - - - - - - -
+    # A log message - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     #
-    print '2:  Read record block %i to %i' % (first, first+number-1)
+    logging.debug('  Read record block %i to %i' % (first, first+number-1))
 
     return rec_list
 
@@ -1707,11 +1749,12 @@ class DataSetSQL(DataSet):
       return  # Don't write if not host process
 
     if (self.database == None):
-      print 'error:Data set not initialised'
+      logging.exception('Data set not initialised')
       raise Exception
 
     if (self.access_mode not in ['write','append']):
-      print 'error:Data set not initialised for "write" or "append" access'
+      logging.exception('Data set not initialised for "write" or "append" ' + \
+                        'access')
       raise Exception
 
     dbcu = self.database.cursor()  # Get a database cursor
@@ -1719,8 +1762,8 @@ class DataSetSQL(DataSet):
     for rec in record_list:
 
       if (not isinstance(rec, dict)):
-        print 'error:Illegal record type: "%s", must be a dictionary' % \
-              (str(type(rec)))
+        logging.exception('Illegal record type: "%s", must be a dictionary' % \
+              (str(type(rec))))
         raise Exception
 
       # Convert record dictionary into a 'insert' query
@@ -1745,22 +1788,533 @@ class DataSetSQL(DataSet):
         result_list = []  # 'fetchall' returned an empty tuple
 
       if (result_list == []):
-        print 'error:Query "%s" returns empty result' % (query)
+        logging.exception('Query "%s" returns empty result' % (query))
         raise Exception
 
-      # A log message for high volume log output (level 3)  - - - - - - - - - -
+      # A log message - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
       #
-      print '3:    Wrote record to data set: '+str(rec)
+      logging.debug('    Wrote record to data set: '+str(rec))
 
     self.next_record_num += len(record_list)
     self.num_records +=     len(record_list)
 
     dbcu.close()
 
-    # A log message for medium volume log output (level 2)  - - - - - - - - - -
+    # A log message - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     #
-    print '2:  Wrote record block %i to %i' % \
-          (self.next_record_num-len(record_list), self.next_record_num-1)
+    logging.debug('  Wrote record block %i to %i' % \
+          (self.next_record_num-len(record_list), self.next_record_num-1))
+
+  # ---------------------------------------------------------------------------
+
+  def write_record(self, record):
+    """Write one record.
+    """
+
+    self.write_records([record])
+
+# =============================================================================
+
+class DataSetPGSQL(DataSet):
+  """class DataSetPGSQL
+
+     Implementation of a SQL (structured query language) data base access
+     class for pgdb (PostgreSQL) module.
+
+     This data set does not allow the 'readwrite' or 'readappend' access modes,
+     i.e. it must be initialised in modes 'read', 'write', or 'append'.
+
+     The 'fields' attribute must contain pairs of field names and the
+     corresponding SQL column names.
+
+     In write or append mode the SQL data set assumes that the given table is
+     already created, i.e. it does not have the functionality to create tables.
+
+     DERIVED CLASS ATTRIBUTES
+       table_name           The name of the database tabe.
+       database_host        Host name of wehre the database is.
+       database_name        The name of the database to connect to.
+       database_user        The user name for the database.
+       database_password    The corresponding password, if not set at
+                            initalisation, it is queried interactively.
+       database_block_size  The maximum number of records read in a block.
+                            Default value is 10,000.
+
+    Contributed by: scaredycat@swiftdsl.com.au (August 2004).
+  """
+
+  # ---------------------------------------------------------------------------
+
+  def __init__(self, **kwargs):
+
+    if (not sys.modules.has_key('pgdb')):
+      logging.exception('pgdb (PostgrSQL) module not available, so ' + \
+                        'PQSQL data set can not be used')
+      raise Exception
+
+    self.dataset_type =       'PGSQL'
+    self.database_host =       'localhost'
+    self.database_name =       None  # Database name
+    self.database_user =       None  # User name
+    self.database_password =   None  # User password
+    self.database =            None  # Database object
+    self.database_block_size = 10000 # Number of transactions for blocking
+    self.field_list =          []    # Field name list sorted according to
+                                     # database column numbers
+    self.table_name =          ''
+    self.tot_field_number = 0     # The total field (column) number
+
+    base_kwargs = {}  # Dictionary, will contain unprocessed arguments
+
+    # Process all keyword arguments
+    #
+    for (keyword, value) in kwargs.items():
+      if (keyword == 'database_host'):
+        if (not isinstance(value, str)):
+          logging.exception('Argument "database_host" is not a string')
+          self.database_host = value
+      elif (keyword == 'database_name'):
+        if (not isinstance(value, str)):
+          logging.exception('Argument "database_name" is not a string')
+          raise Exception
+        self.database_name = value
+
+      elif (keyword == 'database_user'):
+        if (not isinstance(value, str)):
+          logging.exception('Argument "database_user" is not a string')
+          raise Exception
+        self.database_user = value
+
+      elif (keyword == 'database_password'):
+        if (not isinstance(value, str)):
+          logging.exception('Argument "database_password" is not a string')
+          raise Exception
+        self.database_password = value
+
+      elif (keyword == 'table_name'):
+        if (not isinstance(value, str)):
+          logging.exception('Argument "table_name" is not a string')
+          raise Exception
+        self.table_name = value
+
+      elif (keyword == 'database_block_size'):
+        if (not isinstance(value, int) or (value <= 0)):
+          logging.exception('Argument "database_block_size" must be a ' + \
+                            'positive integer')
+          raise Exception
+        self.database_block_size = value
+
+      else:
+        base_kwargs[keyword] = value
+
+    # Check if database attributes are set  - - - - - - - - - - - - - - - - - -
+    #
+    if (self.database_name == ''):
+      logging.exception('No database name given')
+      raise Exception
+
+    if (self.database_user == ''):
+      logging.exception('No database user given')
+      raise Exception
+
+    if (self.table_name == ''):
+      logging.exception('Table name is not defined')
+      raise Exception
+
+    DataSet.__init__(self, base_kwargs)
+
+    # Check if parallel write is set to 'host'  - - - - - - - - - - - - - - - -
+    #
+    if (self.parallelwrite != 'host'):
+      logging.warn('Parallel write mode for  SQL data set is not "host": %s' \
+                   % (self.parallelwrite))
+
+    # Only host process will access SQL data base
+    #
+    if (parallel.rank() > 0):
+      return  # All other processes don't do anything
+
+    # Check if the values in the 'fields' arguments are all strings (database
+    # column names)
+    #
+    for (field_name, field_col) in self.fields.items():
+      if (not isinstance(field_col, str)):
+        logging.exception('Field column "%s" is not a string' % \
+                          (str(field_col)))
+        raise Exception
+
+    # if no database password is given, query it interactively  - - - - - - - -
+    #
+    if (self.database_password == None):
+      print '*****************************************'
+      pwd = raw_input('Please enter database password:')
+      print '*****************************************'
+
+    else:
+      pwd = self.database_password
+
+    # Connect to the database - - - - - - - - - - - - - - - - - - - - - - - - -
+    #
+    #self.database = MySQLdb.Connect(db=self.database_name, \
+    #                                user=self.database_user, passwd=pwd)
+
+    self.database=pgdb.connect(":".join([self.database_host, \
+                               self.database_name, self.database_user, pwd]))
+    pwd = ''  # Delete password
+
+    dbcu = self.database.cursor()  # Get a database cursor
+
+    # Check if the table is available - - - - - - - - - - - - - - - - - - - - -
+    #
+    query = 'select relname from pg_class'
+    lines = dbcu.execute(query)
+    #if lines > 0:
+    table_name_list = [x[0] for x in dbcu.fetchall()]
+
+    # Give ability to read views as well - - - - - - - - - - - - - - - - - - -
+    #
+    query = 'select viewname from pg_views'
+    dbcu.execute(query)
+    table_name_list.extend([x[0] for x in dbcu.fetchall()])
+
+    #print "table_name_list ", table_name_list
+    #else:
+    #  table_name_list = []  # 'fetchall' returned an empty tuple
+
+    if (self.table_name not in table_name_list):
+      logging.exception('Table "%s" is not in database "%s"' % \
+                        (self.table_name, self.database_name))
+      raise Exception
+
+    # Check if columns are available in the table - - - - - - - - - - - - - - -
+    #
+    query = 'select * from '+self.table_name + " limit 1"
+    #lines = dbcu.execute(query)
+    #if lines > 0:
+    dbcu.execute(query)
+    result = dbcu.fetchall()
+    column_name_list =  dbcu.description
+
+    #else:
+    #column_name_list = []  # 'fetchall' returned an empty tuple
+
+    db_field_dict = {}
+    #col_num = 0  # Column number counter
+    column_names = []
+    for c in column_name_list:
+      column_names.append(c[0])  # Make a list of column names only
+      #db_field_dict[c[0]] = col_num
+      #col_num += 1
+
+    #print "column_names = ", column_names
+    self.tot_field_number = len(column_names) #col_num
+
+    # Create a sorted list of field names and correspondinmg column numbers - -
+    #
+    fields_names =     []
+    fields_positions = []
+
+    for (field_name, field_sql) in self.fields.items():
+      if (field_sql not in column_names):
+        logging.exception('Column "%s" not in table "%s"' % \
+                          (field_sql, self.table_name))
+        raise Exception
+
+      fields_names.append(field_name)
+      fields_positions.append(column_names.index(field_sql))
+                                                    # db_field_dict[field_sql])
+
+    self.field_list = map(None, fields_positions, fields_names)
+    self.field_list.sort()
+
+    # Now perform various checks for each access mode - - - - - - - - - - - - -
+    #
+    self.num_records = 0     # Total number of records
+
+    # For 'read' mode, count records  - - - - - - - - - - - - - - - - - - - - -
+    #
+    if (self.access_mode == 'read'):
+
+      # Count number of records in the table
+      #
+      query = 'select count(*) from '+self.table_name
+      dbcu.execute(query)
+      #print query, " returned lines = ", lines
+      #if lines > 0:
+      num_records = dbcu.fetchall()
+      #else:
+      #  num_records = []  # 'fetchall' returned an empty tuple
+
+      if (num_records == []):
+        logging.exception('Query "%s" returns empty result' % (query))
+        raise Exception
+
+      self.num_records =     int(num_records[0][0])
+      self.next_record_num = 0
+
+    # For 'write' mode check if all records in table can be deleted - - - - - -
+    #
+    elif (self.access_mode == 'write'):
+
+      query = 'delete from '+self.table_name
+      lines = dbcu.execute(query)
+      if lines > 0:
+        num_records = dbcu.fetchall()
+      else:
+        num_records = []  # 'fetchall' returned an empty tuple
+
+      self.num_records =     0
+      self.next_record_num = 0
+
+    # For 'append' mode, check how many records are stored  - - - - - - - - - -
+    #
+    elif (self.access_mode == 'append'):
+
+      query = 'select count(*) from '+self.table_name
+      lines = dbcu.execute(query)
+      #if lines > 0:
+      num_records = dbcu.fetchall()
+      #else:
+      #  num_records = []  # 'fetchall' returned an empty tuple
+
+      if (num_records == []):
+        logging.exception('Query "%s" returns empty result' % (query))
+        raise Exception
+
+      self.num_records =     int(num_records[0][0])
+      self.next_record_num = self.num_records
+
+    else:  # Illegal data set access mode - - - - - - - - - - - - - - - - - - -
+      logging.exception('Illegal data set access mode: "%s"' % \
+                        (str(self.access_mode)))
+      raise Exception
+
+    dbcu.close()
+
+    # A log message - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    #
+    logging.info('Initialised SQL data set "%s"' % (self.name))
+    logging.info('  In access mode: %s' % (self.access_mode))
+    logging.info('  Parallel write: %s' % (self.parallelwrite))
+    logging.info('  Database name:  %s' % (self.database_name))
+    logging.info('  Database user:  %s' % (self.database_user))
+    logging.info('  Table name:     %s' % (self.table_name))
+    logging.info('  Fields:         %s' % (str(self.fields)))
+    logging.debug('  Fields list:    %s' % (str(self.field_list)))
+    logging.debug('  Block size:     %i' % (self.database_block_size))
+    logging.debug('  Strip fields:   %s' % (str(self.strip_fields)))
+    logging.debug('  Missing values: %s' % (str(self.missing_values)))
+    logging.info('  Number of records: %i' % (self.num_records))
+
+  # ---------------------------------------------------------------------------
+
+  def finalise(self):
+    """Finalise a data set. Disconnect from a database.
+    """
+
+    self.database.close()
+    self.database = None
+
+    self.access_mode =     None
+    self.table_names =     []
+    self.table_records =   []
+    self.current_table =   None
+    self.next_record_num = None
+
+    # A log message - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    #
+    logging.info('Finalised SQL data set "%s"' % (self.name))
+
+  # ---------------------------------------------------------------------------
+
+  def read_records(self, first, number):
+    """Read and return a block of records.
+    """
+
+    logging.debug(' read_records called with first=' + str(first) + \
+                  ' number = ' + str( number))
+
+    if (self.database == None):
+      logging.exception('Data set not initialised')
+      raise Exception
+
+    if (self.access_mode != 'read'):
+      logging.exception('Data set not initialised for "read" access')
+      raise Exception
+
+    if (first < 0) or ((first+number) > self.num_records):
+      logging.exception('Selected block of records out of range')
+      raise Exception
+
+    dbcu = self.database.cursor()  # Get a database cursor
+
+    # Now read the desired number of records blockwise
+    #
+    rec_list = []  # Each line becomes an entry in this list
+
+    if (number <= self.database_block_size):
+
+      query = 'select * from '+self.table_name + ' limit '+  str(number) + \
+              ' offset ' + str(first)
+
+      lines = dbcu.execute(query)
+      #if lines > 0:
+      result_list = dbcu.fetchall()
+      logging.debug(' length of result_list = ' + str(len(result_list)))
+      #else:
+      #  result_list = []  # 'fetchall' returned an empty tuple
+
+      if (result_list == []):
+        logging.exception('Query "%s" returns empty result' % (query))
+        raise Exception
+
+    else:
+      result_list = []
+
+      start = first
+      size  = self.database_block_size
+      left  = number
+
+      while (left > 0):
+        query = 'select * from '+self.table_name+ ' limit '+  str(size)+ \
+                ' offset ' + str(start)
+        lines = dbcu.execute(query)
+        #if lines > 0:
+        tmp_list = dbcu.fetchall()
+        #else:
+        #  tmp_list = []  # 'fetchall' returned an empty tuple
+
+        if (tmp_list == []):
+          logging.exception('Query "%s" returns empty result' % (query))
+          raise Exception
+
+        result_list += tmp_list
+
+        # Calculate next block start and size
+        #
+        start += size
+        left -= size
+
+        if (left > self.database_block_size):
+          size = self.database_block_size
+        else:
+          size = left
+
+    # Append all records to record list
+    #
+    for r in result_list:
+      rec_dict = {}  # A new dictionary for this record
+
+      for (value, key) in self.field_list:
+        field_data = r[value]  # Extract field
+        if (self.strip_fields == True):  # Strip off white spaces first
+          field_data = field_data.strip()
+        if (field_data != ''):  # Only add non-empty fields to dictionary
+          rec_dict[key] = field_data
+
+      # Set hidden fields
+      #
+      rec_dict['_rec_num_'] = self.next_record_num
+      rec_dict['_dataset_name_'] = self.name
+
+      rec_list.append(rec_dict)  # Append to the list of records
+
+      # A log message - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+      #
+      logging.debug('    Read record from data set: %s' % (str(rec_dict)))
+
+      self.next_record_num += 1
+
+    dbcu.close()
+
+    # A log message - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    #
+    logging.debug('  Read record block %i to %i' % (first, first+number-1))
+
+    return rec_list
+
+  # ---------------------------------------------------------------------------
+
+  def read_record(self):
+    """Read the next record, advance by one record.
+    """
+
+    if (self.next_record_num >= self.num_records):  # All records are read
+      return None
+
+    else:
+      rec_list =  self.read_records(self.next_record_num, 1)
+
+      return rec_list[0]
+
+  # ---------------------------------------------------------------------------
+
+  def write_records(self, record_list):
+    """Write a block of records.
+    """
+
+    # Check parallel write mode
+    #
+    if (self.parallelwrite == 'host') and (parallel.rank() > 0):
+      return  # Don't write if not host process
+
+    if (self.database == None):
+      logging.exception('Data set not initialised')
+      raise Exception
+
+    if (self.access_mode not in ['write','append']):
+      logging.exception('Data set not initialised for "write" or "append" ' + \
+                        'access')
+      raise Exception
+
+    dbcu = self.database.cursor()  # Get a database cursor
+
+    for rec in record_list:
+
+      if (not isinstance(rec, dict)):
+        logging.exception('Illegal record type: "%s", must be a dictionary' % \
+              (str(type(rec))))
+        raise Exception
+
+      # Convert record dictionary into a 'insert' query
+      #
+      query = 'insert into '+self.table_name+' values ('
+      j = 0  # Index into fields list
+      for i in range(self.tot_field_number):
+        if (i == self.field_list[j][0]):
+          field_data = rec.get(self.field_list[j][1],self.fields_default)
+          if (self.strip_fields == True):
+            field_data = field_data.strip()  # Strip off whitespace
+          query = query +"'"+ field_data +"',"
+          j += 1
+        else:
+          query = query +"'',"
+
+      query = query[:-1]+')'
+      lines = dbcu.execute(query)
+      if lines == 0:
+      #  result_list = dbcu.fetchall()
+      #else:
+      #  result_list = []  # 'fetchall' returned an empty tuple
+
+      #if (result_list == []):
+        logging.exception('Query "%s" returns empty result' % (query))
+        raise Exception
+
+      # A log message - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+      #
+      self.database.commit()
+      logging.debug('    Wrote record to data set: '+str(rec))
+
+    self.next_record_num += len(record_list)
+    self.num_records +=     len(record_list)
+
+    dbcu.close()
+
+    # A log message - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    #
+    logging.debug('  Wrote record block %i to %i' % \
+          (self.next_record_num-len(record_list), self.next_record_num-1))
 
   # ---------------------------------------------------------------------------
 
@@ -1857,7 +2411,7 @@ class RandomDataSet:
     for (keyword, value) in base_kwargs.items():
       if (keyword == 'name'):
         if (not isinstance(value, str)):
-          print 'error:Argument "name" must be of type string'
+          logging.exception('Argument "name" must be of type string')
           raise Exception
         self.name = value
 
@@ -1866,19 +2420,20 @@ class RandomDataSet:
 
       elif (keyword == 'access_mode'):
         if (value not in ['read','write','readwrite']):
-          print 'error:Illegal value for "access_mode": %s' % (str(value))
+          logging.exception('Illegal value for "access_mode": %s' % \
+                            (str(value)))
           raise Exception
         self.access_mode = value
 
       elif (keyword == 'fields'):
         if (not isinstance(value, dict)):
-          print 'error:Argument "fields" must be a dictionary'
+          logging.exception('Argument "fields" must be a dictionary')
           raise Exception
         self.fields = value
 
       elif (keyword == 'fields_default'):
         if (not isinstance(value, str)):
-          print 'error:Argument "fields_default" must be of type string'
+          logging.exception('Argument "fields_default" must be of type string')
           raise Exception
         self.fields_default = value
 
@@ -1886,28 +2441,28 @@ class RandomDataSet:
         if (isinstance(value, str)):
           value = [value]  # Make it a list
         if (not isinstance(value, list)):
-          print 'error:Argument "missing_values" must be a string or a '+ \
-                'list of strings'
+          logging.exception('Argument "missing_values" must be a string or' + \
+                            ' a list of strings')
           raise Exception
         self.missing_values = value
 
       else:
-        print 'error:Illegal constructor argument keyword: "%s"' % \
-              (str(keyword))
+        logging.exception('Illegal constructor argument keyword: "%s"' % \
+              (str(keyword)))
         raise Exception
 
     # Check if name and access mode are defined - - - - - - - - - - - - - - - -
     #
     if (self.name == None):
-      print 'error:Data set "name" is not defined'
+      logging.exception('Data set "name" is not defined')
       raise Exception
 
     if (self.access_mode == None):
-      print 'error:Data set "access_mode" not defined'
+      logging.exception('Data set "access_mode" not defined')
       raise Exception
 
     if (self.fields == None):
-      print 'error:Data set "fields" are not defined'
+      logging.exception('Data set "fields" are not defined')
       raise Exception
 
   # ---------------------------------------------------------------------------
@@ -1917,7 +2472,7 @@ class RandomDataSet:
        See implementations in derived classes for details.
     """
 
-    print 'error:Override abstract method in derived class'
+    logging.exception('Override abstract method in derived class')
     raise Exception
 
   # ---------------------------------------------------------------------------
@@ -1930,7 +2485,7 @@ class RandomDataSet:
        set to None, the current access mode is kept.
     """
 
-    print 'error:Override abstract method in derived class'
+    logging.exception('Override abstract method in derived class')
     raise Exception
 
   # ---------------------------------------------------------------------------
@@ -1940,7 +2495,7 @@ class RandomDataSet:
        See implementations in derived classes for details.
     """
 
-    print 'error:Override abstract method in derived class'
+    logging.exception('Override abstract method in derived class')
     raise Exception
 
   # ---------------------------------------------------------------------------
@@ -1950,7 +2505,7 @@ class RandomDataSet:
        See implementations in derived classes for details.
     """
 
-    print 'error:Override abstract method in derived class'
+    logging.exception('Override abstract method in derived class')
     raise Exception
 
   # ---------------------------------------------------------------------------
@@ -1960,7 +2515,7 @@ class RandomDataSet:
        See implementations in derived classes for details.
     """
 
-    print 'error:Override abstract method in derived class'
+    logging.exception('Override abstract method in derived class')
     raise Exception
 
   # ---------------------------------------------------------------------------
@@ -1970,7 +2525,7 @@ class RandomDataSet:
        See implementations in derived classes for details.
     """
 
-    print 'error:Override abstract method in derived class'
+    logging.exception('Override abstract method in derived class')
     raise Exception
 
 # =============================================================================
@@ -2006,7 +2561,7 @@ class DataSetShelve(RandomDataSet):
     self.db =           None   # A reference to the underlting database
     self.clear =        False  # Flag True/False for clearing the database
                                # when opening or not
- 
+
     # Process all keyword arguments
     #
     base_kwargs = {}  # Dictionary, will contain unprocessed arguments
@@ -2014,14 +2569,14 @@ class DataSetShelve(RandomDataSet):
     for (keyword, value) in kwargs.items():
       if (keyword == 'file_name'):
         if (not isinstance(value, str)):
-          print 'error:Argument "file_name" is not a string'
+          logging.exception('Argument "file_name" is not a string')
           raise Exception
         self.file_name = value
 
       elif (keyword == 'clear'):
         if (value not in [True, False]):
-          print 'error:Illegal value for argument "clear" ' + \
-                '(must be True or False)'
+          logging.exception('Illegal value for argument "clear" ' + \
+                '(must be True or False)')
           raise Exception
         self.clear = value
 
@@ -2029,7 +2584,7 @@ class DataSetShelve(RandomDataSet):
         base_kwargs[keyword] = value
 
     if (self.file_name == None):
-      print 'error:File name not defined'
+      logging.exception('File name not defined')
       raise Exception
 
     RandomDataSet.__init__(self, base_kwargs)  # Process base arguments
@@ -2046,8 +2601,8 @@ class DataSetShelve(RandomDataSet):
       shelve_access = 'r'  # Read access mode for shelve implementation
 
       if (self.clear == True):
-        print 'warning:Open Shelve dataset in read access mode, clearing' + \
-              ' not possible'
+        logging.warn('Open Shelve dataset in read access mode, clearing' + \
+              ' not possible')
     else:
       shelve_access = 'c'  # Read/write access, but also create if not there
 
@@ -2055,27 +2610,27 @@ class DataSetShelve(RandomDataSet):
 #      #
 #      if (self.clear == True) and (parallel.rank() == 0):
 #
-#        print '1:  Delete old database files for Shelve data set'
+#        logging.info('  Delete old database files for Shelve data set'
 #
 #        if (self.shelve_db == 'BSDDB3'):
 #          try:
 #            os.remove(self.file_name)
 #          except:
-#            print 'error:Can not delete database file "%s"' % (self.file_name)
+#            logging.exception('Can not delete database file "%s"' % (self.file_name)
 #            raise Exception
 #
 #        elif (self.shelve_db == 'Shelve'):
 #          try:
 #            os.remove(self.file_name+'.dir')
 #          except:
-#            print 'error:Can not delete database file "%s"' % \
+#            logging.exception('Can not delete database file "%s"' % \
 #                  (self.file_name+'.dir')
 #            raise Exception
 #
 #          try:
 #            os.remove(self.file_name+'.pag')
 #          except:
-#            print 'error:Can not delete database file "%s"' % \
+#            logging.exception('Can not delete database file "%s"' % \
 #                  (self.file_name+'.pag')
 #            raise Exception
 
@@ -2093,8 +2648,8 @@ class DataSetShelve(RandomDataSet):
           self.db = bsddb3.rnopen(self.file_name, shelve_access)
 
         except:
-          print 'error:Can not open BSDDB3 shelve: "%s" in mode "%s"' % \
-                (str(self.file_name), str(shelve_access))
+          logging.exception('Can not open BSDDB3 shelve: "%s" in mode "%s"' % \
+                            (str(self.file_name), str(shelve_access)))
           raise Exception
 
         self.shelve = shelve.BsdDbShelf(self.db)  # Open the shelve
@@ -2103,8 +2658,8 @@ class DataSetShelve(RandomDataSet):
         try:
           self.shelve = shelve.open(self.file_name, shelve_access)
         except:
-          print 'error:Can not open shelve: "%s" in mode "%s"' % \
-                (str(self.file_name), str(shelve_access))
+          logging.exception('Can not open shelve: "%s" in mode "%s"' % \
+                            (str(self.file_name), str(shelve_access)))
           raise Exception
 
       # Now clear the shelve if the 'clear' flag is set to True - - - - - - - -
@@ -2132,20 +2687,19 @@ class DataSetShelve(RandomDataSet):
     # Check that there are records in the data set
     #
     if (self.access_mode == 'read') and (self.num_records <= 0):
-      print 'error:No records in data set initialised in "read" mode'
+      logging.exception('No records in data set initialised in "read" mode')
       raise Exception
 
-    # A log message for low volume log output (level 1) - - - - - - - - - - - -
+    # A log message - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     #
-    print '1:'
-    print '1:Initialised Shelve data set "%s"' % (str(self.name))
-    print '1:  In access mode: %s' % (self.access_mode)
-    print '1:  Parallel write: %s' % (self.parallelwrite)
-    print '1:  File name:      %s' % (self.file_name)
-    print '2:  Missing values: %s' % (str(self.missing_values))
-    print '1:  Number of records: %i' % (self.num_records)
+    logging.info('Initialised Shelve data set "%s"' % (str(self.name)))
+    logging.info('  In access mode: %s' % (self.access_mode))
+    logging.info('  Parallel write: %s' % (self.parallelwrite))
+    logging.info('  File name:      %s' % (self.file_name))
+    logging.debug('  Missing values: %s' % (str(self.missing_values)))
+    logging.info('  Number of records: %i' % (self.num_records))
     if (self.clear == True):
-      print '1:  All elements in data set deleted (cleared)'
+      logging.info('  All elements in data set deleted (cleared)')
 
   # ---------------------------------------------------------------------------
 
@@ -2170,10 +2724,9 @@ class DataSetShelve(RandomDataSet):
     self.file_name =          None
     self.num_records =        None
 
-    # A log message for low volume log output (level 1) - - - - - - - - - - - -
+    # A log message - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     #
-    print '1:'
-    print '1:Finalised Shelve data set "%s"' % (str(self.name))
+    logging.info('Finalised Shelve data set "%s"' % (str(self.name)))
 
   # ---------------------------------------------------------------------------
 
@@ -2187,7 +2740,8 @@ class DataSetShelve(RandomDataSet):
 
     if (access_mode != None):
       if (access_mode not in ['read','write','readwrite']):
-        print 'error:Illegal value for "access_mode": %s' % (str(access_mode))
+        logging.exception('Illegal value for "access_mode": %s' % \
+                          (str(access_mode)))
         raise Exception
       self.access_mode = access_mode
 
@@ -2226,8 +2780,8 @@ class DataSetShelve(RandomDataSet):
         try:
           self.db = bsddb3.rnopen(self.file_name, shelve_access)
         except:
-          print 'error:Can not open BSDDB3 shelve: "%s" in mode "%s"' % \
-                (str(self.file_name), str(shelve_access))
+          logging.exception('Can not open BSDDB3 shelve: "%s" in mode "%s"' % \
+                (str(self.file_name), str(shelve_access)))
           raise Exception
         self.shelve = shelve.BsdDbShelf(self.db)  # Open the shelve
 
@@ -2235,8 +2789,8 @@ class DataSetShelve(RandomDataSet):
         try:
           self.shelve = shelve.open(self.file_name, shelve_access)
         except:
-          print 'error:Can not open shelve: "%s" in mode "%s"' % \
-                (str(self.file_name), str(shelve_access))
+          logging.exception('Can not open shelve: "%s" in mode "%s"' % \
+                (str(self.file_name), str(shelve_access)))
           raise Exception
 
       # Get the number of records in the shelve - - - - - - - - - - - - - - - -
@@ -2250,13 +2804,12 @@ class DataSetShelve(RandomDataSet):
     # Check that there are records in the data set
     #
     if (self.access_mode == 'read') and (self.num_records <= 0):
-      print 'error:No records in data set initialised in "read" mode'
+      logging.exception('No records in data set initialised in "read" mode')
       raise Exception
 
-    # A log message for low volume log output (level 1) - - - - - - - - - - - -
+    # A log message - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     #
-    print '1:'
-    print '1:Re-initialised Shelve data set "%s"' % (str(self.name))
+    logging.info('Re-initialised Shelve data set "%s"' % (str(self.name)))
 
   # ---------------------------------------------------------------------------
 
@@ -2265,11 +2818,12 @@ class DataSetShelve(RandomDataSet):
     """
 
     if (self.shelve == None):
-      print 'error:Data set not initialised'
+      logging.exception('Data set not initialised')
       raise Exception
 
     if (self.access_mode not in ['read','readwrite']):
-      print 'error:Data set not initialised for "read" or "readwrite" access'
+      logging.exception('Data set not initialised for "read" or "readwrite" ' \
+                        + ' access')
       raise Exception
 
     # Now read the desired number of records
@@ -2294,21 +2848,21 @@ class DataSetShelve(RandomDataSet):
         record_list.append(rec_dict)
 
       except KeyError:  # No record under this number in shelve
-        print 'warning:Record with number %s is not stored in shelve' % \
-              (rec_num)
+        logging.warn('Record with number %s is not stored in shelve' % \
+              (rec_num))
 
       except:
-        print 'error:Something is wrong when reading from shelve "%s"' % \
-              (self.file_name)
+        logging.exception('Something is wrong when reading from shelve "%s"' \
+                          % (self.file_name))
         raise Exception
 
-      # A log message for high volume log output (level 3)  - - - - - - - - - -
+      # A log message - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
       #
-      print '3:    Read record from data set: %s' % (str(rec_dict))
+      logging.debug('    Read record from data set: %s' % (str(rec_dict)))
 
-    # A log message for medium volume log output (level 2)  - - - - - - - - - -
+    # A log message - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     #
-    print '2:  Read %i records from data set' % (len(rec_number_list))
+    logging.debug('  Read %i records from data set' % (len(rec_number_list)))
 
     return record_list
 
@@ -2319,11 +2873,12 @@ class DataSetShelve(RandomDataSet):
     """
 
     if (self.shelve == None):
-      print 'error:Data set not initialised'
+      logging.exception('Data set not initialised')
       raise Exception
 
     if (self.access_mode not in ['read','readwrite']):
-      print 'error:Data set not initialised for "read" or "readwrite" access'
+      logging.exception('Data set not initialised for "read" or "readwrite" ' \
+                        ' access')
       raise Exception
 
     if (shelve_type == 'BSDDB3'):  # Berkeley database module available
@@ -2340,21 +2895,21 @@ class DataSetShelve(RandomDataSet):
       rec_dict['_dataset_name_'] = self.name
 
     except KeyError:  # No record under this number in shelve
-      print 'warning:Record with number %s is not stored in shelve' % \
-            (rec_num)
+      logging.warn('Record with number %s is not stored in shelve' % \
+            (rec_num))
 
       rec_dict = None
 
     except:
-      print 'error:Something is wrong when reading from shelve "%s"' % \
-            (self.file_name)
+      logging.exception('Something is wrong when reading from shelve "%s"' % \
+            (self.file_name))
       raise Exception
 
-    # A log message for high volume log output (level 3)  - - - - - - - - - - -
+    # A log message - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     #
     if (rec_dict != None):
-      print '3:    Read record %s from data set: %s' % \
-            (shelve_key, str(rec_dict))
+      logging.debug('    Read record %s from data set: %s' % \
+            (shelve_key, str(rec_dict)))
 
     return rec_dict
 
@@ -2370,11 +2925,12 @@ class DataSetShelve(RandomDataSet):
       return  # Don't write if not host process
 
     if (self.shelve == None):
-      print 'error:Data set not initialised'
+      logging.exception('Data set not initialised')
       raise Exception
 
     if (self.access_mode not in ['write','readwrite']):
-      print 'error:Data set not initialised for "write" or "readwrite" access'
+      logging.exception('Data set not initialised for "write" or ' + \
+                        '"readwrite" access')
       raise Exception
 
     # Now write the given records
@@ -2384,7 +2940,8 @@ class DataSetShelve(RandomDataSet):
       rec_num = record.get('_rec_num_', None)  # Get the record number
 
       if (rec_num == None):
-        print 'error:Record without record number given: %s' % (str(record))
+        logging.exception('Record without record number given: %s' % \
+                          (str(record)))
         raise Exception
 
       if (shelve_type == 'BSDDB3'):  # Berkeley database module available
@@ -2399,15 +2956,15 @@ class DataSetShelve(RandomDataSet):
       #
       self.shelve[shelve_key] = record
 
-      # A log message for high volume log output (level 3)  - - - - - - - - - -
+      # A log message - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
       #
-      print '3:    Wrote record to data set: %s' % (str(record))
+      logging.debug('    Wrote record to data set: %s' % (str(record)))
 
     # self.shelve.sync()  # Flush to disk
 
-    # A log message for medium volume log output (level 2)  - - - - - - - - - -
+    # A log message - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     #
-    print '2:  Wrote %i records to data set' % (len(record_list))
+    logging.debug('  Wrote %i records to data set' % (len(record_list)))
 
   # ---------------------------------------------------------------------------
 
@@ -2421,11 +2978,12 @@ class DataSetShelve(RandomDataSet):
       return  # Don't write if not host process
 
     if (self.shelve == None):
-      print 'error:Data set not initialised'
+      logging.exception('Data set not initialised')
       raise Exception
 
     if (self.access_mode not in ['write','readwrite']):
-      print 'error:Data set not initialised for "write" or "readwrite" access'
+      logging.exception('Data set not initialised for "write" or ' + \
+                        '"readwrite" access')
       raise Exception
 
     # Now write the given record
@@ -2433,7 +2991,8 @@ class DataSetShelve(RandomDataSet):
     rec_num = record.get('_rec_num_', None)  # Get the record number
 
     if (rec_num == None):
-      print 'error:Record without record number given: %s' % (str(record))
+      logging.exception('Record without record number given: %s' % \
+                        (str(record)))
       raise Exception
 
     if (shelve_type == 'BSDDB3'):  # Berkeley database module available
@@ -2450,15 +3009,16 @@ class DataSetShelve(RandomDataSet):
       self.shelve[shelve_key] = record
 
     except:
-      print 'error:Something is wrong when writing into shelve "%s"' % \
-            (self.file_name)
+      logging.exception('Something is wrong when writing into shelve "%s"' % \
+            (self.file_name))
       raise Exception
 
     self.shelve.sync()  # Flush to disk
 
-    # A log message for high volume log output (level 3)  - - - - - - - - - - -
+    # A log message - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     #
-    print '3:    Wrote record %s to data set: %s' % (shelve_key, str(record))
+    logging.debug('    Wrote record %s to data set: %s' % \
+                  (shelve_key, str(record)))
 
 # =============================================================================
 
@@ -2485,20 +3045,19 @@ class DataSetMemory(RandomDataSet):
     RandomDataSet.__init__(self, kwargs)  # Process base arguments
 
     if (self.access_mode != 'readwrite'):
-      print 'error:Memory data set must be initialised in "readwrite" ' + \
-            ' access mode'
+      logging.exception('Memory data set must be initialised in "readwrite" ' \
+                        + ' access mode')
       raise Exception
 
     self.num_records = 0
 
-    # A log message for low volume log output (level 1) - - - - - - - - - - - -
+    # A log message - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     #
-    print '1:'
-    print '1:Initialised Memory data set "%s"' % (self.name)
-    print '1:  In access mode: %s' % (self.access_mode)
-    print '1:  Parallel write: %s' % (self.parallelwrite)
-    print '2:  Missing values: %s' % (str(self.missing_values))
-    print '1:  Number of records: %i' % (self.num_records)
+    logging.info('Initialised Memory data set "%s"' % (self.name))
+    logging.info('  In access mode: %s' % (self.access_mode))
+    logging.info('  Parallel write: %s' % (self.parallelwrite))
+    logging.debug('  Missing values: %s' % (str(self.missing_values)))
+    logging.info('  Number of records: %i' % (self.num_records))
 
   # ---------------------------------------------------------------------------
 
@@ -2511,10 +3070,9 @@ class DataSetMemory(RandomDataSet):
     self.access_mode =        None
     self.num_records =        None
 
-    # A log message for low volume log output (level 1) - - - - - - - - - - - -
+    # A log message - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     #
-    print '1:'
-    print '1:Finalised Memory data set "%s"' % (self.name)
+    logging.info('Finalised Memory data set "%s"' % (self.name))
 
   # ---------------------------------------------------------------------------
 
@@ -2530,8 +3088,8 @@ class DataSetMemory(RandomDataSet):
 
     if (access_mode != None):
       if (self.access_mode not in ['readwrite','read']):
-        print 'error:Memory data set must be initialised in "readwrite" ' + \
-              ' access mode'
+        logging.exception('Memory data set must be initialised in ' + \
+                          '"readwrite" access mode')
         raise Exception
 
     # We have to communicate the temporary memory data set to all processes
@@ -2541,19 +3099,18 @@ class DataSetMemory(RandomDataSet):
       if (parallel.rank() == 0):
         for p in range(1, parallel.size()):
           parallel.send(self.dict, p)
-          print '1:    Sent Memory data set to process %i' % (p)
+          logging.info('    Sent Memory data set to process %i' % (p))
       else:
         del self.dict  # Delete old data set
 
         self.dict = parallel.receive(0)
-        print '1:    Received Memory data set from process 0'
+        logging.info('    Received Memory data set from process 0')
 
     self.num_records = len(self.dict)  # Get the current number of records
 
-    # A log message for low volume log output (level 1) - - - - - - - - - - - -
+    # A log message - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     #
-    print '1:'
-    print '1:Re-initialised Memory data set "%s"' % (str(self.name))
+    logging.info('Re-initialised Memory data set "%s"' % (str(self.name)))
 
   # ---------------------------------------------------------------------------
 
@@ -2562,11 +3119,12 @@ class DataSetMemory(RandomDataSet):
     """
 
     if (self.dict == None):
-      print 'error:Data set not initialised'
+      logging.exception('Data set not initialised')
       raise Exception
 
     if (self.access_mode not in ['read','readwrite']):
-      print 'error:Data set not initialised for "read" or "readwrite" access'
+      logging.exception('Data set not initialised for "read" or ' + \
+                        '"readwrite" access')
       raise Exception
 
     # Now read the desired number of records
@@ -2588,21 +3146,21 @@ class DataSetMemory(RandomDataSet):
         record_list.append(rec_dict)
 
       except KeyError:  # No record under this number in shelve
-        print 'warning:Record with number %s is not stored in data set' % \
-              (dict_key)
+        logging.warn('Record with number %s is not stored in data set' % \
+              (dict_key))
 
       except:
-        print 'error:Something is wrong when reading from memory data ' + \
-              'set "%s"' % (self.name)
+        logging.exception('Something is wrong when reading from memory data ' \
+                          + 'set "%s"' % (self.name))
         raise Exception
 
-      # A log message for high volume log output (level 3)  - - - - - - - - - -
+      # A log message - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
       #
-      print '3:    Read record from data set: %s ' % (str(rec_dict))
+      logging.debug('    Read record from data set: %s ' % (str(rec_dict)))
 
-    # A log message for medium volume log output (level 2)  - - - - - - - - - -
+    # A log message - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     #
-    print '2:  Read %i records from data set' % (len(rec_number_list))
+    logging.debug('  Read %i records from data set' % (len(rec_number_list)))
 
     return record_list
 
@@ -2613,11 +3171,12 @@ class DataSetMemory(RandomDataSet):
     """
 
     if (self.dict == None):
-      print 'error:Data set not initialised'
+      logging.exception('Data set not initialised')
       raise Exception
 
     if (self.access_mode not in ['read','readwrite']):
-      print 'error:Data set not initialised for "read" or "readwrite" access'
+      logging.exception('Data set not initialised for "read" or "readwrite"' \
+                        + ' access')
       raise Exception
 
     dict_key = str(rec_number)
@@ -2631,21 +3190,21 @@ class DataSetMemory(RandomDataSet):
       rec_dict['_dataset_name_'] = self.name
 
     except KeyError:  # No record under this number in shelve
-      print 'warning:Record with number %s is not stored in data set' % \
-            (dict_key)
+      logging.warn('Record with number %s is not stored in data set' % \
+                   (dict_key))
 
       rec_dict = None
 
     except:
-      print 'error:Something is wrong when reading from memory data ' + \
-            'set "%s"' % (self.name)
+      logging.exception('Something is wrong when reading from memory data ' + \
+                        'set "%s"' % (self.name))
       raise Exception
 
-    # A log message for high volume log output (level 3)  - - - - - - - - - - -
+    # A log message - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     #
     if (rec_dict != None):
-      print '3:    Read record %s from data set: %s' % \
-            (dict_key, str(rec_dict))
+      logging.debug('    Read record %s from data set: %s' % \
+                    (dict_key, str(rec_dict)))
 
     return rec_dict
 
@@ -2661,11 +3220,12 @@ class DataSetMemory(RandomDataSet):
       return  # Don't write if not host process
 
     if (self.dict == None):
-      print 'error:Data set not initialised'
+      logging.exception('Data set not initialised')
       raise Exception
 
     if (self.access_mode not in ['write','readwrite']):
-      print 'error:Data set not initialised for "write" or "readwrite" access'
+      logging.exception('Data set not initialised for "write" or ' + \
+                        '"readwrite" access')
       raise Exception
 
     # Now write the given records
@@ -2675,7 +3235,8 @@ class DataSetMemory(RandomDataSet):
       rec_num = record.get('_rec_num_', None)  # Get the record number
 
       if (rec_num == None):
-        print 'error:Record without record number given: %s' % (str(record))
+        logging.exception('Record without record number given: %s' % \
+                          (str(record)))
         raise Exception
 
       dict_key = str(rec_num)
@@ -2689,17 +3250,17 @@ class DataSetMemory(RandomDataSet):
         self.dict[dict_key] = record
 
       except:
-        print 'error:Something is wrong when writing into memory data ' + \
-            'set "%s"' % (self.name)
+        logging.exception('Something is wrong when writing into memory ' + \
+                          'data set "%s"' % (self.name))
         raise Exception
 
-      # A log message for high volume log output (level 3)  - - - - - - - - - -
+      # A log message - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
       #
-      print '3:    Wrote record to data set: %s' % (str(record))
+      logging.debug('    Wrote record to data set: %s' % (str(record)))
 
-    # A log message for medium volume log output (level 2)  - - - - - - - - - -
+    # A log message - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     #
-    print '2:  Wrote %i records to data set' % (len(record_list))
+    logging.debug('  Wrote %i records to data set' % (len(record_list)))
 
   # ---------------------------------------------------------------------------
 
@@ -2713,11 +3274,12 @@ class DataSetMemory(RandomDataSet):
       return  # Don't write if not host process
 
     if (self.dict == None):
-      print 'error:Data set not initialised'
+      logging.exception('Data set not initialised')
       raise Exception
 
     if (self.access_mode not in ['write','readwrite']):
-      print 'error:Data set not initialised for "write" or "readwrite" access'
+      logging.exception('Data set not initialised for "write" or ' + \
+                        '"readwrite" access')
       raise Exception
 
     # Now write the given record
@@ -2725,7 +3287,8 @@ class DataSetMemory(RandomDataSet):
     rec_num = record.get('_rec_num_', None)  # Get the record number
 
     if (rec_num == None):
-      print 'error:Record without record number given: %s' % (str(record))
+      logging.exception('Record without record number given: %s' % \
+                        (str(record)))
       raise Exception
 
     dict_key = str(rec_num)
@@ -2739,12 +3302,13 @@ class DataSetMemory(RandomDataSet):
       self.dict[dict_key] = record
 
     except:
-      print 'error:Something is wrong when writing into memory data ' + \
-          'set "%s"' % (self.name)
+      logging.exception('Something is wrong when writing into memory data ' + \
+                        'set "%s"' % (self.name))
       raise Exception
 
-    # A log message for high volume log output (level 3)  - - - - - - - - - - -
+    # A log message - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     #
-    print '3:    Wrote record %s to data set: %s' % (dict_key, str(record))
+    logging.debug('    Wrote record %s to data set: %s' % \
+                  (dict_key, str(record)))
 
 # =============================================================================

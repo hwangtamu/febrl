@@ -1,27 +1,48 @@
 # =============================================================================
-# comparison.py - Classes for field and record comparions.
-#
-# Freely extensible biomedical record linkage (Febrl) Version 0.2.2
-# See http://datamining.anu.edu.au/projects/linkage.html
-#
-# =============================================================================
 # AUSTRALIAN NATIONAL UNIVERSITY OPEN SOURCE LICENSE (ANUOS LICENSE)
-# VERSION 1.1
-#
-# The contents of this file are subject to the ANUOS License Version 1.1 (the
-# "License"); you may not use this file except in compliance with the License.
-# Software distributed under the License is distributed on an "AS IS" basis,
-# WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License for
-# the specific language governing rights and limitations under the License.
-# The Original Software is "comparison.py".
-# The Initial Developers of the Original Software are Dr Peter Christen
-# (Department of Computer Science, Australian National University) and Dr Tim
-# Churches (Centre for Epidemiology and Research, New South Wales Department
-# of Health). Copyright (C) 2002, 2003 the Australian National University and
+# VERSION 1.2
+# 
+# The contents of this file are subject to the ANUOS License Version 1.2
+# (the "License"); you may not use this file except in compliance with
+# the License. You may obtain a copy of the License at:
+# 
+#   http://datamining.anu.edu.au/linkage.html
+# 
+# Software distributed under the License is distributed on an "AS IS"
+# basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See
+# the License for the specific language governing rights and limitations
+# under the License.
+# 
+# The Original Software is: "comparison.py"
+# 
+# The Initial Developers of the Original Software are:
+#   Dr Tim Churches (Centre for Epidemiology and Research, New South Wales
+#                    Department of Health)
+#   Dr Peter Christen (Department of Computer Science, Australian National
+#                      University)
+# 
+# Copyright (C) 2002 - 2005 the Australian National University and
 # others. All Rights Reserved.
+# 
 # Contributors:
-# Daniel R. Sabath M.Sc. (Research Consultant, Harborview Injury Prevention and
-#                         Research Center, Seattle)
+# 
+# Alternatively, the contents of this file may be used under the terms
+# of the GNU General Public License Version 2 or later (the "GPL"), in
+# which case the provisions of the GPL are applicable instead of those
+# above. The GPL is available at the following URL: http://www.gnu.org/
+# If you wish to allow use of your version of this file only under the
+# terms of the GPL, and not to allow others to use your version of this
+# file under the terms of the ANUOS License, indicate your decision by
+# deleting the provisions above and replace them with the notice and
+# other provisions required by the GPL. If you do not delete the
+# provisions above, a recipient may use your version of this file under
+# the terms of any one of the ANUOS License or the GPL.
+# =============================================================================
+#
+# Freely extensible biomedical record linkage (Febrl) - Version 0.3
+#
+# See: http://datamining.anu.edu.au/linkage.html
+#
 # =============================================================================
 
 """Module comparison.py - Classes for field and record comparions.
@@ -63,6 +84,7 @@
 # =============================================================================
 # Imports go here
 
+import logging
 import math
 import time
 
@@ -88,7 +110,7 @@ class RecordComparator:
     self.dataset_b = dataset_b
 
     if (not isinstance(field_comparators, list)):
-      print 'error:Argument "field_comparators" is not a list'
+      logging.exception('Argument "field_comparators" is not a list')
       raise Exception
     self.field_comparators = field_comparators
 
@@ -101,24 +123,25 @@ class RecordComparator:
 
       for field in fc.fields_a:
         if (not self.dataset_a.fields.has_key(field)):
-          print 'error:Data set A does not have field: "%s"' % (str(field))
+          logging.exception('Data set A does not have field: "%s"' % \
+                            (str(field)))
           raise Exception
       for field in fc.fields_b:
         if (not self.dataset_b.fields.has_key(field)):
-          print 'error:Data set B does not have field: "%s"' % (str(field))
+          logging.exception('Data set B does not have field: "%s"' % \
+                            (str(field)))
           raise Exception
 
-    # A log message for low volume log output (level 1) - - - - - - - - - - - -
+    # A log message - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     #
-    print '1:'
-    print '1:Initialised record comparator'
-    print '1:  Data set A: %s' % (str(self.dataset_a.name))
-    print '1:  Data set B: %s' % (str(self.dataset_b.name))
-    print '1:  Field comparators:'
+    logging.info('Initialised record comparator')
+    logging.info('  Data set A: %s' % (str(self.dataset_a.name)))
+    logging.info('  Data set B: %s' % (str(self.dataset_b.name)))
+    logging.info('  Field comparators:')
     for fc in self.field_comparators:
-      print '1:    Name: %s' % (str(fc.name))
-      print '1:      Fields A: %s' % (str(fc.fields_a))
-      print '1:      Fields B: %s' % (str(fc.fields_b))
+      logging.info('    Name: %s' % (str(fc.name)))
+      logging.info('      Fields A: %s' % (str(fc.fields_a)))
+      logging.info('      Fields B: %s' % (str(fc.fields_b)))
 
   # ---------------------------------------------------------------------------
 
@@ -152,10 +175,11 @@ class RecordComparator:
       w = fc.compare(fields_a, fields_b, records_id)
       weight_vector.append(w)
 
-    # A log message for medium volume log output (level 2)  - - - - - - - - - -
+    # A log message - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     #
-    print '2:  Record comparison:'
-    print '2:    %s, comparison vector: %s' % (records_id, str(weight_vector))
+    logging.debug('  Record comparison:')
+    logging.debug('    %s, comparison vector: %s' % \
+                  (records_id, str(weight_vector)))
 
     return weight_vector
 
@@ -171,7 +195,7 @@ class RecordComparator:
 
     if (not isinstance(rec_list_a, list)) and \
        (not isinstance(rec_list_a, list)):
-      print 'error:Both record blocks must be of type list'
+      logging.exception('Both record blocks must be of type list')
       raise Exception
 
     if (rec_list_a == rec_list_b):
@@ -212,7 +236,7 @@ class FieldComparator:
      u-probabilities.
 
      Two data set attributes will be set by the record comparator so that field
-     comparators have access to the missing value attribute of the data sets. 
+     comparators have access to the missing value attribute of the data sets.
 
      * For the "FieldComparatorDate" separate m- and u-probabilities need to be
        given for day, month and year.
@@ -265,7 +289,8 @@ class FieldComparator:
         elif (isinstance(value, list)):
           self.fields_a = value
         else:
-          print 'error:Argument "fields_a" must be of type string or list'
+          logging.exception('Argument "fields_a" must be of type string or' + \
+                            ' list')
           raise Exception
 
       elif (keyword == 'fields_b'):
@@ -274,32 +299,33 @@ class FieldComparator:
         elif (isinstance(value, list)):
           self.fields_b = value
         else:
-          print 'error:Argument "fields_b" must be of type string or list'
+          logging.exception('Argument "fields_b" must be of type string or' + \
+                            ' list')
           raise Exception
 
       elif (keyword in ['m', 'm_prob', 'm_probability']):
         if (not isinstance(value, int)) and (not isinstance(value, float)):
-          print 'error:Argument "m_probability" is not a number'
+          logging.exception('Argument "m_probability" is not a number')
           raise Exception
 
         if (value <= 0.0) or (value > 1.0):
-          print 'error:Illegal "m_probability" value: %s' % (str(value))
+          logging.exception('Illegal "m_probability" value: %s' % (str(value)))
           raise Exception
 
         self.m_probability = value
 
       elif (keyword in ['u', 'u_prob', 'u_probability']):
         if (not isinstance(value, int)) and (not isinstance(value, float)):
-          print 'error:Argument "u_probability" is not a number'
+          logging.exception('Argument "u_probability" is not a number')
           raise Exception
         if (value <= 0.0) or (value > 1.0):
-          print 'error:Illegal "u_probability" value: %s' % (str(value))
+          logging.exception('Illegal "u_probability" value: %s' % (str(value)))
           raise Exception
         self.u_probability = value
 
       elif (keyword in ['miss', 'miss_w', 'missing_w', 'missing_weight']):
         if (not isinstance(value, int)) and (not isinstance(value, float)):
-          print 'error:Argument "missing_weight" is not a number'
+          logging.exception('Argument "missing_weight" is not a number')
           raise Exception
         self.missing_weight = value
 
@@ -308,28 +334,29 @@ class FieldComparator:
 
       elif (keyword in ['freq_table_max_w', 'freq_table_max_weight']):
         if (not isinstance(value, int)) and (not isinstance(value, float)):
-          print 'error:Argument "freq_table_max_weight" is not a number'
+          logging.exception('Argument "freq_table_max_weight" is not a number')
           raise Exception
         self.freq_table_max_weight = value
 
       elif (keyword in ['freq_table_min_w', 'freq_table_min_weight']):
         if (not isinstance(value, int)) and (not isinstance(value, float)):
-          print 'error:Argument "freq_table_min_weight" is not a number'
+          logging.exception('Argument "freq_table_min_weight" is not a number')
           raise Exception
         self.freq_table_min_weight = value
 
       else:
-        print 'error:Illegal constructor argument keyword: %s' % (str(keyword))
+        logging.exception('Illegal constructor argument keyword: %s' % \
+                          (str(keyword)))
         raise Exception
 
     # Check if fields are not empty - - - - - - - - - - - - - - - - - - - - - -
     #
     if (self.fields_a == None) or (self.fields_b == None):
-      print 'error:Fields are not defined'
+      logging.exception('Fields are not defined')
       raise Exception
 
     if (len(self.fields_a) == 0) or (len(self.fields_b) == 0):
-      print 'error:Fields must not be empty lists'
+      logging.exception('Fields must not be empty lists')
       raise Exception
 
     # Compute weights if probabilities are given  - - - - - - - - - - - - - - -
@@ -343,11 +370,12 @@ class FieldComparator:
     #
     if (self.agree_weight != None) and (self.disagree_weight != None):
       if (self.agree_weight < self.disagree_weight):
-        print 'error:Disagreement weight is larger than agreement weight'
+        logging.exception('Disagreement weight is larger than agreement ' + \
+                          'weight')
         raise Exception
 
       if (self.agree_weight < self.missing_weight):
-        print 'error:Agreement weight is smaller than missing weight'
+        logging.exception('Agreement weight is smaller than missing weight')
         raise Exception
 
   # ---------------------------------------------------------------------------
@@ -360,25 +388,26 @@ class FieldComparator:
     for (keyword, value) in kwargs.items():
       if (keyword in ['m', 'm_prob', 'm_probability']):
         if (not isinstance(value, int)) and (not isinstance(value, float)):
-          print 'error:Argument "m_probability" is not a number'
+          logging.exception('Argument "m_probability" is not a number')
           raise Exception
 
         if (value <= 0.0) or (value > 1.0):
-          print 'error:Illegal "m_probability" value: %s' % (str(value))
+          logging.exception('Illegal "m_probability" value: %s' % (str(value)))
           raise Exception
         self.m_probability = value
 
       elif (keyword in ['u', 'u_prob', 'u_probability']):
         if (not isinstance(value, int)) and (not isinstance(value, float)):
-          print 'error:Argument "u_probability" is not a number'
+          logging.exception('Argument "u_probability" is not a number')
           raise Exception
         if (value <= 0.0) or (value > 1.0):
-          print 'error:Illegal "u_probability" value: %s' % (str(value))
+          logging.exception('Illegal "u_probability" value: %s' % (str(value)))
           raise Exception
         self.u_probability = value
 
       else:
-        print 'error:Illegal constructor argument keyword: %s' % (str(keyword))
+        logging.exception('Illegal constructor argument keyword: %s' % \
+                          (str(keyword)))
         raise Exception
 
     self.agree_weight =    mymath.log2(self.m_probability / self.u_probability)
@@ -389,30 +418,39 @@ class FieldComparator:
     #
     if (self.agree_weight != None) and (self.disagree_weight != None):
       if (self.agree_weight < self.disagree_weight):
-        print 'error:Disagreement weight is larger than agreement weight'
+        logging.exception('Disagreement weight is larger than agreement ' + \
+                          'weight')
         raise Exception
 
       if (self.agree_weight < self.missing_weight):
-        print 'error:Agreement weight is smaller than missing weight'
+        logging.exception('Agreement weight is smaller than missing weight')
         raise Exception
 
   # ---------------------------------------------------------------------------
-  
+
   def compare(self, fields_a, fields_b):
     """Compare two field lists to compute a weight value.
        See implementations in derived classes for details.
     """
 
-    print 'error:Override abstract method in derived class'
+    logging.exception('Override abstract method in derived class')
     raise Exception
 
   # ---------------------------------------------------------------------------
 
   def compute_basic_weights(self, fields_a, fields_b):
     """Check if field values are missing, are exactly the same, or differ.
-       If a frequency table is given, compute weights according to the
-       frequency of the given values, otherwise take generic weights based
-       on M- and U- probability.
+       If a frequency table is given, and the values agree, compute weights
+       according to the frequency of the given values, otherwise take generic
+       weights based on M- and U- probability.
+
+       Note that a frequency dependent weight is only calculated when the
+       values agree exactly (i.e. when they are the same), otherwise the
+       generic disagreement weight are used.
+
+       When different string frequencies are given in the two data sets then
+       the minimum agreement and disagreement weights will be taken and
+       returned.
 
        This routine returns a dictionary with the keyword being either
          'missing'  and the missing weight as value
@@ -420,20 +458,28 @@ class FieldComparator:
          'disagree' and two strings, agreement and disagreement weights as list
     """
 
-    # Check if fields contain missing values  - - - - - - - - - - - - - - - - -
-    #
-    for field in fields_a:
-      if (field in self.dataset_a.missing_values):
-        return {'missing':self.missing_weight}
+ ### CHANGE!!
 
-    for field in fields_b:
-      if (field in self.dataset_b.missing_values):
-        return {'missing':self.missing_weight}
-
+#    # Check if fields contain missing values  - - - - - - - - - - - - - - - - -
+#    #
+#    for field in fields_a:
+#      if (field in self.dataset_a.missing_values):
+#        return {'missing':self.missing_weight}
+#
+#    for field in fields_b:
+#      if (field in self.dataset_b.missing_values):
+#        return {'missing':self.missing_weight}
+#
     # Concatenate into two strings without whitespaces  - - - - - - - - - - - -
     #
     str_a = ''.join(fields_a)
     str_b = ''.join(fields_b)
+
+    if (str_a in self.dataset_a.missing_values) or \
+       (str_b in self.dataset_a.missing_values):
+        return {'missing':self.missing_weight}
+
+### CHANGE!!
 
     # Check if strings are the same - - - - - - - - - - - - - - - - - - - - - -
     #
@@ -469,8 +515,10 @@ class FieldComparator:
         str_a_freq =  float(str_a_count / self.frequency_table.sum)
 
         agree_weight_a =    mymath.log2(1.0 / str_a_freq)
-        disagree_weight_a = mymath.log2((1.0 - str_a_freq) / \
-                                        (1.0 - str_a_freq*str_a_freq))
+        #disagree_weight_a = mymath.log2((1.0 - str_a_freq) / \
+        #                                (1.0 - str_a_freq*str_a_freq))
+        disagree_weight_a = self.disagree_weight  # Comment Mike Berry ********
+
         if (self.freq_table_max_weight != None):  # Limit agreement weight
           if (agree_weight_a > self.freq_table_max_weight):
             agree_weight_a = self.freq_table_max_weight
@@ -487,8 +535,10 @@ class FieldComparator:
         str_b_freq =  float(str_b_count / self.frequency_table.sum)
 
         agree_weight_b =    mymath.log2(1.0 / str_b_freq)
-        disagree_weight_b = mymath.log2((1.0 - str_b_freq) / \
-                                        (1.0 - str_b_freq*str_b_freq))
+        #disagree_weight_b = mymath.log2((1.0 - str_b_freq) / \
+        #                                (1.0 - str_b_freq*str_b_freq))
+        disagree_weight_b = self.disagree_weight  # Comment Mike Berry ********
+
         if (self.freq_table_max_weight != None):  # Limit agreement weight
           if (agree_weight_b > self.freq_table_max_weight):
             agree_weight_b = self.freq_table_max_weight
@@ -504,7 +554,9 @@ class FieldComparator:
       # ########### ??????? Is this correct ???????????? ############
       #
       agree_weight =    min(agree_weight_a, agree_weight_b)
-      disagree_weight = max(disagree_weight_a, disagree_weight_b)
+      #disagree_weight = max(disagree_weight_a, disagree_weight_b)
+      disagree_weight = min(disagree_weight_a, disagree_weight_b)
+                                                  # Comment Mike Berry ********
 
     # No frequency tables given so take generic weights - - - - - - - - - - - -
     #
@@ -528,28 +580,29 @@ class FieldComparatorExactString(FieldComparator):
 
     FieldComparator.__init__(self, kwargs)
 
-    # A log message for low/medium volume log output (level 1/2)  - - - - - - -
+    # A log message - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     #
-    print '1:'
-    print '1:Initialised "ExactString" field comparator: "%s"' % \
-          (str(self.name))
-    print '1:  Fields in data set A:     %s' % (str(self.fields_a))
-    print '1:  Fields in data set B:     %s' % (str(self.fields_b))
-    print '1:  M-Probability:            %f' % (self.m_probability)
-    print '1:  U-Probability:            %f' % (self.u_probability)
-    print '2:  Agreement weight:         %f' % (self.agree_weight)
-    print '2:  Disagreement weight:      %f' % (self.disagree_weight)
-    print '1:  Missing weight:           %f' % (self.missing_weight)
+    logging.info('Initialised "ExactString" field comparator: "%s"' % \
+          (str(self.name)))
+    logging.info('  Fields in data set A:     %s' % (str(self.fields_a)))
+    logging.info('  Fields in data set B:     %s' % (str(self.fields_b)))
+    logging.info('  M-Probability:            %f' % (self.m_probability))
+    logging.info('  U-Probability:            %f' % (self.u_probability))
+    logging.debug('  Agreement weight:         %f' % (self.agree_weight))
+    logging.debug('  Disagreement weight:      %f' % (self.disagree_weight))
+    logging.info('  Missing weight:           %f' % (self.missing_weight))
     if (self.frequency_table != None):
-      print '1:  Frequency table:          %s' % \
-            (str(self.frequency_table.name))
+      logging.info('  Frequency table:          %s' % \
+            (str(self.frequency_table.name)))
     if (self.freq_table_min_weight != None):
-      print '2:  Frequency minimal weight: %f' % (self.freq_table_min_weight)
+      logging.debug('  Frequency minimal weight: %f' % \
+                    (self.freq_table_min_weight))
     if (self.freq_table_max_weight != None):
-      print '2:  Frequency maximal weight: %f' % (self.freq_table_max_weight)
+      logging.debug('  Frequency maximal weight: %f' % \
+                    (self.freq_table_max_weight))
 
   # ---------------------------------------------------------------------------
-  
+
   def compare(self, fields_a, fields_b, records_id):
     """Compare two field lists using exact string comparator.
     """
@@ -560,23 +613,23 @@ class FieldComparatorExactString(FieldComparator):
     value = comparison_dict[key]
 
     if (key == 'agree'):  # Strings agree
-      print '3:%s    Agreement (%s,%s): %f' % \
-            (records_id, str(fields_a), str(fields_b), value)
+      logging.debug('%s    Agreement (%s,%s): %f' % \
+            (records_id, str(fields_a), str(fields_b), value))
       return value
 
     elif (key == 'missing'):  # Missing values
-      print '3:%s    Missing values (%s,%s): %f' % \
-            (records_id, str(fields_a), str(fields_b), value)
+      logging.debug('%s    Missing values (%s,%s): %f' % \
+            (records_id, str(fields_a), str(fields_b), value))
       return value
 
     elif (key == 'disagree'):
-      print '3:%s    Disagreement (%s,%s): %f' % \
-            (records_id, str(fields_a), str(fields_b), value[3])
+      logging.debug('%s    Disagreement (%s,%s): %f' % \
+            (records_id, str(fields_a), str(fields_b), value[3]))
       return value[3]  # Return disagreement weight
 
     else:
-      print 'error:%s: Illegal key returned from "compute_basic_weights"' % \
-            (records_id)
+      logging.exception('%s: Illegal key returned from ' + \
+                        '"compute_basic_weights"' % (records_id))
       raise Exception
 
 # =============================================================================
@@ -607,8 +660,8 @@ class FieldComparatorTruncateString(FieldComparator):
     for (keyword, value) in kwargs.items():
       if (keyword in['max_string_len','max_string_length']):
         if (not isinstance(value, int)) or (value <= 0):
-          print 'error:Argument "max_string_length" must be a positive '+ \
-                'integer number'
+          logging.exception('Argument "max_string_length" must be a positive' \
+                            + 'integer number')
           raise Exception
         self.max_string_length = value
 
@@ -620,31 +673,32 @@ class FieldComparatorTruncateString(FieldComparator):
     # Make sure 'max_string_length' attribute is set  - - - - - - - - - - - - -
     #
     if (self.max_string_length == None):
-      print 'error:Argument "max_string_length" is not set'
+      logging.exception('Argument "max_string_length" is not set')
 
-    # A log message for low/medium volume log output (level 1/2)  - - - - - - -
+    # A log message - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     #
-    print '1:'
-    print '1:Initialised "TruncateString" field comparator: "%s"' % \
-          (str(self.name))
-    print '1:  Fields in data set A:     %s' % (str(self.fields_a))
-    print '1:  Fields in data set B:     %s' % (str(self.fields_b))
-    print '1:  M-Probability:            %f' % (self.m_probability)
-    print '1:  U-Probability:            %f' % (self.u_probability)
-    print '2:  Agreement weight:         %f' % (self.agree_weight)
-    print '2:  Disagreement weight:      %f' % (self.disagree_weight)
-    print '1:  Missing weight:           %f' % (self.missing_weight)
+    logging.info('Initialised "TruncateString" field comparator: "%s"' % \
+          (str(self.name)))
+    logging.info('  Fields in data set A:     %s' % (str(self.fields_a)))
+    logging.info('  Fields in data set B:     %s' % (str(self.fields_b)))
+    logging.info('  M-Probability:            %f' % (self.m_probability))
+    logging.info('  U-Probability:            %f' % (self.u_probability))
+    logging.debug('  Agreement weight:         %f' % (self.agree_weight))
+    logging.debug('  Disagreement weight:      %f' % (self.disagree_weight))
+    logging.info('  Missing weight:           %f' % (self.missing_weight))
     if (self.frequency_table != None):
-      print '1:  Frequency table:          %s' % \
-            (str(self.frequency_table.name))
+      logging.info('  Frequency table:          %s' % \
+            (str(self.frequency_table.name)))
     if (self.freq_table_min_weight != None):
-      print '2:  Frequency minimal weight: %f' % (self.freq_table_min_weight)
+      logging.debug('  Frequency minimal weight: %f' % \
+                    (self.freq_table_min_weight))
     if (self.freq_table_max_weight != None):
-      print '2:  Frequency maximal weight: %f' % (self.freq_table_max_weight)
-    print '1:  Maximum string length:    %i' % (self.max_string_length)
+      logging.debug('  Frequency maximal weight: %f' % \
+                    (self.freq_table_max_weight))
+    logging.info('  Maximum string length:    %i' % (self.max_string_length))
 
   # ---------------------------------------------------------------------------
-  
+
   def compare(self, fields_a, fields_b, records_id):
     """Compare two field lists using exact string comparator with truncated
        strings.
@@ -656,13 +710,13 @@ class FieldComparatorTruncateString(FieldComparator):
     value = comparison_dict[key]
 
     if (key == 'agree'):  # Strings agree
-      print '3:%s    Agreement (%s, %s): %f' % \
-            (records_id, str(fields_a), str(fields_b), value)
+      logging.debug('%s    Agreement (%s, %s): %f' % \
+            (records_id, str(fields_a), str(fields_b), value))
       return value
 
     elif (key == 'missing'):  # Missing values
-      print '3:%s    Missing values (%s, %s): %f' % \
-            (records_id, str(fields_a), str(fields_b), value)
+      logging.debug('%s    Missing values (%s, %s): %f' % \
+            (records_id, str(fields_a), str(fields_b), value))
       return value
 
     elif (key == 'disagree'):
@@ -674,17 +728,17 @@ class FieldComparatorTruncateString(FieldComparator):
       # Now check if truncated strings are the same - - - - - - - - - - - - - -
       #
       if (str_a[:self.max_string_length] == str_b[:self.max_string_length]):
-        print '3:%s    Agreement (%s, %s): %f' % \
-              (records_id, str(fields_a), str(fields_b), agree_w)
+        logging.debug('%s    Agreement (%s, %s): %f' % \
+              (records_id, str(fields_a), str(fields_b), agree_w))
         return agree_w
       else:
-        print '3:%s    Disagreement (%s, %s): %f' % \
-              (records_id, str(fields_a), str(fields_b), disagree_w)
+        logging.debug('%s    Disagreement (%s, %s): %f' % \
+              (records_id, str(fields_a), str(fields_b), disagree_w))
         return disagree_w
 
     else:
-      print 'error:%s Illegal key returned from ' % (records_id) + \
-            '"compute_basic_weights"'
+      logging.exception('%s Illegal key returned from ' % (records_id) + \
+            '"compute_basic_weights"')
       raise Exception
 
 # =============================================================================
@@ -698,19 +752,21 @@ class FieldComparatorApproxString(FieldComparator):
        winkler
        bigram
        editdist
+       bagdist
        seqmatch
+       compression
      They all return a value between 0.0 (strings differ totally) and 1.0
      (strings are the same).
 
      The additional arguments (besides the base class arguments) are the name
      of the comparison method (see above) 'compare_method' and the minimum
      value 'min_approx_value' (between 1.0 and 0.0) that is tolerated. If the
-     approximate string comparator method returns a value between 1.0 and 
+     approximate string comparator method returns a value between 1.0 and
      'min_approx_value', then the partial agreement weight is computed using
      the following formula:
 
        weight = agree_weight - (1.0 - approx_str_val) /
-                               (1.0 - min_approx_value) * 
+                               (1.0 - min_approx_value) *
                                (agree_weight+abs(disagree_weight))
 
      If the approximate string comparator method returns a value less than the
@@ -734,16 +790,17 @@ class FieldComparatorApproxString(FieldComparator):
 
     for (keyword, value) in kwargs.items():
       if (keyword == 'compare_method'):
-        if (value not in ['jaro','winkler','bigram','editdist','seqmatch']):
-          print 'error:Illegal approximate string comparator method: "%s"' % \
-                (str(value))
+        if (value not in ['jaro','winkler','bigram','editdist','bagdist', \
+                          'seqmatch','compression']):
+          logging.exception('Illegal approximate string comparator method:' + \
+                            ' "%s"' % (str(value)))
           raise Exception
         self.compare_method = value
 
       elif (keyword == 'min_approx_value'):
         if (not isinstance(value,float)) or (value <= 0.0) or (value >= 1.0):
-          print 'error:Argument "min_approc_value" must be a number '+ \
-                'between 0.0 and 1.0'
+          logging.exception('Argument "min_approx_value" must be a number '+ \
+                'between 0.0 and 1.0')
           raise Exception
         self.min_approx_value = value
 
@@ -755,37 +812,38 @@ class FieldComparatorApproxString(FieldComparator):
     # Make sure 'compare_method' and 'min_approx_value' attributes are set  - -
     #
     if (self.compare_method == None):
-      print 'error:Argument "compare_method" is not set'
+      logging.exception('Argument "compare_method" is not set')
       raise Exception
 
     if (self.min_approx_value == None):
-      print 'error:Argument "min_approx_value" is not set'
+      logging.exception('Argument "min_approx_value" is not set')
       raise Exception
 
-    # A log message for low/medium volume log output (level 1/2)  - - - - - - -
+    # A log message - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     #
-    print '1:'
-    print '1:Initialised "ApproxString" field comparator: "%s"' % \
-          (str(self.name))
-    print '1:  Fields in data set A:     %s' % (str(self.fields_a))
-    print '1:  Fields in data set B:     %s' % (str(self.fields_b))
-    print '1:  M-Probability:            %f' % (self.m_probability)
-    print '1:  U-Probability:            %f' % (self.u_probability)
-    print '2:  Agreement weight:         %f' % (self.agree_weight)
-    print '2:  Disagreement weight:      %f' % (self.disagree_weight)
-    print '1:  Missing weight:           %f' % (self.missing_weight)
+    logging.info('Initialised "ApproxString" field comparator: "%s"' % \
+          (str(self.name)))
+    logging.info('  Fields in data set A:     %s' % (str(self.fields_a)))
+    logging.info('  Fields in data set B:     %s' % (str(self.fields_b)))
+    logging.info('  M-Probability:            %f' % (self.m_probability))
+    logging.info('  U-Probability:            %f' % (self.u_probability))
+    logging.debug('  Agreement weight:         %f' % (self.agree_weight))
+    logging.debug('  Disagreement weight:      %f' % (self.disagree_weight))
+    logging.info('  Missing weight:           %f' % (self.missing_weight))
     if (self.frequency_table != None):
-      print '1:  Frequency table:          %s' % \
-            (str(self.frequency_table.name))
+      logging.info('  Frequency table:          %s' % \
+            (str(self.frequency_table.name)))
     if (self.freq_table_min_weight != None):
-      print '2:  Frequency minimal weight: %f' % (self.freq_table_min_weight)
+      logging.debug('  Frequency minimal weight: %f' % \
+                    (self.freq_table_min_weight))
     if (self.freq_table_max_weight != None):
-      print '2:  Frequency maximal weight: %f' % (self.freq_table_max_weight)
-    print '1:  Compare method:           %s' % (str(self.compare_method))
-    print '1:  Minimum comparison value: %f' % (self.min_approx_value)
+      logging.debug('  Frequency maximal weight: %f' % \
+                    (self.freq_table_max_weight))
+    logging.info('  Compare method:           %s' % (str(self.compare_method)))
+    logging.info('  Minimum comparison value: %f' % (self.min_approx_value))
 
   # ---------------------------------------------------------------------------
-  
+
   def compare(self, fields_a, fields_b, records_id):
     """Compare two lists with strings using an approximate string comparator.
     """
@@ -796,13 +854,13 @@ class FieldComparatorApproxString(FieldComparator):
     value = comparison_dict[key]
 
     if (key == 'agree'):  # Strings agree
-      print '3:%s    Agreement (%s, %s): %f' % \
-            (records_id, str(fields_a), str(fields_b), value)
+      logging.debug('%s    Agreement (%s, %s): %f' % \
+            (records_id, str(fields_a), str(fields_b), value))
       return value
 
     elif (key == 'missing'):  # Missing values
-      print '3:%s    Missing values (%s, %s): %f' % \
-            (records_id, str(fields_a), str(fields_b), value)
+      logging.debug('%s    Missing values (%s, %s): %f' % \
+            (records_id, str(fields_a), str(fields_b), value))
       return value
 
     elif (key == 'disagree'):
@@ -819,18 +877,22 @@ class FieldComparatorApproxString(FieldComparator):
         approx_str_val = stringcmp.bigram(str_a, str_b)
       elif (self.compare_method == 'editdist'):
         approx_str_val = stringcmp.editdist(str_a, str_b)
+      elif (self.compare_method == 'bagdist'):
+        approx_str_val = stringcmp.bagdist(str_a, str_b)
       elif (self.compare_method == 'seqmatch'):
         approx_str_val = stringcmp.seqmatch(str_a, str_b)
+      elif (self.compare_method == 'compression'):
+        approx_str_val = stringcmp.compression(str_a, str_b)
       else:
-        print 'error:%s Illegal approximate string comparator ' % \
-              (records_id) + 'method: "%s"' % (self.compare_method)
+        logging.exception('%s Illegal approximate string comparator ' % \
+              (records_id) + 'method: "%s"' % (self.compare_method))
         raise Exception
 
       # Check if strings are totally different  - - - - - - - - - - - - - - - -
       #
       if (approx_str_val < self.min_approx_value):
-        print '3:%s    Disagreement (%s, %s): %f' % \
-              (records_id, str(fields_a), str(fields_b), disagree_w)
+        logging.debug('%s    Disagreement (%s, %s): %f' % \
+              (records_id, str(fields_a), str(fields_b), disagree_w))
         return disagree_w
 
       # Compute final adjusted weight - - - - - - - - - - - - - - - - - - - - -
@@ -839,14 +901,14 @@ class FieldComparatorApproxString(FieldComparator):
       partagree_w = agree_w - (1.0 - approx_str_val) / \
                     (1.0 - self.min_approx_value) * \
                     (agree_w+abs(disagree_w))
-      print '3:%s    Partial agreement (%s, %s): %f' % \
-            (records_id, str(fields_a), str(fields_b), partagree_w)
+      logging.debug('%s    Partial agreement (%s, %s): %f' % \
+            (records_id, str(fields_a), str(fields_b), partagree_w))
 
       return partagree_w
 
     else:
-      print 'error:%s Illegal key returned from ' % (records_id) + \
-            '"compute_basic_weights"'
+      logging.exception('%s Illegal key returned from ' % (records_id) + \
+            '"compute_basic_weights"')
       raise Exception
 
 # =============================================================================
@@ -893,20 +955,21 @@ class FieldComparatorEncodeString(FieldComparator):
       if (keyword == 'encode_method'):
         if (value not in ['soundex','mod_soundex','phonex','nysiis', \
                           'dmetaphone']):
-          print 'error:Illegal string encoding method: "%s"' % (str(value))
+          logging.exception('Illegal string encoding method: "%s"' % \
+                            (str(value)))
           raise Exception
         self.encode_method = value
 
       elif (keyword == 'reverse'):
         if (value not in [True, False]):
-          print 'error:Argument "reverse" must be "True" or "False"'
+          logging.exception('Argument "reverse" must be "True" or "False"')
           raise Exception
         self.reverse = value
 
       elif (keyword == 'max_code_length'):
         if (not isinstance(value, int)) or (value <= 0):
-          print 'error:Argument "max_code_length" must be a positive '+ \
-                'integer number'
+          logging.exception('Argument "max_code_length" must be a positive '+ \
+                'integer number')
           raise Exception
         self.max_code_length = value
 
@@ -918,34 +981,35 @@ class FieldComparatorEncodeString(FieldComparator):
     # Make sure 'encode_method' attribute is set  - - - - - - - - - - - - - - -
     #
     if (self.encode_method == None):
-      print 'error:Argument "encode_method" is not set'
+      logging.exception('Argument "encode_method" is not set')
       raise Exception
 
-    # A log message for low/medium volume log output (level 1/2)  - - - - - - -
+    # A log message - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     #
-    print '1:'
-    print '1:Initialised "EncodeString" field comparator: "%s"' % \
-          (str(self.name))
-    print '1:  Fields in data set A:     %s' % (str(self.fields_a))
-    print '1:  Fields in data set B:     %s' % (str(self.fields_b))
-    print '1:  M-Probability:            %f' % (self.m_probability)
-    print '1:  U-Probability:            %f' % (self.u_probability)
-    print '2:  Agreement weight:         %f' % (self.agree_weight)
-    print '2:  Disagreement weight:      %f' % (self.disagree_weight)
-    print '1:  Missing weight:           %f' % (self.missing_weight)
+    logging.info('Initialised "EncodeString" field comparator: "%s"' % \
+          (str(self.name)))
+    logging.info('  Fields in data set A:     %s' % (str(self.fields_a)))
+    logging.info('  Fields in data set B:     %s' % (str(self.fields_b)))
+    logging.info('  M-Probability:            %f' % (self.m_probability))
+    logging.info('  U-Probability:            %f' % (self.u_probability))
+    logging.debug('  Agreement weight:         %f' % (self.agree_weight))
+    logging.debug('  Disagreement weight:      %f' % (self.disagree_weight))
+    logging.info('  Missing weight:           %f' % (self.missing_weight))
     if (self.frequency_table != None):
-      print '1:  Frequency table:          %s' % \
-            (str(self.frequency_table.name))
+      logging.info('  Frequency table:          %s' % \
+            (str(self.frequency_table.name)))
     if (self.freq_table_min_weight != None):
-      print '2:  Frequency minimal weight: %f' % (self.freq_table_min_weight)
+      logging.debug('  Frequency minimal weight: %f' % \
+                    (self.freq_table_min_weight))
     if (self.freq_table_max_weight != None):
-      print '2:  Frequency maximal weight: %f' % (self.freq_table_max_weight)
-    print '1:  Encode method:            %s' % (str(self.encode_method))
-    print '1:  Maximum code length:      %i' % (self.max_code_length)
-    print '1:  String reversed:          %s' % (str(self.reverse))
+      logging.debug('  Frequency maximal weight: %f' % \
+                    (self.freq_table_max_weight))
+    logging.info('  Encode method:            %s' % (str(self.encode_method)))
+    logging.info('  Maximum code length:      %i' % (self.max_code_length))
+    logging.info('  String reversed:          %s' % (str(self.reverse)))
 
   # ---------------------------------------------------------------------------
-  
+
   def compare(self, fields_a, fields_b, records_id):
     """Compare two list with strings using a string encoding comparator.
     """
@@ -956,13 +1020,13 @@ class FieldComparatorEncodeString(FieldComparator):
     value = comparison_dict[key]
 
     if (key == 'agree'):  # Strings agree
-      print '3:%s    Agreement (%s, %s): %f' % \
-            (records_id, str(fields_a), str(fields_b), value)
+      logging.debug('%s    Agreement (%s, %s): %f' % \
+            (records_id, str(fields_a), str(fields_b), value))
       return value
 
     elif (key == 'missing'):  # Missing values
-      print '3:%s    Missing values (%s, %s): %f' % \
-            (records_id, str(fields_a), str(fields_b), value)
+      logging.debug('%s    Missing values (%s, %s): %f' % \
+            (records_id, str(fields_a), str(fields_b), value))
       return value
 
     elif (key == 'disagree'):
@@ -995,25 +1059,25 @@ class FieldComparatorEncodeString(FieldComparator):
         code_a = encode.dmetaphone(str_a, maxlen=self.max_code_length)
         code_b = encode.dmetaphone(str_b, maxlen=self.max_code_length)
       else:
-        print 'error:%s Illegal string encoding ' % (records_id) + \
-              'method: "%s"' % (self.encode_method)
+        logging.exception('%s Illegal string encoding ' % (records_id) + \
+              'method: "%s"' % (self.encode_method))
         raise Exception
 
       # Check if encodings are the same or different  - - - - - - - - - - - - -
       #
       if (code_a == code_b):
-        print '3:%s    Agreement (%s, %s): %f' % \
-              (records_id, str(fields_a), str(fields_b), agree_w)
+        logging.debug('%s    Agreement (%s, %s): %f' % \
+              (records_id, str(fields_a), str(fields_b), agree_w))
         return agree_w
 
       else:
-        print '3:%s    Disagreement (%s, %s): %f' % \
-              (records_id, str(fields_a), str(fields_b), disagree_w)
+        logging.debug('%s    Disagreement (%s, %s): %f' % \
+              (records_id, str(fields_a), str(fields_b), disagree_w))
         return disagree_w
 
     else:
-      print 'error:%s Illegal key returned from ' % (records_id) + \
-            '"compute_basic_weights"'
+      logging.exception('%s Illegal key returned from ' % (records_id) + \
+            '"compute_basic_weights"')
       raise Exception
 
 # =============================================================================
@@ -1035,7 +1099,7 @@ class FieldComparatorKeyDiff(FieldComparator):
        weight = agree_weight - (Y/(X+1))*(agree_weight+abs(disagree_weight))
 
      If the number of errors encountered is larger than X, the disagreement
-     weight will be returned.     
+     weight will be returned.
   """
 
   # ---------------------------------------------------------------------------
@@ -1055,8 +1119,8 @@ class FieldComparatorKeyDiff(FieldComparator):
     for (keyword, value) in kwargs.items():
       if (keyword == 'max_key_diff'):
         if (not isinstance(value, int)) or (value < 0):
-          print 'error:Argument "max_key_diff" must be an integer number '+ \
-                'equal to or larger than 0'
+          logging.exception('Argument "max_key_diff" must be an integer ' + \
+                            'number equal to or larger than 0')
           raise Exception
         self.max_key_diff = value
 
@@ -1068,31 +1132,33 @@ class FieldComparatorKeyDiff(FieldComparator):
     # Make sure 'max_key_diff' attribute is set - - - - - - - - - - - - - - - -
     #
     if (self.max_key_diff == None):
-      print 'Argument "max_key_diff" is not set'
+      logging.exception('Argument "max_key_diff" is not set')
       raise Exception
 
-    # A log message for low/medium volume log output (level 1/2)  - - - - - - -
+    # A log message - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     #
-    print '1:'
-    print '1:Initialised "KeyDiff" field comparator: "%s"' % (str(self.name))
-    print '1:  Fields in data set A:     %s' % (str(self.fields_a))
-    print '1:  Fields in data set B:     %s' % (str(self.fields_b))
-    print '1:  M-Probability:            %f' % (self.m_probability)
-    print '1:  U-Probability:            %f' % (self.u_probability)
-    print '2:  Agreement weight:         %f' % (self.agree_weight)
-    print '2:  Disagreement weight:      %f' % (self.disagree_weight)
-    print '1:  Missing weight:           %f' % (self.missing_weight)
+    logging.info('Initialised "KeyDiff" field comparator: "%s"' % \
+                 (str(self.name)))
+    logging.info('  Fields in data set A:     %s' % (str(self.fields_a)))
+    logging.info('  Fields in data set B:     %s' % (str(self.fields_b)))
+    logging.info('  M-Probability:            %f' % (self.m_probability))
+    logging.info('  U-Probability:            %f' % (self.u_probability))
+    logging.debug('  Agreement weight:         %f' % (self.agree_weight))
+    logging.debug('  Disagreement weight:      %f' % (self.disagree_weight))
+    logging.info('  Missing weight:           %f' % (self.missing_weight))
     if (self.frequency_table != None):
-      print '1:  Frequency table:          %s' % \
-            (str(self.frequency_table.name))
+      logging.info('  Frequency table:          %s' % \
+            (str(self.frequency_table.name)))
     if (self.freq_table_min_weight != None):
-      print '2:  Frequency minimal weight: %f' % (self.freq_table_min_weight)
+      logging.debug('  Frequency minimal weight: %f' % \
+                    (self.freq_table_min_weight))
     if (self.freq_table_max_weight != None):
-      print '2:  Frequency maximal weight: %f' % (self.freq_table_max_weight)
-    print '1:  Maximum key difference:   %i' % (self.max_key_diff)
+      logging.debug('  Frequency maximal weight: %f' % \
+                    (self.freq_table_max_weight))
+    logging.info('  Maximum key difference:   %i' % (self.max_key_diff))
 
   # ---------------------------------------------------------------------------
-  
+
   def compare(self, fields_a, fields_b, records_id):
     """Compare two field lists using the key error field comparator.
     """
@@ -1103,13 +1169,13 @@ class FieldComparatorKeyDiff(FieldComparator):
     value = comparison_dict[key]
 
     if (key == 'agree'):  # Strings agree
-      print '3:%s    Agreement (%s, %s): %f' % \
-            (records_id, str(fields_a), str(fields_b), value)
+      logging.debug('%s    Agreement (%s, %s): %f' % \
+            (records_id, str(fields_a), str(fields_b), value))
       return value
 
     elif (key == 'missing'):  # Missing values
-      print '3:%s    Missing values (%s, %s): %f' % \
-            (records_id, str(fields_a), str(fields_b), value)
+      logging.debug('%s    Missing values (%s, %s): %f' % \
+            (records_id, str(fields_a), str(fields_b), value))
       return value
 
     elif (key == 'disagree'):
@@ -1129,20 +1195,20 @@ class FieldComparatorKeyDiff(FieldComparator):
           num_err += 1
 
       if (num_err > self.max_key_diff):
-        print '3:%s    Disagreement (%s, %s): %f' % \
-              (records_id, str(fields_a), str(fields_b), disagree_w)
+        logging.debug('%s    Disagreement (%s, %s): %f' % \
+              (records_id, str(fields_a), str(fields_b), disagree_w))
         return disagree_w  # Too many errors, return disagree weight
 
       else:
         partagree_w = agree_w - (float(num_err)/(self.max_key_diff+1.0)) * \
                       (agree_w + abs(disagree_w))
-        print '3:%s    Partial agreement (%s, %s): %f' % \
-              (records_id, str(fields_a), str(fields_b), partagree_w)
+        logging.debug('%s    Partial agreement (%s, %s): %f' % \
+              (records_id, str(fields_a), str(fields_b), partagree_w))
         return partagree_w
 
     else:
-      print 'error:%s Illegal key returned from ' % (records_id) + \
-            '"compute_basic_weights"'
+      logging.exception('%s Illegal key returned from ' % (records_id) + \
+            '"compute_basic_weights"')
       raise Exception
 
 # =============================================================================
@@ -1161,12 +1227,13 @@ class FieldComparatorNumericPerc(FieldComparator):
      If the percentage difference is smaller than 'max_perc_diff' the weight is
      calculated according to the following formula:
 
-       weight = agree_weight - (perc_diff / (max_perc_diff + 1.0)) * 
+       weight = agree_weight - (perc_diff / (max_perc_diff + 1.0)) *
                                 (agree_weight+abs(disagree_weight))
 
      where the percentage difference is calculated as:
 
-       perc_diff = abs(value_a - value_b) / min(value_a, value_b) * 100.0
+       perc_diff = 100.0 * \
+                   abs(value_a - value_b) / max(abs(value_a), abs(value_b))
 
      Currently, no frequency table can be used for this comparator.
   """
@@ -1187,8 +1254,8 @@ class FieldComparatorNumericPerc(FieldComparator):
         ('freq_table_min_weight' in kwargs.keys()) or \
         ('freq_table_max_w' in kwargs.keys()) or \
         ('freq_table_max_weight' in kwargs.keys())):
-      print 'error:Frequency tables can currently not be used with the'+ \
-            '"FieldComparatorNumericPerc" field comparator'
+      logging.exception('Frequency tables can currently not be used with '+ \
+                        'the "FieldComparatorNumericPerc" field comparator')
       raise Exception
 
     # Process all keyword arguments - - - - - - - - - - - - - - - - - - - - - -
@@ -1200,8 +1267,8 @@ class FieldComparatorNumericPerc(FieldComparator):
       if (keyword == 'max_perc_diff'):
         if ((not (isinstance(value, int) or isinstance(value, float))) or \
             (value < 0.0) or (value >= 100.0)):
-          print 'error:Argument "max_perc_diff" must be a number between '+ \
-                '0.0 and 100.0'
+          logging.exception('Argument "max_perc_diff" must be a number ' + \
+                            'between 0.0 and 100.0')
           raise Exception
         self.max_perc_diff = float(value)
 
@@ -1210,19 +1277,18 @@ class FieldComparatorNumericPerc(FieldComparator):
 
     FieldComparator.__init__(self, base_kwargs)  # Process base arguments
 
-    # A log message for low/medium volume log output (level 1/2)  - - - - - - -
+    # A log message - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     #
-    print '1:'
-    print '1:Initialised "NumericPerc" field comparator: "%s"' % \
-          (str(self.name))
-    print '1:  Fields in data set A:     %s' % (str(self.fields_a))
-    print '1:  Fields in data set B:     %s' % (str(self.fields_b))
-    print '1:  M-Probability:            %f' % (self.m_probability)
-    print '1:  U-Probability:            %f' % (self.u_probability)
-    print '2:  Agreement weight:         %f' % (self.agree_weight)
-    print '2:  Disagreement weight:      %f' % (self.disagree_weight)
-    print '1:  Missing weight:           %f' % (self.missing_weight)
-    print '1:  Maximum percentage difference: %f' % (self.max_perc_diff)
+    logging.info('Initialised "NumericPerc" field comparator: "%s"' % \
+          (str(self.name)))
+    logging.info('  Fields in data set A:     %s' % (str(self.fields_a)))
+    logging.info('  Fields in data set B:     %s' % (str(self.fields_b)))
+    logging.info('  M-Probability:            %f' % (self.m_probability))
+    logging.info('  U-Probability:            %f' % (self.u_probability))
+    logging.debug('  Agreement weight:         %f' % (self.agree_weight))
+    logging.debug('  Disagreement weight:      %f' % (self.disagree_weight))
+    logging.info('  Missing weight:           %f' % (self.missing_weight))
+    logging.info('  Maximum percentage difference: %f' % (self.max_perc_diff))
 
   # ---------------------------------------------------------------------------
 
@@ -1234,14 +1300,14 @@ class FieldComparatorNumericPerc(FieldComparator):
     #
     for field in fields_a:
       if (field in self.dataset_a.missing_values):
-        print '3:%s    Missing values (%s,%s): %f' % \
-              (records_id, str(fields_a), str(fields_b), self.missing_weight)
+        logging.debug('%s    Missing values (%s,%s): %f' % \
+              (records_id, str(fields_a), str(fields_b), self.missing_weight))
         return self.missing_weight
 
     for field in fields_b:
       if (field in self.dataset_b.missing_values):
-        print '3:%s    Missing values (%s,%s): %f' % \
-              (records_id, str(fields_a), str(fields_b), self.missing_weight)
+        logging.debug('%s    Missing values (%s,%s): %f' % \
+              (records_id, str(fields_a), str(fields_b), self.missing_weight))
         return self.missing_weight
 
     # Concatenate fields into two strings without whitespaces - - - - - - - - -
@@ -1263,32 +1329,40 @@ class FieldComparatorNumericPerc(FieldComparator):
     # If one or both are not numbers, return diagreement weight - - - - - - - -
     #
     if (value_a == '') or (value_b == ''):
-      print '3:%s    Disagreement (%s,%s): %f' % \
-            (records_id, str(fields_a), str(fields_b), self.disagree_weight)
+      logging.debug('%s    Disagreement (%s,%s): %f' % \
+            (records_id, str(fields_a), str(fields_b), self.disagree_weight))
       return self.disagree_weight
 
     # Check if numbers are the same - - - - - - - - - - - - - - - - - - - - - -
     #
     elif (value_a == value_b):
-      print '3:%s    Agreement (%s,%s): %f' % \
-            (records_id, str(fields_a), str(fields_b), self.agree_weight)
+      logging.debug('%s    Agreement (%s,%s): %f' % \
+            (records_id, str(fields_a), str(fields_b), self.agree_weight))
       return self.agree_weight
 
     # Calculate percentage difference and weight  - - - - - - - - - - - - - - -
     #
     else:
       if (self.max_perc_diff == 0.0):  # No percentage tolerance allowed
-        print '3:%s    Disagreement (%s,%s): %f' % \
-              (records_id, str(fields_a), str(fields_b), self.disagree_weight)
+        logging.debug('%s    Disagreement (%s,%s): %f' % \
+              (records_id, str(fields_a), str(fields_b), self.disagree_weight))
         return self.disagree_weight  # Because values are different
 
       else:
-        perc_diff = abs(value_a - value_b) / min(value_a, value_b) * 100.0
+
+        # Old, wrong formula (following AutoMatch)
+        #
+        # perc_diff = abs(value_a - value_b) / min(value_a, value_b) * 100.0
+
+        # New formula according to Markus Hegland (4/5/2004)
+        #
+        perc_diff = 100.0 * \
+                    abs(value_a - value_b) / max(abs(value_a), abs(value_b))
 
         if (perc_diff > self.max_perc_diff):  # Percentage difference too large
-          print '3:%s    Disagreement (%s,%s): %f' % \
+          logging.debug('%s    Disagreement (%s,%s): %f' % \
                 (records_id, str(fields_a), str(fields_b), \
-                 self.disagree_weight)
+                 self.disagree_weight))
           return self.disagree_weight
 
         else:
@@ -1296,8 +1370,8 @@ class FieldComparatorNumericPerc(FieldComparator):
                         (self.max_perc_diff+1.0)) * \
                         (self.agree_weight+ \
                         abs(self.disagree_weight))
-          print '3:%s    Partial agreement (%s,%s): %f' % \
-                (records_id, str(fields_a), str(fields_b), partagree_w)
+          logging.debug('%s    Partial agreement (%s,%s): %f' % \
+                (records_id, str(fields_a), str(fields_b), partagree_w))
           return partagree_w
 
 # =============================================================================
@@ -1340,8 +1414,8 @@ class FieldComparatorNumericAbs(FieldComparator):
         ('freq_table_min_weight' in kwargs.keys()) or \
         ('freq_table_max_w' in kwargs.keys()) or \
         ('freq_table_max_weight' in kwargs.keys())):
-      print 'error:Frequency tables can currently not be used with the'+ \
-            '"FieldComparatorNumericAbs" field comparator'
+      logging.exception('Frequency tables can currently not be used with '+ \
+                        'the "FieldComparatorNumericAbs" field comparator')
       raise Exception
 
     # Process all keyword arguments - - - - - - - - - - - - - - - - - - - - - -
@@ -1353,7 +1427,8 @@ class FieldComparatorNumericAbs(FieldComparator):
       if (keyword == 'max_abs_diff'):
         if ((not (isinstance(value, int) or isinstance(value, float))) or \
             (value < 0.0)):
-          print 'error:Argument "max_abs_diff" must be a positive number'
+          logging.exception('Argument "max_abs_diff" must be a positive ' + \
+                            'number')
           raise Exception
         self.max_abs_diff = float(value)
 
@@ -1362,22 +1437,21 @@ class FieldComparatorNumericAbs(FieldComparator):
 
     FieldComparator.__init__(self, base_kwargs)  # Process base arguments
 
-    # A log message for low/medium volume log output (level 1/2)  - - - - - - -
+    # A log message - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     #
-    print '1:'
-    print '1:Initialised "NumericAbs" field comparator: "%s"' % \
-          (str(self.name))
-    print '1:  Fields in data set A:     %s' % (str(self.fields_a))
-    print '1:  Fields in data set B:     %s' % (str(self.fields_b))
-    print '1:  M-Probability:            %f' % (self.m_probability)
-    print '1:  U-Probability:            %f' % (self.u_probability)
-    print '2:  Agreement weight:         %f' % (self.agree_weight)
-    print '2:  Disagreement weight:      %f' % (self.disagree_weight)
-    print '1:  Missing weight:           %f' % (self.missing_weight)
-    print '1:  Maximum absolute difference: %f' % (self.max_abs_diff)
+    logging.info('Initialised "NumericAbs" field comparator: "%s"' % \
+          (str(self.name)))
+    logging.info('  Fields in data set A:     %s' % (str(self.fields_a)))
+    logging.info('  Fields in data set B:     %s' % (str(self.fields_b)))
+    logging.info('  M-Probability:            %f' % (self.m_probability))
+    logging.info('  U-Probability:            %f' % (self.u_probability))
+    logging.debug('  Agreement weight:         %f' % (self.agree_weight))
+    logging.debug('  Disagreement weight:      %f' % (self.disagree_weight))
+    logging.info('  Missing weight:           %f' % (self.missing_weight))
+    logging.info('  Maximum absolute difference: %f' % (self.max_abs_diff))
 
   # ---------------------------------------------------------------------------
-  
+
   def compare(self, fields_a, fields_b, records_id):
     """Compare two fields with numeric values.
     """
@@ -1386,14 +1460,14 @@ class FieldComparatorNumericAbs(FieldComparator):
     #
     for field in fields_a:
       if (field in self.dataset_a.missing_values):
-        print '3:%s    Missing values (%s,%s): %f' % \
-              (records_id, str(fields_a), str(fields_b), self.missing_weight)
+        logging.debug('%s    Missing values (%s,%s): %f' % \
+              (records_id, str(fields_a), str(fields_b), self.missing_weight))
         return self.missing_weight
 
     for field in fields_b:
       if (field in self.dataset_b.missing_values):
-        print '3:%s    Missing values (%s,%s): %f' % \
-              (records_id, str(fields_a), str(fields_b), self.missing_weight)
+        logging.debug('%s    Missing values (%s,%s): %f' % \
+              (records_id, str(fields_a), str(fields_b), self.missing_weight))
         return self.missing_weight
 
     # Concatenate fields into two strings without whitespaces - - - - - - - - -
@@ -1415,32 +1489,32 @@ class FieldComparatorNumericAbs(FieldComparator):
     # If one or both are not numbers, return disagreement weight  - - - - - - -
     #
     if (value_a == '') or (value_b == ''):
-      print '3:%s    Disagreement (%s,%s): %f' % \
-            (records_id, str(fields_a), str(fields_b), self.disagree_weight)
+      logging.debug('%s    Disagreement (%s,%s): %f' % \
+            (records_id, str(fields_a), str(fields_b), self.disagree_weight))
       return self.disagree_weight
 
     # Check if numbers are the same - - - - - - - - - - - - - - - - - - - - - -
     #
     elif (value_a == value_b):
-      print '3:%s    Agreement (%s,%s): %f' % \
-            (records_id, str(fields_a), str(fields_b), self.agree_weight)
+      logging.debug('%s    Agreement (%s,%s): %f' % \
+            (records_id, str(fields_a), str(fields_b), self.agree_weight))
       return self.agree_weight
 
     # Calculate absolute difference and weight  - - - - - - - - - - - - - - - -
     #
     else:
       if (self.max_abs_diff == 0.0):  # No absolute difference allowed
-        print '3:%s    Disagreement (%s,%s): %f' % \
-              (records_id, str(fields_a), str(fields_b), self.disagree_weight)
+        logging.debug('%s    Disagreement (%s,%s): %f' % \
+              (records_id, str(fields_a), str(fields_b), self.disagree_weight))
         return self.disagree_weight  # Because values are different
 
       else:
         abs_diff = abs(value_a - value_b)
 
         if (abs_diff > self.max_abs_diff):  # Absolute difference too large
-          print '3:%s    Disagreement (%s,%s): %f' % \
+          logging.debug('%s    Disagreement (%s,%s): %f' % \
                 (records_id, str(fields_a), str(fields_b), \
-                 self.disagree_weight)
+                 self.disagree_weight))
           return self.disagree_weight
 
         else:
@@ -1448,8 +1522,8 @@ class FieldComparatorNumericAbs(FieldComparator):
                         (self.max_abs_diff+1.0)) * \
                         (self.agree_weight+ \
                         abs(self.disagree_weight))
-          print '3:%s    Partial agreement (%s,%s): %f' % \
-                (records_id, str(fields_a), str(fields_b), partagree_w)
+          logging.debug('%s    Partial agreement (%s,%s): %f' % \
+                (records_id, str(fields_a), str(fields_b), partagree_w))
           return partagree_w
 
 # =============================================================================
@@ -1476,6 +1550,24 @@ class FieldComparatorDate(FieldComparator):
 
      If the day difference is larger than 'max_day_a_before_b' or
      'max_day_b_before_a' the disagreement weight will be returned.
+
+     For two special cases, partial weights are calculated (suggested by
+     Mike Berry <berrym@hln.com>):
+
+     1) A 'swap' partial agreement will be calculated when the day and month
+        values are swapped (and the year values are the same) according to the
+        following formula:
+
+        weight = agree_weight - 0.5 * (agree_weight+abs(disagree_weight))
+
+        For example: day_A = [12,10,1999] / day_B = [10,12,1999]
+
+     2) If the difference between the days are larger than 'max_day_a_before_b'
+        or 'max_day_b_before_a', respectively, but both the day and year values
+        are the same, then a partial agreement weight will be calculated
+        according to the following formula:
+
+        weight = 0.75 * disagree_weight
 
      Different m- and u-probabilities have to be given for day, month and year.
      The general 'm_probability' and 'u_probability' argument can not be used.
@@ -1519,17 +1611,18 @@ class FieldComparatorDate(FieldComparator):
         ('freq_table_min_weight' in kwargs.keys()) or \
         ('freq_table_max_w' in kwargs.keys()) or \
         ('freq_table_max_weight' in kwargs.keys())):
-      print 'error:Frequency tables can currently not be used with the'+ \
-            '"FieldComparatorDate" field comparator'
+      logging.exception('Frequency tables can currently not be used with '+ \
+                        'the "FieldComparatorDate" field comparator')
       raise Exception
 
     # Check for arguments 'm_probability' and 'u_probability' - - - - - - - - -
     #
     if (('m_probability' in kwargs.keys()) or \
         ('u_probability' in kwargs.keys())):
-      print 'error:Arguments "m_probability" and "u_probablity" can not be '+ \
-            'use with "FieldComparatorDate" field comparator. Use day, '+ \
-            'month and year specific m- and u-probabilities instead'
+      logging.exception('Arguments "m_probability" and "u_probablity" can ' + \
+                        'not be use with "FieldComparatorDate" field ' + \
+                        'comparator. Use day, month and year specific m- ' + \
+                        'and u-probabilities instead')
       raise Exception
 
     # Process all keyword arguments
@@ -1540,66 +1633,68 @@ class FieldComparatorDate(FieldComparator):
     for (keyword, value) in kwargs.items():
       if (keyword == 'max_day_a_before_b'):
         if (not isinstance(value, int) or (value < 0)):
-          print 'error:Argument "max_day_a_before_b" must be a positive '+ \
-                'integer number'
+          logging.exception('Argument "max_day_a_before_b" must be a ' + \
+                            'positive integer number')
           raise Exception
         self.max_day_a_before_b = value
       elif (keyword == 'max_day_b_before_a'):
         if (not isinstance(value, int) or (value < 0)):
-          print 'error:Argument "max_day_b_before_a" must be a positive '+ \
-                'integer number'
+          logging.exception('Argument "max_day_b_before_a" must be a ' + \
+                            'positive integer number')
           raise Exception
         self.max_day_b_before_a = value
 
       elif (keyword in ['m_day', 'm_prob_day', 'm_probability_day']):
         if (not (isinstance(value, int) or isinstance(value, float))):
-          print 'error:Argument "m_probability_day" is not a number'
+          logging.exception('Argument "m_probability_day" is not a number')
           raise Exception
         if (value <= 0.0) or (value > 1.0):
-          print 'error:Illegal "m_probability_day" value: %f' % (value)
+          logging.exception('Illegal "m_probability_day" value: %f' % (value))
           raise Exception
         self.m_probability_day = value
 
       elif (keyword in ['u_day', 'u_prob_day', 'u_probability_day']):
         if (not (isinstance(value, int) or isinstance(value, float))):
-          print 'error:Argument "u_probability_day" is not a number'
+          logging.exception('Argument "u_probability_day" is not a number')
           raise Exception
         if (value <= 0.0) or (value > 1.0):
-          print 'error:Illegal "u_probability_day" value: %f' % (value)
+          logging.exception('Illegal "u_probability_day" value: %f' % (value))
           raise Exception
         self.u_probability_day = value
 
       elif (keyword in ['m_month', 'm_prob_month', 'm_probability_month']):
         if (not (isinstance(value, int) or isinstance(value, float))):
-          print 'error:Argument "m_probability_month" is not a number'
+          logging.exception('Argument "m_probability_month" is not a number')
           raise Exception
         if (value < 0.0) or (value > 1.0):
-          print 'error:Illegal "m_probability_month" value: %f' % (value)
+          logging.exception('Illegal "m_probability_month" value: %f' % \
+                            (value))
           raise Exception
         self.m_probability_month = value
 
       elif (keyword in ['u_month', 'u_prob_month', 'u_probability_month']):
         if (not (isinstance(value, int) or isinstance(value, float))):
-          print 'error:Argument "u_probability_month" is not a number'
+          logging.exception('Argument "u_probability_month" is not a number')
           raise Exception
         if (value <= 0.0) or (value > 1.0):
-          print 'error:Illegal "u_probability_month" value: %f' % (value)
+          logging.exception('Illegal "u_probability_month" value: %f' % \
+                            (value))
           raise Exception
         self.u_probability_month = value
 
       elif (keyword in ['m_year', 'm_prob_year', 'm_probability_year']):
         if (not (isinstance(value, int) or isinstance(value, float))):
-          print 'error:Argument "m_probability_year" is not a number'
+          logging.exception('Argument "m_probability_year" is not a number')
         if (value <= 0.0) or (value > 1.0):
-          print 'error:Illegal "m_probability_year" value: %f' % (value)
+          logging.exception('Illegal "m_probability_year" value: %f' % (value))
           raise Exception
         self.m_probability_year = value
 
       elif (keyword in ['u_year', 'u_prob_year', 'u_probability_year']):
         if (not (isinstance(value, int) or isinstance(value, float))):
-          print 'error:Argument "u_probability_year" is not a number'
+          logging.exception('Argument "u_probability_year" is not a number')
         if (value <= 0.0) or (value > 1.0):
-          print 'error:Illegal "u_probability_year" value: %f' % (value)
+          logging.exception('Illegal "u_probability_year" value: %f' % (value))
           raise Exception
         self.u_probability_year = value
 
@@ -1634,27 +1729,39 @@ class FieldComparatorDate(FieldComparator):
                            self.disagree_weight_month + \
                            self.disagree_weight_year
 
-    # A log message for low/medium volume log output (level 1/2)  - - - - - - -
+    # A log message - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     #
-    print '1:'
-    print '1:Initialised "Date" field comparator: "%s"' % (str(self.name))
-    print '1:  Fields in data set A:       %s' % (str(self.fields_a))
-    print '1:  Fields in data set B:       %s' % (str(self.fields_b))
-    print '1:  M-Probability day:          %f' % (self.m_probability_day)
-    print '1:  U-Probability day:          %f' % (self.u_probability_day)
-    print '1:  M-Probability month:        %f' % (self.m_probability_month)
-    print '1:  U-Probability month:        %f' % (self.u_probability_month)
-    print '1:  M-Probability year:         %f' % (self.m_probability_year)
-    print '1:  U-Probability year:         %f' % (self.u_probability_year)
-    print '2:  Agreement weight day:       %f' % (self.agree_weight_day)
-    print '2:  Disagreement weight day:    %f' % (self.disagree_weight_day)
-    print '2:  Agreement weight month:     %f' % (self.agree_weight_month)
-    print '2:  Disagreement weight month:  %f' % (self.disagree_weight_month)
-    print '2:  Agreement weight year:      %f' % (self.agree_weight_year)
-    print '2:  Disagreement weight yead:   %f' % (self.disagree_weight_year)
-    print '1:  Missing weight:             %f' % (self.missing_weight)
-    print '1:  Maximal day A before day B: %i' % (self.max_day_a_before_b)
-    print '1:  Maximal day B before day A: %i' % (self.max_day_b_before_a)
+    logging.info('Initialised "Date" field comparator: "%s"' % \
+                 (str(self.name)))
+    logging.info('  Fields in data set A:       %s' % (str(self.fields_a)))
+    logging.info('  Fields in data set B:       %s' % (str(self.fields_b)))
+    logging.info('  M-Probability day:          %f' % (self.m_probability_day))
+    logging.info('  U-Probability day:          %f' % (self.u_probability_day))
+    logging.info('  M-Probability month:        %f' % \
+                 (self.m_probability_month))
+    logging.info('  U-Probability month:        %f' % \
+                 (self.u_probability_month))
+    logging.info('  M-Probability year:         %f' % \
+                 (self.m_probability_year))
+    logging.info('  U-Probability year:         %f' % \
+                 (self.u_probability_year))
+    logging.debug('  Agreement weight day:       %f' % (self.agree_weight_day))
+    logging.debug('  Disagreement weight day:    %f' % \
+                  (self.disagree_weight_day))
+    logging.debug('  Agreement weight month:     %f' % \
+                  (self.agree_weight_month))
+    logging.debug('  Disagreement weight month:  %f' % \
+                  (self.disagree_weight_month))
+    logging.debug('  Agreement weight year:      %f' % \
+                  (self.agree_weight_year))
+    logging.debug('  Disagreement weight yead:   %f' % \
+                  (self.disagree_weight_year))
+    logging.info('  Missing weight:             %f' % \
+                 (self.missing_weight))
+    logging.info('  Maximal day A before day B: %i' % \
+                 (self.max_day_a_before_b))
+    logging.info('  Maximal day B before day A: %i' % \
+                 (self.max_day_b_before_a))
 
   # ---------------------------------------------------------------------------
 
@@ -1667,44 +1774,44 @@ class FieldComparatorDate(FieldComparator):
     #
     for field in fields_a:
       if (field in self.dataset_a.missing_values):
-        print '3:%s    Missing values (%s,%s): %f' % \
-              (records_id, str(fields_a), str(fields_b), self.missing_weight)
+        logging.debug('%s    Missing values (%s,%s): %f' % \
+              (records_id, str(fields_a), str(fields_b), self.missing_weight))
         return self.missing_weight
 
     for field in fields_b:
       if (field in self.dataset_b.missing_values):
-        print '3:%s    Missing values (%s,%s): %f' % \
-              (records_id, str(fields_a), str(fields_b), self.missing_weight)
+        logging.debug('%s    Missing values (%s,%s): %f' % \
+              (records_id, str(fields_a), str(fields_b), self.missing_weight))
         return self.missing_weight
 
     # Check if fields contain three elements, then check day and month values -
     #
     if (not (isinstance(fields_a,list) or isinstance(fields_a,tuple))):
-      print 'error:%s Fields for data A are not a list or a tuple' % \
-            (records_id)
+      logging.exception('%s Fields for data A are not a list or a tuple' % \
+            (records_id))
       raise Exception
     if (not (isinstance(fields_b,list) or isinstance(fields_b,tuple))):
-      print 'error:%s Fields for data B are not a list or a tuple' % \
-            (records_id)
+      logging.exception('%s Fields for data B are not a list or a tuple' % \
+            (records_id))
       raise Exception
 
     if (len(fields_a) != 3) or (len(fields_b) != 3):
-      print 'error:%s Fields are not in the right format ' % (records_id) + \
-            '[day,month,year]'
+      logging.exception('%s Fields are not in the right format ' % \
+                        (records_id) + '[day,month,year]')
       raise Exception
 
     # Integer conversion in comparison by Dan Sabath
     #
     if ((int(fields_a[0]) < 1) or (int(fields_a[0]) > 31) or \
         (int(fields_a[1]) < 1) or (int(fields_a[1]) > 12)):
-      print 'error:%s Fields A does not have valid day or month values' % \
-            (records_id)
+      logging.exception('%s Fields A does not have valid day or month values' \
+                        % (records_id))
       raise Exception
 
     if ((int(fields_b[0]) < 1) or (int(fields_b[0]) > 31) or \
         (int(fields_b[1]) < 1) or (int(fields_b[1]) > 12)):
-      print 'error:%s Fields B does not have valid day or month values' % \
-            (records_id)
+      logging.exception('%s Fields B does not have valid day or month values' \
+                        % (records_id))
       raise Exception
 
     # Compute difference between dates in days  - - - - - - - - - - - - - - - -
@@ -1717,39 +1824,72 @@ class FieldComparatorDate(FieldComparator):
     # Check if dates are the same - - - - - - - - - - - - - - - - - - - - - - -
     #
     if (day_diff == 0):
-      print '3:%s    Agreement (%s,%s): %f' % \
-            (records_id, str(fields_a), str(fields_b), self.agree_weight)
+      logging.debug('%s    Agreement (%s,%s): %f' % \
+            (records_id, str(fields_a), str(fields_b), self.agree_weight))
       return self.agree_weight
 
-    elif (day_diff > 0):  # Day A after day B
+    else:
 
-      if (day_diff > self.max_day_b_before_a):  # To many days before
-        print '3:%s    Disagreement (%s,%s): %f' % \
-              (records_id, str(fields_a), str(fields_b), self.disagree_weight)
-        return self.disagree_weight
-
-      else:
-        partagree_w = self.agree_weight - \
-                      (float(day_diff) / (self.max_day_b_before_a+1.0)) * \
+      # berrym@hln.com: added "swap" agreement where month/day are swapped ****
+      #
+      if ((fields_a[0] == fields_b[1]) and (fields_a[1] == fields_b[0]) and \
+          (fields_a[2] == fields_b[2])):
+        partagree_w = self.agree_weight - 0.5 * \
                       (self.agree_weight + abs(self.disagree_weight))
-        print '3:%s    Partial agreement (%s,%s): %f' % \
-              (records_id, str(fields_a), str(fields_b), partagree_w)
+        logging.debug('%s    Swap agreement (%s,%s): %f' % \
+              (records_id, str(fields_a), str(fields_b), partagree_w))
         return partagree_w
 
-    else:  # Day B after day A (day_diff < 0)
+      if (day_diff > 0):  # Day A after day B
 
-      if (-day_diff > self.max_day_a_before_b):  # To many days before
-        print '3:%s    Disagreement (%s,%s): %f' % \
-              (records_id, str(fields_a), str(fields_b), self.disagree_weight)
-        return self.disagree_weight
+        if (day_diff > self.max_day_b_before_a):  # Too many days before
 
-      else:
-        partagree_w = self.agree_weight - \
-                      (float(-day_diff) / (self.max_day_a_before_b+1.0)) * \
-                      (self.agree_weight + abs(self.disagree_weight))
-        print '3:%s    Partial agreement (%s,%s): %f' % \
-              (records_id, str(fields_a), str(fields_b), partagree_w)
-        return partagree_w
+          # berrym@hln.com: added "Day not month agreement", if day and year **
+          # are the same, don't penalize quite so badly
+          #
+          if ((fields_a[0] == fields_b[0]) and (fields_a[2] == fields_b[2])):
+            partagree_w = self.disagree_weight * 0.75
+            logging.debug('%s    Day and year but not month agreement ' + \
+                          '(%s,%s): %f' % (records_id, str(fields_a), \
+                          str(fields_b), partagree_w))
+            return partagree_w
+          else:
+            logging.debug('%s    Disagreement (%s,%s): %f' % (records_id, \
+                  str(fields_a), str(fields_b), self.disagree_weight))
+            return self.disagree_weight
+
+        else:
+          partagree_w = self.agree_weight - \
+                        (float(day_diff) / (self.max_day_b_before_a+1.0)) * \
+                        (self.agree_weight + abs(self.disagree_weight))
+          logging.debug('%s    Partial agreement (%s,%s): %f' % \
+                (records_id, str(fields_a), str(fields_b), partagree_w))
+          return partagree_w
+
+      else:  # Day B after day A (day_diff < 0)
+        if (-day_diff > self.max_day_a_before_b):  # To many days before
+
+          # berrym@hln.com: added "Day not month agreement", if day and year **
+          # are the same, don't penalize quite so badly
+          #
+          if ((fields_a[0] == fields_b[0]) and (fields_a[2] == fields_b[2])):
+            partagree_w = self.disagree_weight * 0.75
+            logging.debug('%s    Day and year but not month agreement ' % \
+                          (records_id) + '(%s,%s): %f' % (str(fields_a), \
+                          str(fields_b), partagree_w))
+            return partagree_w
+          else:
+            logging.debug('%s    Disagreement (%s,%s): %f' % (records_id, \
+                  str(fields_a), str(fields_b), self.disagree_weight))
+            return self.disagree_weight
+
+        else:
+          partagree_w = self.agree_weight - \
+                        (float(-day_diff) / (self.max_day_a_before_b+1.0)) * \
+                        (self.agree_weight + abs(self.disagree_weight))
+          logging.debug('%s    Partial agreement (%s,%s): %f' % \
+                (records_id, str(fields_a), str(fields_b), partagree_w))
+          return partagree_w
 
 # =============================================================================
 
@@ -1770,12 +1910,12 @@ class FieldComparatorAge(FieldComparator):
      If the percentage difference is smaller than 'max_perc_diff' the weight is
      calculated according to the following formula:
 
-       weight = agree_weight - (perc_diff / (max_perc_diff + 1.0)) * 
+       weight = agree_weight - (perc_diff / (max_perc_diff + 1.0)) *
                                 (agree_weight+abs(disagree_weight))
 
      where the percentage difference is calculated as:
 
-       perc_diff = abs(age_a - age_b) / min(age_a, age_b) * 100.0
+       perc_diff = 100.0 * abs(age_a - age_b) / max(abs(age_a), abs(age_b))
 
      Different m- and u-probabilities have to be given for day, month and year.
      The general 'm_probability' and 'u_probability' argument can not be used.
@@ -1819,17 +1959,18 @@ class FieldComparatorAge(FieldComparator):
         ('freq_table_min_weight' in kwargs.keys()) or \
         ('freq_table_max_w' in kwargs.keys()) or \
         ('freq_table_max_weight' in kwargs.keys())):
-      print 'error:Frequency tables can currently not be used with the'+ \
-            '"FieldComparatorAge" field comparator'
+      logging.exception('Frequency tables can currently not be used with '+ \
+                        'the "FieldComparatorAge" field comparator')
       raise Exception
 
     # Check for arguments 'm_probability' and 'u_probability' - - - - - - - - -
     #
     if (('m_probability' in kwargs.keys()) or \
         ('u_probability' in kwargs.keys())):
-      print 'error:Arguments "m_probability" and "u_probablity" can not be '+ \
-            'use with "FieldComparatorAge" field comparator. Use day, '+ \
-            'month and year specific m- and u-probabilities instead'
+      logging.exception('Arguments "m_probability" and "u_probablity" can ' + \
+                        'not be use with "FieldComparatorAge" field ' + \
+                        'comparator. Use day, month and year specific m- ' + \
+                        'and u-probabilities instead')
       raise Exception
 
     # Process all keyword arguments
@@ -1844,60 +1985,62 @@ class FieldComparatorAge(FieldComparator):
       elif (keyword == 'max_perc_diff'):
         if (not ((isinstance(value, int) or isinstance(value, float))) or \
             (value <= 0.0) or (value > 100.0)):
-          print 'error:Argument "max_perc_diff" must be a number between '+ \
-                '0.0 and 100.0'
+          logging.exception('Argument "max_perc_diff" must be a number ' + \
+                            'between 0.0 and 100.0')
           raise Exception
         self.max_perc_diff = float(value)
 
       elif (keyword in ['m_day', 'm_prob_day', 'm_probability_day']):
         if (not (isinstance(value, int) or isinstance(value, float))):
-          print 'error:Argument "m_probability_day" is not a number'
+          logging.exception('Argument "m_probability_day" is not a number')
           raise Exception
         if (value <= 0.0) or (value > 1.0):
-          print 'error:Illegal "m_probability_day" value: %f' % (value)
+          logging.exception('Illegal "m_probability_day" value: %f' % (value))
           raise Exception
         self.m_probability_day = value
 
       elif (keyword in ['u_day', 'u_prob_day', 'u_probability_day']):
         if (not (isinstance(value, int) or isinstance(value, float))):
-          print 'error:Argument "u_probability_day" is not a number'
+          logging.exception('Argument "u_probability_day" is not a number')
           raise Exception
         if (value <= 0.0) or (value > 1.0):
-          print 'error:Illegal "u_probability_day" value: %f' % (value)
+          logging.exception('Illegal "u_probability_day" value: %f' % (value))
           raise Exception
         self.u_probability_day = value
 
       elif (keyword in ['m_month', 'm_prob_month', 'm_probability_month']):
         if (not (isinstance(value, int) or isinstance(value, float))):
-          print 'error:Argument "m_probability_month" is not a number'
+          logging.exception('Argument "m_probability_month" is not a number')
           raise Exception
         if (value < 0.0) or (value > 1.0):
-          print 'error:Illegal "m_probability_month" value: %f' % (value)
+          logging.exception('Illegal "m_probability_month" value: %f' % \
+                            (value))
           raise Exception
         self.m_probability_month = value
 
       elif (keyword in ['u_month', 'u_prob_month', 'u_probability_month']):
         if (not (isinstance(value, int) or isinstance(value, float))):
-          print 'error:Argument "u_probability_month" is not a number'
+          logging.exception('Argument "u_probability_month" is not a number')
           raise Exception
         if (value <= 0.0) or (value > 1.0):
-          print 'error:Illegal "u_probability_month" value: %f' % (value)
+          logging.exception('Illegal "u_probability_month" value: %f' % \
+                            (value))
           raise Exception
         self.u_probability_month = value
 
       elif (keyword in ['m_year', 'm_prob_year', 'm_probability_year']):
         if (not (isinstance(value, int) or isinstance(value, float))):
-          print 'error:Argument "m_probability_year" is not a number'
+          logging.exception('Argument "m_probability_year" is not a number')
         if (value <= 0.0) or (value > 1.0):
-          print 'error:Illegal "m_probability_year" value: %f' % (value)
+          logging.exception('Illegal "m_probability_year" value: %f' % (value))
           raise Exception
         self.m_probability_year = value
 
       elif (keyword in ['u_year', 'u_prob_year', 'u_probability_year']):
         if (not (isinstance(value, int) or isinstance(value, float))):
-          print 'error:Argument "u_probability_year" is not a number'
+          logging.exception('Argument "u_probability_year" is not a number')
         if (value <= 0.0) or (value > 1.0):
-          print 'error:Illegal "u_probability_year" value: %f' % (value)
+          logging.exception('Illegal "u_probability_year" value: %f' % (value))
           raise Exception
         self.u_probability_year = value
 
@@ -1915,18 +2058,19 @@ class FieldComparatorAge(FieldComparator):
     elif (isinstance(self.fix_date, str)):
       tmp_date = date.str_to_date(self.fix_date)  # Parse string into tuple
       if (tmp_date == []):
-        print 'error:Illegal "fix_date" value, no valid date: "%s"' % \
-              (str(self.fix_date))
+        logging.exception('Illegal "fix_date" value, no valid date: "%s"' % \
+              (str(self.fix_date)))
         raise Exception
       self.fix_date = tmp_date
 
     elif (isinstance(self.fix_date,list)) or (isinstance(self.fix_date,tuple)):
       if (len(self.fix_date) != 3):
-        print 'error:Illegal list format of "fix_date", must have three ' + \
-              'elements (day,month,year): "%s"' % (str(self.fix_date))
+        logging.exception('Illegal list format of "fix_date", must have ' + \
+              'three elements (day,month,year): "%s"' % (str(self.fix_date)))
         raise Exception
     else:
-      print 'error:Illegal "fix_date" format: "%s"' % (str(self.fix_date))
+      logging.exception('Illegal "fix_date" format: "%s"' % \
+                        (str(self.fix_date)))
       raise Exception
 
     # Now convert the fix date tuple into corresponding epoch number
@@ -1960,28 +2104,41 @@ class FieldComparatorAge(FieldComparator):
                            self.disagree_weight_month + \
                            self.disagree_weight_year
 
-    # A log message for low/medium volume log output (level 1/2)  - - - - - - -
+    # A log message - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     #
-    print '1:'
-    print '1:Initialised "Age" field comparator: "%s"' % (str(self.name))
-    print '1:  Fields in data set A:          %s' % (str(self.fields_a))
-    print '1:  Fields in data set B:          %s' % (str(self.fields_b))
-    print '1:  M-Probability day:             %f' % (self.m_probability_day)
-    print '1:  U-Probability day:             %f' % (self.u_probability_day)
-    print '1:  M-Probability month:           %f' % (self.m_probability_month)
-    print '1:  U-Probability month:           %f' % (self.u_probability_month)
-    print '1:  M-Probability year:            %f' % (self.m_probability_year)
-    print '1:  U-Probability year:            %f' % (self.u_probability_year)
-    print '2:  Agreement weight day:          %f' % (self.agree_weight_day)
-    print '2:  Disagreement weight day:       %f' % (self.disagree_weight_day)
-    print '2:  Agreement weight month:        %f' % (self.agree_weight_month)
-    print '2:  Disagreement weight month:     %f' % \
-          (self.disagree_weight_month)
-    print '2:  Agreement weight year:         %f' % (self.agree_weight_year)
-    print '2:  Disagreement weight yead:      %f' % (self.disagree_weight_year)
-    print '1:  Missing weight:                %f' % (self.missing_weight)
-    print '1:  Fix date:                      %s' % (str(self.fix_date))
-    print '1:  Maximal percentage difference: %s' % (str(self.max_perc_diff))
+    logging.info('Initialised "Age" field comparator: "%s"' % (str(self.name)))
+    logging.info('  Fields in data set A:          %s' % (str(self.fields_a)))
+    logging.info('  Fields in data set B:          %s' % (str(self.fields_b)))
+    logging.info('  M-Probability day:             %f' % \
+                 (self.m_probability_day))
+    logging.info('  U-Probability day:             %f' % \
+                 (self.u_probability_day))
+    logging.info('  M-Probability month:           %f' % \
+                 (self.m_probability_month))
+    logging.info('  U-Probability month:           %f' % \
+                 (self.u_probability_month))
+    logging.info('  M-Probability year:            %f' % \
+                 (self.m_probability_year))
+    logging.info('  U-Probability year:            %f' % \
+                 (self.u_probability_year))
+    logging.debug('  Agreement weight day:          %f' % \
+                  (self.agree_weight_day))
+    logging.debug('  Disagreement weight day:       %f' % \
+                  (self.disagree_weight_day))
+    logging.debug('  Agreement weight month:        %f' % \
+                  (self.agree_weight_month))
+    logging.debug('  Disagreement weight month:     %f' % \
+          (self.disagree_weight_month))
+    logging.debug('  Agreement weight year:         %f' % \
+                  (self.agree_weight_year))
+    logging.debug('  Disagreement weight yead:      %f' % \
+                  (self.disagree_weight_year))
+    logging.info('  Missing weight:                %f' % \
+                 (self.missing_weight))
+    logging.info('  Fix date:                      %s' % \
+                 (str(self.fix_date)))
+    logging.info('  Maximal percentage difference: %s' % \
+                 (str(self.max_perc_diff)))
 
   # ---------------------------------------------------------------------------
 
@@ -1992,21 +2149,21 @@ class FieldComparatorAge(FieldComparator):
     """
 
     if ('00' in fields_a) or ('00' in fields_b):
-      print 'warning:%s fields_a: %s, fields_b: %s' \
-            % (records_id, str(fields_a),str(fields_a))
- 
+      logging.warn('%s fields_a: %s, fields_b: %s' \
+            % (records_id, str(fields_a),str(fields_a)))
+
     # Check if fields contain missing values  - - - - - - - - - - - - - - - - -
     #
     for field in fields_a:
       if (field in self.dataset_a.missing_values):
-        print '3:%s    Missing values (%s,%s): %f' % \
-              (records_id, str(fields_a), str(fields_b), self.missing_weight)
+        logging.debug('%s    Missing values (%s,%s): %f' % \
+              (records_id, str(fields_a), str(fields_b), self.missing_weight))
         return self.missing_weight
 
     for field in fields_b:
       if (field in self.dataset_b.missing_values):
-        print '3:%s    Missing values (%s,%s): %f' % \
-              (records_id, str(fields_a), str(fields_b), self.missing_weight)
+        logging.debug('%s    Missing values (%s,%s): %f' % \
+              (records_id, str(fields_a), str(fields_b), self.missing_weight))
         return self.missing_weight
 
     # Check if fields are either a date or an age - - - - - - - - - - - - - - -
@@ -2015,8 +2172,8 @@ class FieldComparatorAge(FieldComparator):
       try:
         age_a = float(fields_a[0])
       except:
-        print 'warning:%s Illegal age in fields A: ' % (records_id) + \
-              '%s, set weight to missing value' % (str(fields_a[0]))
+        logging.warn('%s Illegal age in fields A: ' % (records_id) + \
+              '%s, set weight to missing value' % (str(fields_a[0])))
         return self.missing_weight
 
     elif (len(fields_a) == 3):
@@ -2024,36 +2181,36 @@ class FieldComparatorAge(FieldComparator):
       try:
         day_a = int(fields_a[0])
       except:
-        print 'warning:%s Illegal day in fields A: ' % (records_id) + \
-              '%s, set weight to missing value' % (str(fields_a[0]))
+        logging.warn('%s Illegal day in fields A: ' % (records_id) + \
+              '%s, set weight to missing value' % (str(fields_a[0])))
         return self.missing_weight
 
       try:
         month_a = int(fields_a[1])
       except:
-        print 'warning:%s Illegal month in fields A: ' % (records_id) + \
-              '%s, set weight to missing value' % (str(fields_a[1]))
+        logging.warn('%s Illegal month in fields A: ' % (records_id) + \
+              '%s, set weight to missing value' % (str(fields_a[1])))
         return self.missing_weight
 
       try:
         year_a = int(fields_a[2])
       except:
-        print 'warning:%s Illegal year in fields A: ' % (records_id) + \
-              '%s, set weight to missing value' % (str(fields_a[2]))
+        logging.warn('%s Illegal year in fields A: ' % (records_id) + \
+              '%s, set weight to missing value' % (str(fields_a[2])))
         return self.missing_weight
 
     else:
-      print 'warning:%s Fields A is not an age or a date with ' % \
+      logging.warn('%s Fields A is not an age or a date with ' % \
             (records_id) + 'format [day,month,year]: %s' % (str(fields_a)) + \
-            ', set weight to missing value'
+            ', set weight to missing value')
       return self.missing_weight
 
     if (len(fields_b) == 1):
       try:
         age_b = float(fields_b[0])
       except:
-        print 'warning:%s Illegal day in fields B: ' % (records_id) + \
-              '%s, set weight to missing value' % (str(fields_b[0]))
+        logging.warn('%s Illegal day in fields B: ' % (records_id) + \
+              '%s, set weight to missing value' % (str(fields_b[0])))
         return self.missing_weight
 
     elif (len(fields_b) == 3):
@@ -2061,46 +2218,46 @@ class FieldComparatorAge(FieldComparator):
       try:
         day_b = int(fields_b[0])
       except:
-        print 'warning:%s Illegal day in fields B: ' % (records_id) + \
-              '%s, set weight to missing value' % (str(fields_b[0]))
+        logging.warn('%s Illegal day in fields B: ' % (records_id) + \
+              '%s, set weight to missing value' % (str(fields_b[0])))
         return self.missing_weight
 
       try:
         month_b = int(fields_b[1])
       except:
-        print 'warning:%s Illegal month in fields B: ' % (records_id) + \
-              '%s, set weight to missing value' % (str(fields_b[1]))
+        logging.warn('%s Illegal month in fields B: ' % (records_id) + \
+              '%s, set weight to missing value' % (str(fields_b[1])))
         return self.missing_weight
 
       try:
         year_b = int(fields_b[2])
       except:
-        print 'warning:%s Illegal year in fields B: ' % (records_id) + \
-              '%s, set weight to missing value' % (str(fields_b[2]))
+        logging.warn('%s Illegal year in fields B: ' % (records_id) + \
+              '%s, set weight to missing value' % (str(fields_b[2])))
         return self.missing_weight
 
     else:
-      print 'warning:%s Fields B is not an age or a date with ' % \
+      logging.warn('%s Fields B is not an age or a date with ' % \
             (records_id) + 'format [day,month,year]: %s' % (str(fields_b)) + \
-            ', set weight to missing value'
+            ', set weight to missing value')
       return self.missing_weight
 
     # Check some values for dates and calculate age - - - - - - - - - - - - - -
     #
     if (age_a == None):
       if ((day_a < 1) or (day_a > 31) or (month_a < 1) or (month_a > 12)):
-        print 'warning:%s Fields A do not have valid day or' % (records_id) + \
+        logging.warn('%s Fields A do not have valid day or' % (records_id) + \
               ' month values: %s, set weight to missing value' % \
-              (str(fields_a))
+              (str(fields_a)))
         return self.missing_weight
 
       age_a = date.date_to_age(day_a, month_a, year_a, self.fix_date)
 
     if (age_b == None):
       if ((day_b < 1) or (day_b > 31) or (month_b < 1) or (month_b > 12)):
-        print 'warning:%s Fields A do not have valid day or' % (records_id) + \
+        logging.warn('%s Fields A do not have valid day or' % (records_id) + \
               ' month values: %s, set weight to missing value' % \
-              (str(fields_b))
+              (str(fields_b)))
         return self.missing_weight
 
       age_b = date.date_to_age(day_b, month_b, year_b, self.fix_date)
@@ -2108,45 +2265,52 @@ class FieldComparatorAge(FieldComparator):
     # Check age values  - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     #
     if (age_a < 0.0) or (age_a > 150.0):
-      print 'warning:%s Illegal value for age A: %s' % \
-            (records_id, str(age_a)) + ', set weight to missing value'
+      logging.warn('%s Illegal value for age A: %s' % \
+            (records_id, str(age_a)) + ', set weight to missing value')
       return self.missing_weight
 
     if (age_b < 0.0) or (age_b > 150.0):
-      print 'warning:%s Illegal value for age B: %s' % \
-            (records_id, str(age_b)) + ', set weight to missing value'
+      logging.warn('%s Illegal value for age B: %s' % \
+            (records_id, str(age_b)) + ', set weight to missing value')
       return self.missing_weight
 
     # Check if ages are the same  - - - - - - - - - - - - - - - - - - - - - - -
     #
     if (age_a == age_b):
-      print '3:%s    Agreement (%s,%s): %f' % \
-            (records_id, str(fields_a), str(fields_b), self.agree_weight)
+      logging.debug('%s    Agreement (%s,%s): %f' % \
+            (records_id, str(fields_a), str(fields_b), self.agree_weight))
       return self.agree_weight
 
     # Calculate percentage difference and weight  - - - - - - - - - - - - - - -
     #
     else:
       if (self.max_perc_diff == 0.0):  # No percentage tolerance allowed
-        print '3:%s    Disagreement (%s,%s): %f' % \
-              (records_id, str(fields_a), str(fields_b), self.disagree_weight)
+        logging.debug('%s    Disagreement (%s,%s): %f' % \
+              (records_id, str(fields_a), str(fields_b), self.disagree_weight))
         return self.disagree_weight  # Because values are different
 
       else:
-        perc_diff = abs(age_a - age_b) / min(age_a, age_b) * 100.0
+
+        # Old, wrong formula (following AutoMatch)
+        #
+        # perc_diff = abs(age_a - age_b) / min(age_a, age_b) * 100.0
+
+        # New formula according to Markus Hegland (4/5/2004)
+        #
+        perc_diff = 100.0 * abs(age_a - age_b) / max(abs(age_a), abs(age_b))
 
         if (perc_diff > self.max_perc_diff):  # Percentage difference too large
-          print '3:%s    Disagreement (%s,%s): %f' % \
+          logging.debug('%s    Disagreement (%s,%s): %f' % \
                 (records_id, str(fields_a), str(fields_b), \
-                 self.disagree_weight)
+                 self.disagree_weight))
           return self.disagree_weight
 
         else:
           partagree_w =  self.agree_weight - (perc_diff / \
                          (self.max_perc_diff+1.0)) * \
                          (self.agree_weight+ abs(self.disagree_weight))
-          print '3:%s    Partial agreement (%s,%s): %f' % \
-                (records_id, str(fields_a), str(fields_b), partagree_w)
+          logging.debug('%s    Partial agreement (%s,%s): %f' % \
+                (records_id, str(fields_a), str(fields_b), partagree_w))
           return partagree_w
 
 # =============================================================================
@@ -2174,7 +2338,7 @@ class FieldComparatorTime(FieldComparator):
 
      A partial agreement will be calculated as follows:
 
-       weight = agree_weight - (time_diff/(max_time_a_before_b+1)) * 
+       weight = agree_weight - (time_diff/(max_time_a_before_b+1)) *
                                (agree_weight+abs(disagree_weight))
 
      and similar for 'max_time_a_before_b'.
@@ -2203,8 +2367,8 @@ class FieldComparatorTime(FieldComparator):
         ('freq_table_min_weight' in kwargs.keys()) or \
         ('freq_table_max_w' in kwargs.keys()) or \
         ('freq_table_max_weight' in kwargs.keys())):
-      print 'error:Frequency tables can currently not be used with the'+ \
-            '"FieldComparatorTime" field comparator'
+      logging.exception('Frequency tables can currently not be used with ' + \
+                        'the "FieldComparatorTime" field comparator')
       raise Exception
 
     # Process all keyword arguments - - - - - - - - - - - - - - - - - - - - - -
@@ -2215,15 +2379,15 @@ class FieldComparatorTime(FieldComparator):
     for (keyword, value) in kwargs.items():
       if (keyword == 'max_time_a_before_b'):
         if (not isinstance(value, int)) or (value < 0) or (value > 1440):
-          print 'error:Argument "max_time_a_before_b" must be between 0 '+ \
-          'and 1440'
+          logging.exception('Argument "max_time_a_before_b" must be between ' \
+                            + '0 and 1440')
           raise Exception
         self.max_time_a_before_b = value
 
       elif (keyword == 'max_time_b_before_a'):
         if (not isinstance(value, int)) or (value < 0) or (value > 1440):
-          print 'error:Argument "max_time_b_before_a" must be between 0 '+ \
-          'and 1440'
+          logging.exception('Argument "max_time_b_before_a" must be between ' \
+                            '0 and 1440')
           raise Exception
         self.max_time_b_before_a = value
 
@@ -2231,14 +2395,14 @@ class FieldComparatorTime(FieldComparator):
         if (len(value) == 5):  # Remove ':' between hours and minutes
           value = value[:2]+value[3:]
         if ((len(value) != 4) or (not value.isdigit())):
-          print 'error:Illegal day start time string format or value: "%s"' % \
-                (str(value))
+          logging.exception('Illegal day start time string format or value:' \
+                            + '"%s"' % (str(value)))
           raise Exception
 
         hours =   int(value[:2])
         minutes = int(value[2:])
         if ((hours < 0) or (hours > 23) or (minutes < 0) or (minutes > 59)):
-          print 'error:Illegal day start value: "%s"' % (str(value))
+          logging.exception('Illegal day start value: "%s"' % (str(value)))
           raise Exception
 
         self.day_start = (hours * 60) + minutes
@@ -2248,23 +2412,26 @@ class FieldComparatorTime(FieldComparator):
 
     FieldComparator.__init__(self, base_kwargs)  # Process base arguments
 
-    # A log message for low/medium volume log output (level 1/2)  - - - - - - -
+    # A log message - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     #
-    print '1:'
-    print '1:Initialised "Time" field comparator: "%s"' % (str(self.name))
-    print '1:  Fields in data set A:         %s' % (str(self.fields_a))
-    print '1:  Fields in data set B:         %s' % (str(self.fields_b))
-    print '1:  M-Probability:                %f' % (self.m_probability)
-    print '1:  U-Probability:                %f' % (self.u_probability)
-    print '2:  Agreement weight:             %f' % (self.agree_weight)
-    print '2:  Disagreement weight:          %f' % (self.disagree_weight)
-    print '1:  Missing weight:               %f' % (self.missing_weight)
-    print '1:  Maximal time A before time B: %i' % (self.max_time_a_before_b)
-    print '1:  Maximal time B before time A: %i' % (self.max_time_b_before_a)
-    print '1:  Day start:                    %i' % (self.day_start)
+    logging.info('Initialised "Time" field comparator: "%s"' % \
+                 (str(self.name)))
+    logging.info('  Fields in data set A:         %s' % (str(self.fields_a)))
+    logging.info('  Fields in data set B:         %s' % (str(self.fields_b)))
+    logging.info('  M-Probability:                %f' % (self.m_probability))
+    logging.info('  U-Probability:                %f' % (self.u_probability))
+    logging.debug('  Agreement weight:             %f' % (self.agree_weight))
+    logging.debug('  Disagreement weight:          %f' % \
+                  (self.disagree_weight))
+    logging.info('  Missing weight:               %f' % (self.missing_weight))
+    logging.info('  Maximal time A before time B: %i' % \
+                 (self.max_time_a_before_b))
+    logging.info('  Maximal time B before time A: %i' % \
+                 (self.max_time_b_before_a))
+    logging.info('  Day start:                    %i' % (self.day_start))
 
   # ---------------------------------------------------------------------------
-  
+
   def compare(self, fields_a, fields_b, records_id):
     """Compare two field lists with time values.
     """
@@ -2273,14 +2440,14 @@ class FieldComparatorTime(FieldComparator):
     #
     for field in fields_a:
       if (field in self.dataset_a.missing_values):
-        print '3:%s    Missing values (%s,%s): %f' % \
-              (records_id, str(fields_a), str(fields_b), self.missing_weight)
+        logging.debug('%s    Missing values (%s,%s): %f' % \
+              (records_id, str(fields_a), str(fields_b), self.missing_weight))
         return self.missing_weight
 
     for field in fields_b:
       if (field in self.dataset_b.missing_values):
-        print '3:%s    Missing values (%s,%s): %f' % \
-              (records_id, str(fields_a), str(fields_b), self.missing_weight)
+        logging.debug('%s    Missing values (%s,%s): %f' % \
+              (records_id, str(fields_a), str(fields_b), self.missing_weight))
         return self.missing_weight
 
     # Concatenate fields into two strings without whitespaces - - - - - - - - -
@@ -2293,21 +2460,21 @@ class FieldComparatorTime(FieldComparator):
     if (len(str_a) == 5):  # Remove ':' between hours and minutes
       str_a = str_a[:2]+str_a[3:]
     elif (len(str_a) != 4):
-      print 'error:%s Illegal time string A format: "%s"' % \
-            (records_id, str_a)
+      logging.exception('%s Illegal time string A format: "%s"' % \
+            (records_id, str_a))
       raise Exception
     if (len(str_b) == 5):  # Remove ':' between hours and minutes
       str_b = str_b[:2]+str_b[3:]
     elif (len(str_b) != 4):
-      print 'error:%s Illegal time string B format: "%s"' % \
-            (records_id, str_b)
+      logging.exception('%s Illegal time string B format: "%s"' % \
+            (records_id, str_b))
       raise Exception
 
     if (not str_a.isdigit()):
-      print 'error:%s Illegal time string A value: "%s"' % (str_a)
+      logging.exception('%s Illegal time string A value: "%s"' % (str_a))
       raise Exception
     if (not str_b.isdigit()):
-      print 'error:%s Illegal time string B value: "%s"' % (str_b)
+      logging.exception('%s Illegal time string B value: "%s"' % (str_b))
       raise Exception
 
     hours_a =   int(str_a[:2])
@@ -2316,10 +2483,10 @@ class FieldComparatorTime(FieldComparator):
     minutes_b = int(str_b[2:])
 
     if (hours_a < 0) or (hours_a > 23) or (minutes_a < 0) or (minutes_a > 59):
-      print 'error:%s Illegal time A value: "%s"' % (records_id, str_a)
+      logging.exception('%s Illegal time A value: "%s"' % (records_id, str_a))
       raise Exception
     if (hours_b < 0) or (hours_b > 23) or (minutes_b < 0) or (minutes_b > 59):
-      print 'error:%s Illegal time B value: "%s"' % (records_id, str_b)
+      logging.exception('%s Illegal time B value: "%s"' % (records_id, str_b))
       raise Exception
 
     # Convert into minute values  - - - - - - - - - - - - - - - - - - - - - - -
@@ -2330,13 +2497,13 @@ class FieldComparatorTime(FieldComparator):
     # Check if times are the same - - - - - - - - - - - - - - - - - - - - - - -
     #
     if (time_a == time_b):
-      print '3:%s    Agreement (%s,%s): %f' % \
-            (records_id, str(fields_a), str(fields_b), self.agree_weight)
+      logging.debug('%s    Agreement (%s,%s): %f' % \
+            (records_id, str(fields_a), str(fields_b), self.agree_weight))
       return self.agree_weight
 
     elif (self.max_time_a_before_b == 0) and (self.max_time_b_before_a == 0):
-      print '3:%s    Disagreement (%s,%s): %f' % \
-            (records_id, str(fields_a), str(fields_b), self.disagree_weight)
+      logging.debug('%s    Disagreement (%s,%s): %f' % \
+            (records_id, str(fields_a), str(fields_b), self.disagree_weight))
       return self.disagree_weight  # Because values are different
 
     else:
@@ -2357,32 +2524,32 @@ class FieldComparatorTime(FieldComparator):
       if (time_diff > 0):  # Time A after time B
 
         if (time_diff > self.max_time_b_before_a):  # To many minutes before
-          print '3:%s    Disagreement (%s,%s): %f' % \
+          logging.debug('%s    Disagreement (%s,%s): %f' % \
                 (records_id, str(fields_a), str(fields_b), \
-                 self.disagree_weight)
+                 self.disagree_weight))
           return self.disagree_weight
         else:
           partagree_w = self.agree_weight - \
                         (float(time_diff) / (self.max_time_b_before_a+1.0)) * \
                         (self.agree_weight + abs(self.disagree_weight))
-          print '3:%s    Partial agreement (%s,%s): %f' % \
-                (records_id, str(fields_a), str(fields_b), partagree_w)
+          logging.debug('%s    Partial agreement (%s,%s): %f' % \
+                (records_id, str(fields_a), str(fields_b), partagree_w))
           return partagree_w
 
       else:  # Time B after time A (time_diff < 0)
 
         if (-time_diff > self.max_time_a_before_b):  # To many minutes before
-          print '3:%s    Disagreement (%s,%s): %f' % \
+          logging.debug('%s    Disagreement (%s,%s): %f' % \
                 (records_id, str(fields_a), str(fields_b), \
-                 self.disagree_weight)
+                 self.disagree_weight))
           return self.disagree_weight
 
         else:
           partagree_w = self.agree_weight - \
                         (float(-time_diff) / (self.max_time_a_before_b+1.0)) *\
                         (self.agree_weight + abs(self.disagree_weight))
-          print '3:%s    Partial agreement (%s,%s): %f' % \
-                (records_id, str(fields_a), str(fields_b), partagree_w)
+          logging.debug('%s    Partial agreement (%s,%s): %f' % \
+                (records_id, str(fields_a), str(fields_b), partagree_w))
           return partagree_w
 
 # =============================================================================
@@ -2403,7 +2570,7 @@ class FieldComparatorDistance(FieldComparator):
      to 'max_distance', the partial agreement weight is calculated using the
      following formula.
 
-       weight = agree_weight - (distance/(max_distance+1)) * 
+       weight = agree_weight - (distance/(max_distance+1)) *
                                (agree_weight+abs(disagree_weight))
 
      Currently, no frequency table can be used for this comparator.
@@ -2431,8 +2598,8 @@ class FieldComparatorDistance(FieldComparator):
         ('freq_table_min_weight' in kwargs.keys()) or \
         ('freq_table_max_w' in kwargs.keys()) or \
         ('freq_table_max_weight' in kwargs.keys())):
-      print 'error:Frequency tables can currently not be used with the'+ \
-            '"FieldComparatorDistance" field comparator'
+      logging.exception('Frequency tables can currently not be used with ' + \
+                        'the "FieldComparatorDistance" field comparator')
       raise Exception
 
     # Process all keyword arguments - - - - - - - - - - - - - - - - - - - - - -
@@ -2444,8 +2611,8 @@ class FieldComparatorDistance(FieldComparator):
       if (keyword == 'max_distance'):
         if (not (isinstance(value, int) or isinstance(value, float))) or \
             (value < 0):
-          print 'error:Argument "max_distance" must be a number equal to '+ \
-                'or larger than zero'
+          logging.exception('Argument "max_distance" must be a number ' + \
+                            ' equal to or larger than zero')
           raise Exception
         self.max_distance = value
 
@@ -2460,25 +2627,26 @@ class FieldComparatorDistance(FieldComparator):
     # Make sure geocode look-up table is set  - - - - - - - - - - - - - - - - -
     #
     if (self.geocode_table == None):
-      print 'error:Geocode look-up table is not set'
+      logging.exception('Geocode look-up table is not set')
       raise Exception
 
-    # A log message for low/medium volume log output (level 1/2)  - - - - - - -
+    # A log message - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     #
-    print '1:'
-    print '1:Initialised "Distance" field comparator: "%s"' % (str(self.name))
-    print '1:  Fields in data set A:  %s' % (str(self.fields_a))
-    print '1:  Fields in data set B:  %s' % (str(self.fields_b))
-    print '1:  M-Probability:         %f' % (self.m_probability)
-    print '1:  U-Probability:         %f' % (self.u_probability)
-    print '2:  Agreement weight:      %f' % (self.agree_weight)
-    print '2:  Disagreement weight:   %f' % (self.disagree_weight)
-    print '1:  Missing weight:        %f' % (self.missing_weight)
-    print '1:  Geocode look-up table: %s' % (str(self.geocode_table.name))
-    print '1:  Maximal distance:      %f' % (self.max_distance)
+    logging.info('Initialised "Distance" field comparator: "%s"' % \
+                 (str(self.name)))
+    logging.info('  Fields in data set A:  %s' % (str(self.fields_a)))
+    logging.info('  Fields in data set B:  %s' % (str(self.fields_b)))
+    logging.info('  M-Probability:         %f' % (self.m_probability))
+    logging.info('  U-Probability:         %f' % (self.u_probability))
+    logging.debug('  Agreement weight:      %f' % (self.agree_weight))
+    logging.debug('  Disagreement weight:   %f' % (self.disagree_weight))
+    logging.info('  Missing weight:        %f' % (self.missing_weight))
+    logging.info('  Geocode look-up table: %s' % \
+                 (str(self.geocode_table.name)))
+    logging.info('  Maximal distance:      %f' % (self.max_distance))
 
   # ---------------------------------------------------------------------------
-  
+
   def compare(self, fields_a, fields_b, records_id):
     """Compare two field lists according to their location.
 
@@ -2490,14 +2658,14 @@ class FieldComparatorDistance(FieldComparator):
     #
     for field in fields_a:
       if (field in self.dataset_a.missing_values):
-        print '3:%s    Missing values (%s,%s): %f' % \
-              (records_id, str(fields_a), str(fields_b), self.missing_weight)
+        logging.debug('%s    Missing values (%s,%s): %f' % \
+              (records_id, str(fields_a), str(fields_b), self.missing_weight))
         return self.missing_weight
 
     for field in fields_b:
       if (field in self.dataset_b.missing_values):
-        print '3:%s    Missing values (%s,%s): %f' % \
-              (records_id, str(fields_a), str(fields_b), self.missing_weight)
+        logging.debug('%s    Missing values (%s,%s): %f' % \
+              (records_id, str(fields_a), str(fields_b), self.missing_weight))
         return self.missing_weight
 
     # Concatenate fields into two strings without whitespaces - - - - - - - - -
@@ -2511,15 +2679,15 @@ class FieldComparatorDistance(FieldComparator):
     loc_b = self.geocode_table.get(str_b)
 
     if (loc_a in [[], '', None]) or (loc_b in [[], '', None]):
-      print '3:%s    Missing values (%s,%s): %f' % \
-            (records_id, str(fields_a), str(fields_b), self.missing_weight)
+      logging.debug('%s    Missing values (%s,%s): %f' % \
+            (records_id, str(fields_a), str(fields_b), self.missing_weight))
       return self.missing_weight  # Not both fields are in look-up table
 
     # Check if both locations are the same  - - - - - - - - - - - - - - - - - -
     #
     if (loc_a == loc_b):
-      print '3:%s    Agreement (%s,%s): %f' % \
-            (records_id, str(fields_a), str(fields_b), self.agree_weight)
+      logging.debug('%s    Agreement (%s,%s): %f' % \
+            (records_id, str(fields_a), str(fields_b), self.agree_weight))
       return self.agree_weight
 
     lon_a = loc_a[0] * self.degrees_2_radians
@@ -2535,21 +2703,21 @@ class FieldComparatorDistance(FieldComparator):
     # Check if distance is zero or too far  - - - - - - - - - - - - - - - - - -
     #
     if (dist == 0.0):
-      print '3:%s    Agreement (%s,%s): %f' % \
-            (records_id, str(fields_a), str(fields_b), self.agree_weight)
+      logging.debug('%s    Agreement (%s,%s): %f' % \
+            (records_id, str(fields_a), str(fields_b), self.agree_weight))
       return self.agree_weight
 
     if (dist > self.max_distance):
-      print '3:%s    Disagreement (%s,%s): %f' % \
-            (records_id, str(fields_a), str(fields_b), self.disagree_weight)
+      logging.debug('%s    Disagreement (%s,%s): %f' % \
+            (records_id, str(fields_a), str(fields_b), self.disagree_weight))
       return self.disagree_weight
 
     else:  # Compute partial agrement weight
 
       partagree_w = self.agree_weight - (dist / (self.max_distance+1.0)) * \
                     (self.agree_weight + abs(self.disagree_weight))
-      print '3:%s    Partial agreement (%s,%s): %f' % \
-            (records_id, str(fields_a), str(fields_b), partagree_w)
+      logging.debug('%s    Partial agreement (%s,%s): %f' % \
+            (records_id, str(fields_a), str(fields_b), partagree_w))
       return partagree_w
 
 # =============================================================================

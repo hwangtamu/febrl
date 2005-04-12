@@ -1,26 +1,47 @@
 # =============================================================================
-# encode.py - Routines for Soundex, NYSIIS and Double-Metaphone string
-#             encodings.
-#
-# Freely extensible biomedical record linkage (Febrl) Version 0.2.2
-# See http://datamining.anu.edu.au/projects/linkage.html
-#
-# =============================================================================
 # AUSTRALIAN NATIONAL UNIVERSITY OPEN SOURCE LICENSE (ANUOS LICENSE)
-# VERSION 1.1
-#
-# The contents of this file are subject to the ANUOS License Version 1.1 (the
-# "License"); you may not use this file except in compliance with the License.
-# Software distributed under the License is distributed on an "AS IS" basis,
-# WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License for
-# the specific language governing rights and limitations under the License.
-# The Original Software is "encode.py".
-# The Initial Developers of the Original Software are Dr Peter Christen
-# (Department of Computer Science, Australian National University) and Dr Tim
-# Churches (Centre for Epidemiology and Research, New South Wales Department
-# of Health). Copyright (C) 2002, 2003 the Australian National University and
+# VERSION 1.2
+# 
+# The contents of this file are subject to the ANUOS License Version 1.2
+# (the "License"); you may not use this file except in compliance with
+# the License. You may obtain a copy of the License at:
+# 
+#   http://datamining.anu.edu.au/linkage.html
+# 
+# Software distributed under the License is distributed on an "AS IS"
+# basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See
+# the License for the specific language governing rights and limitations
+# under the License.
+# 
+# The Original Software is: "encode.py"
+# 
+# The Initial Developers of the Original Software are:
+#   Dr Tim Churches (Centre for Epidemiology and Research, New South Wales
+#                    Department of Health)
+#   Dr Peter Christen (Department of Computer Science, Australian National
+#                      University)
+# 
+# Copyright (C) 2002 - 2005 the Australian National University and
 # others. All Rights Reserved.
+# 
 # Contributors:
+# 
+# Alternatively, the contents of this file may be used under the terms
+# of the GNU General Public License Version 2 or later (the "GPL"), in
+# which case the provisions of the GPL are applicable instead of those
+# above. The GPL is available at the following URL: http://www.gnu.org/
+# If you wish to allow use of your version of this file only under the
+# terms of the GPL, and not to allow others to use your version of this
+# file under the terms of the ANUOS License, indicate your decision by
+# deleting the provisions above and replace them with the notice and
+# other provisions required by the GPL. If you do not delete the
+# provisions above, a recipient may use your version of this file under
+# the terms of any one of the ANUOS License or the GPL.
+# =============================================================================
+#
+# Freely extensible biomedical record linkage (Febrl) - Version 0.3
+#
+# See: http://datamining.anu.edu.au/linkage.html
 #
 # =============================================================================
 
@@ -49,7 +70,30 @@
 # =============================================================================
 # Imports go here
 
+import logging
 import string
+
+# =============================================================================
+
+def do_encode(encode_method, in_str):
+  """A 'chooser' functions which performs the selected string encoding method.
+  """
+
+  if (encode_method == 'soundex'):
+    encode_score = soundex(in_str)
+  elif (encode_method == 'mod_soundex'):
+    encode_score = mod_soundex(in_str)
+  elif (encode_method == 'phonex'):
+    encode_score = phonex(in_str)
+  elif (encode_method == 'nysiis'):
+    encode_score = nysiis(in_str)
+  elif (encode_method == 'dmetaphone'):
+    encode_score = dmetaphone(in_str)
+  else:
+    logging.exception('Illegal string encoding method: %s' % (encode_method))
+    raise Exception
+
+  return encode_score
 
 # =============================================================================
 
@@ -96,10 +140,9 @@ def soundex(s, maxlen=4):
   #
   s4 = s4+maxlen*'0'
 
-  # A log message for high volume log output (level 3) - - - - - - - - - - - -
+  # A log message - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   #
-  print '3:  Soundex encoding for string: "%s"' % (s)
-  print '3:    Code: %s' % (s4[:maxlen])
+  logging.debug('Soundex encoding for string: "%s": %s' % (s, s4[:maxlen]))
 
   return s4[:maxlen]  # Return first maxlen characters
 
@@ -143,10 +186,9 @@ def mod_soundex(s, maxlen=4):
   #
   s4 = s3+maxlen*'0'
 
-  # A log message for high volume log output (level 3) - - - - - - - - - - - -
+  # A log message - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   #
-  print '3:  Mod Soundex encoding for string: "%s"' % (s)
-  print '3:    Code: %s' % (s4[:maxlen])
+  logging.debug('Mod Soundex encoding for string: "%s": %s' % (s, s4[:maxlen]))
 
   return s4[:maxlen]
 
@@ -169,7 +211,7 @@ def phonex(s, maxlen=4):
      Technical Report number 550, Department of Computing Science,
      University of Newcastle upon Tyne, 1996"
 
-    Available at: 
+    Available at:
       http://www.cs.ncl.ac.uk/~brian.randell/home.informal/
              Genealogy/NameMatching.pdf
 
@@ -266,10 +308,9 @@ def phonex(s, maxlen=4):
   #
   code += maxlen*'0'
 
-  # A log message for high volume log output (level 3) - - - - - - - - - - - -
+  # A log message - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   #
-  print '3:  Phonex encoding for string: "%s"' % (s)
-  print '3:    Code: %s' % (code[:maxlen])
+  logging.debug('Phonex encoding for string: "%s": %s' % (s, code[:maxlen]))
 
   return code[:maxlen]  # Return first maxlen characters
 
@@ -300,7 +341,7 @@ def nysiis(s, maxlen=4):
   while s and s[-1] in 'sz':
     s = s[:-1]
 
-  # Translate first characters of string  
+  # Translate first characters of string
   #
   if (s[:3] == 'mac'):  # Initial 'MAC' -> 'MC'
     s = 'mc'+s[3:]
@@ -352,7 +393,7 @@ def nysiis(s, maxlen=4):
   s5 = s5.replace('yw','y')
   s5 = s5.replace('wr','r')
 
-  # If not first or last, replace Y with A  
+  # If not first or last, replace Y with A
   #
   s6 = s5[0]+s5[1:-1].replace('y','a')+s5[-1]
 
@@ -386,10 +427,9 @@ def nysiis(s, maxlen=4):
   if (first in 'aeiou'):
     resstr = first+resstr[1:]
 
-  # A log message for high volume log output (level 3) - - - - - - - - - - - -
+  # A log message - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   #
-  print '3:  NYSIIS encoding for string: "%s"' % (s)
-  print '3:    Code: %s' % (resstr[:maxlen])
+  logging.debug('NYSIIS encoding for string: "%s": %s' % (s, resstr[:maxlen]))
 
   return resstr[:maxlen]
 
@@ -1122,7 +1162,7 @@ def dmetaphone(s, maxlen=4):
       if (workstr[current+1] == 'v'):
         current=current+2
       else:
-        current=current+1 
+        current=current+1
       primary = primary+'f'
       primary_len = primary_len+1
       secondary = secondary+'f'
@@ -1224,11 +1264,10 @@ def dmetaphone(s, maxlen=4):
   # else:
   #   return [primary[:maxlen]]
 
-  # A log message for high volume log output (level 3) - - - - - - - - - - - -
+  # A log message - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   #
-  print '3:  Double Metaphone encoding for string: "%s"' %(s)
-  print '3:    Code: %s, secondary code: %s' % \
-        (primary[:maxlen], secondary[:maxlen])
+  logging.debug('Double Metaphone encoding for string: "%s": prim: %s, ' % \
+                (s, primary[:maxlen]) + 'sec: %s' % (secondary[:maxlen]))
 
   return primary[:maxlen]  # Only return primary encoding
 

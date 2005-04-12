@@ -1,25 +1,47 @@
 # =============================================================================
-# comparisonTest.py - Test module for comparison.py
-#
-# Freely extensible biomedical record linkage (Febrl) Version 0.2.2
-# See http://datamining.anu.edu.au/projects/linkage.html
-#
-# =============================================================================
 # AUSTRALIAN NATIONAL UNIVERSITY OPEN SOURCE LICENSE (ANUOS LICENSE)
-# VERSION 1.1
-#
-# The contents of this file are subject to the ANUOS License Version 1.1 (the
-# "License"); you may not use this file except in compliance with the License.
-# Software distributed under the License is distributed on an "AS IS" basis,
-# WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License for
-# the specific language governing rights and limitations under the License.
-# The Original Software is "comparisonTest.py".
-# The Initial Developers of the Original Software are Dr Peter Christen
-# (Department of Computer Science, Australian National University) and Dr Tim
-# Churches (Centre for Epidemiology and Research, New South Wales Department
-# of Health). Copyright (C) 2002, 2003 the Australian National University and
+# VERSION 1.2
+# 
+# The contents of this file are subject to the ANUOS License Version 1.2
+# (the "License"); you may not use this file except in compliance with
+# the License. You may obtain a copy of the License at:
+# 
+#   http://datamining.anu.edu.au/linkage.html
+# 
+# Software distributed under the License is distributed on an "AS IS"
+# basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See
+# the License for the specific language governing rights and limitations
+# under the License.
+# 
+# The Original Software is: "comparisonTest.py"
+# 
+# The Initial Developers of the Original Software are:
+#   Dr Tim Churches (Centre for Epidemiology and Research, New South Wales
+#                    Department of Health)
+#   Dr Peter Christen (Department of Computer Science, Australian National
+#                      University)
+# 
+# Copyright (C) 2002 - 2005 the Australian National University and
 # others. All Rights Reserved.
+# 
 # Contributors:
+# 
+# Alternatively, the contents of this file may be used under the terms
+# of the GNU General Public License Version 2 or later (the "GPL"), in
+# which case the provisions of the GPL are applicable instead of those
+# above. The GPL is available at the following URL: http://www.gnu.org/
+# If you wish to allow use of your version of this file only under the
+# terms of the GPL, and not to allow others to use your version of this
+# file under the terms of the ANUOS License, indicate your decision by
+# deleting the provisions above and replace them with the notice and
+# other provisions required by the GPL. If you do not delete the
+# provisions above, a recipient may use your version of this file under
+# the terms of any one of the ANUOS License or the GPL.
+# =============================================================================
+#
+# Freely extensible biomedical record linkage (Febrl) - Version 0.3
+#
+# See: http://datamining.anu.edu.au/linkage.html
 #
 # =============================================================================
 
@@ -562,6 +584,91 @@ class TestCase(unittest.TestCase):
            ' weight: '+str(missing1)
 
 
+    approx_compare = \
+      comparison.FieldComparatorApproxString(fields_a='surname',
+                                             fields_b='surname',
+                                             m_prob=self.m_prob,
+                                             u_prob=self.u_prob,
+                                             missing_weight=self.miss_weight,
+                                             compare_method='compression',
+                                             min_approx_value=0.5)
+
+    rec_comparator = comparison.RecordComparator(self.dataset, self.dataset,
+                                                 [approx_compare])
+
+    agree = rec_comparator.compare({'surname':'peter miller','_rec_num_':0, \
+                                    '_dataset_name_':self.dataset.name},
+                                   {'surname':'peter miller','_rec_num_':0, \
+                                    '_dataset_name_':self.dataset.name})
+    agree = float(agree[4])
+
+    similar1 = rec_comparator.compare({'surname':'peter miller','_rec_num_':0, \
+                                    '_dataset_name_':self.dataset.name},
+                                      {'surname':'petea miller','_rec_num_':0, \
+                                    '_dataset_name_':self.dataset.name})
+    similar1 = float(similar1[4])
+
+    similar2 = rec_comparator.compare({'surname':'peter miller','_rec_num_':0, \
+                                    '_dataset_name_':self.dataset.name},
+                                      {'surname':'petra meyer','_rec_num_':0, \
+                                    '_dataset_name_':self.dataset.name})
+    similar2 = float(similar2[4])
+
+    disagree = rec_comparator.compare({'surname':'peter miller','_rec_num_':0, \
+                                    '_dataset_name_':self.dataset.name},
+                                      {'surname':'xanthilla abu','_rec_num_':0, \
+                                    '_dataset_name_':self.dataset.name})
+    disagree = float(disagree[4])
+
+    missing1 =  rec_comparator.compare({'surname':'peter miller','_rec_num_':0, \
+                                    '_dataset_name_':self.dataset.name},
+                                       {'surname':'','_rec_num_':0, \
+                                    '_dataset_name_':self.dataset.name})
+    missing1 = float(missing1[4])
+
+    missing2 =  rec_comparator.compare({'surname':'missing','_rec_num_':0, \
+                                    '_dataset_name_':self.dataset.name},
+                                       {'surname':'tim','_rec_num_':0, \
+                                    '_dataset_name_':self.dataset.name})
+    missing2 = float(missing2[4])
+
+    assert (agree == self.agree_weight), \
+           'Wrong agreement weight (should be: '+str(self.agree_weight)+ \
+           '): '+str(agree)
+
+    assert (disagree == self.disagree_weight), \
+           'Wrong disagreement weight (should be: '+ \
+           str(self.disagree_weight)+'): '+str(disagree)
+
+    assert (agree > disagree), \
+           'Agreement weight ('+str(agree)+') is not larger than disagree'+ \
+           ' weight: '+str(disagree)
+
+    assert (self.agree_weight > similar1), \
+           'Wrong similar1 weight (should be smaller than agree weight '+ \
+           str(self.agree_weight)+'): '+ str(similar1)
+
+    assert (similar1 > similar2), \
+           'Wrong similar2 weight (should be smaller than similar1 weight '+ \
+           str(similar1)+'): '+ str(similar2)
+
+    assert (similar2 == self.disagree_weight), \
+           'Wrong similar2 weight (should be equal to disagree weight '+ \
+           str(self.disagree_weight)+'): '+ str(similar2)
+
+    assert (missing1 == self.miss_weight), \
+           'Wrong missing weight (should be: '+ \
+           str(self.miss_weight)+'): '+str(missing1)
+
+    assert (missing2 == self.miss_weight), \
+           'Wrong missing weight (should be: '+ \
+           str(self.miss_weight)+'): '+str(missing2)
+
+    assert (agree > missing1), \
+           'Agreement weight ('+str(agree)+') is not larger than missing1'+ \
+           ' weight: '+str(missing1)
+
+
   def testEncodeString(self):   # - - - - - - - - - - - - - - - - - - - - - - -
     """Test the FieldComparatorEncodeString comparison routine"""
 
@@ -961,6 +1068,12 @@ class TestCase(unittest.TestCase):
                                     '_dataset_name_':self.dataset.name})
     missing2 = float(missing2[4])
 
+    zero =  rec_comparator.compare({'postcode':'0000','_rec_num_':0, \
+                                    '_dataset_name_':self.dataset.name},
+                                   {'postcode':'-0001','_rec_num_':0, \
+                                    '_dataset_name_':self.dataset.name})
+    zero = float(zero[4])
+
     assert (agree == self.agree_weight), \
            'Wrong agreement weight (should be: '+str(self.agree_weight)+ \
            '): '+str(agree)
@@ -1005,6 +1118,8 @@ class TestCase(unittest.TestCase):
            'Agreement weight ('+str(agree)+') is not larger than missing1'+ \
            ' weight: '+str(missing1)
 
+    assert (zero == self.disagree_weight), \
+           'Zero weight ('+str(zero)+') is not equal to disagreement weight'
 
   def testNumericAbs(self):   # - - - - - - - - - - - - - - - - - - - - - - - -
     """Test the FieldComparatorNumericAbs comparison routine"""
@@ -1183,6 +1298,46 @@ class TestCase(unittest.TestCase):
                                        '_dataset_name_':self.dataset.name})
     similar5 = float(similar5[4])
 
+    swapped1 = rec_comparator.compare({'dob':12,'mob':5,'yob':1968, \
+                                       '_rec_num_':0, \
+                                       '_dataset_name_':self.dataset.name},
+                                      {'dob':5,'mob':12,'yob':1968, \
+                                       '_rec_num_':0, \
+                                       '_dataset_name_':self.dataset.name})
+    swapped1 = float(swapped1[4])
+
+    swapped2 = rec_comparator.compare({'dob':7,'mob':8,'yob':1999, \
+                                       '_rec_num_':0, \
+                                       '_dataset_name_':self.dataset.name},
+                                      {'dob':8,'mob':7,'yob':1999, \
+                                       '_rec_num_':0, \
+                                       '_dataset_name_':self.dataset.name})
+    swapped2 = float(swapped2[4])
+
+    swapped3 = rec_comparator.compare({'dob':1,'mob':11,'yob':1999, \
+                                       '_rec_num_':0, \
+                                       '_dataset_name_':self.dataset.name},
+                                      {'dob':11,'mob':1,'yob':1998, \
+                                       '_rec_num_':0, \
+                                       '_dataset_name_':self.dataset.name})
+    swapped3 = float(swapped3[4])
+
+    dayyearsame1 = rec_comparator.compare({'dob':31,'mob':1,'yob':1968, \
+                                       '_rec_num_':0, \
+                                       '_dataset_name_':self.dataset.name},
+                                      {'dob':31,'mob':12,'yob':1968, \
+                                       '_rec_num_':0, \
+                                       '_dataset_name_':self.dataset.name})
+    dayyearsame1 = float(dayyearsame1[4])
+
+    dayyearsame2 = rec_comparator.compare({'dob':31,'mob':1,'yob':1968, \
+                                       '_rec_num_':0, \
+                                       '_dataset_name_':self.dataset.name},
+                                      {'dob':31,'mob':12,'yob':1969, \
+                                       '_rec_num_':0, \
+                                       '_dataset_name_':self.dataset.name})
+    dayyearsame2 = float(dayyearsame2[4])
+
     disagree = rec_comparator.compare({'dob':21,'mob':3,'yob':1968, \
                                        '_rec_num_':0, \
                                        '_dataset_name_':self.dataset.name},
@@ -1250,6 +1405,26 @@ class TestCase(unittest.TestCase):
     assert (similar4 == disagree_w), \
            'Wrong similar4 weight (should be equal to disagree weight '+ \
            str(disagree_w)+'): '+ str(similar4)
+
+    assert (swapped1 > disagree_w), \
+           'Wrong swapped1 weight (should be larger than disagree weight '+ \
+           str(disagree_w)+'): '+ str(swapped1)
+
+    assert (swapped2 > disagree_w), \
+           'Wrong swapped2 weight (should be larger than disagree weight '+ \
+           str(disagree_w)+'): '+ str(swapped2)
+
+    assert (swapped3 == disagree_w), \
+           'Wrong swapped2 weight (should be equal to disagree weight '+ \
+           str(disagree_w)+'): '+ str(swapped3)
+
+    assert (dayyearsame1 > disagree_w), \
+           'Wrong dayyearsame1 weight (should be larger than disagree weight' \
+           +' '+str(disagree_w)+'): '+ str(dayyearsame1)
+
+    assert (dayyearsame2 == disagree_w), \
+           'Wrong dayyearsame2 weight (should be equal to disagree weight ' + \
+           str(disagree_w)+'): '+ str(dayyearsame2)
 
     assert (missing1 == self.miss_weight), \
            'Wrong missing weight (should be: '+ \
@@ -1649,7 +1824,6 @@ class TestCase(unittest.TestCase):
     assert (agree > missing1), \
            'Agreement weight ('+str(agree)+') is not larger than missing1'+ \
            ' weight: '+str(missing1)
-
 
 # -----------------------------------------------------------------------------
 # Start tests when called from command line

@@ -1,25 +1,47 @@
 # =============================================================================
-# address.py - Routines for address cleaning and standardisation.
-#
-# Freely extensible biomedical record linkage (Febrl) Version 0.2.2
-# See http://datamining.anu.edu.au/projects/linkage.html
-#
-# =============================================================================
 # AUSTRALIAN NATIONAL UNIVERSITY OPEN SOURCE LICENSE (ANUOS LICENSE)
-# VERSION 1.1
-#
-# The contents of this file are subject to the ANUOS License Version 1.1 (the
-# "License"); you may not use this file except in compliance with the License.
-# Software distributed under the License is distributed on an "AS IS" basis,
-# WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License for
-# the specific language governing rights and limitations under the License.
-# The Original Software is "address.py".
-# The Initial Developers of the Original Software are Dr Peter Christen
-# (Department of Computer Science, Australian National University) and Dr Tim
-# Churches (Centre for Epidemiology and Research, New South Wales Department
-# of Health). Copyright (C) 2002, 2003 the Australian National University and
+# VERSION 1.2
+# 
+# The contents of this file are subject to the ANUOS License Version 1.2
+# (the "License"); you may not use this file except in compliance with
+# the License. You may obtain a copy of the License at:
+# 
+#   http://datamining.anu.edu.au/linkage.html
+# 
+# Software distributed under the License is distributed on an "AS IS"
+# basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See
+# the License for the specific language governing rights and limitations
+# under the License.
+# 
+# The Original Software is: "address.py"
+# 
+# The Initial Developers of the Original Software are:
+#   Dr Tim Churches (Centre for Epidemiology and Research, New South Wales
+#                    Department of Health)
+#   Dr Peter Christen (Department of Computer Science, Australian National
+#                      University)
+# 
+# Copyright (C) 2002 - 2005 the Australian National University and
 # others. All Rights Reserved.
+# 
 # Contributors:
+# 
+# Alternatively, the contents of this file may be used under the terms
+# of the GNU General Public License Version 2 or later (the "GPL"), in
+# which case the provisions of the GPL are applicable instead of those
+# above. The GPL is available at the following URL: http://www.gnu.org/
+# If you wish to allow use of your version of this file only under the
+# terms of the GPL, and not to allow others to use your version of this
+# file under the terms of the ANUOS License, indicate your decision by
+# deleting the provisions above and replace them with the notice and
+# other provisions required by the GPL. If you do not delete the
+# provisions above, a recipient may use your version of this file under
+# the terms of any one of the ANUOS License or the GPL.
+# =============================================================================
+#
+# Freely extensible biomedical record linkage (Febrl) - Version 0.3
+#
+# See: http://datamining.anu.edu.au/linkage.html
 #
 # =============================================================================
 
@@ -41,7 +63,9 @@
 # =============================================================================
 # Imports go here
 
+import logging
 import string
+
 import mymath
 
 # =============================================================================
@@ -129,11 +153,11 @@ def tag_address_component(address_str, tag_lookup_table, record_id):
     #
     org_list = org_list[tmp_len:]  # Remove processed elements
 
-  # A log message for high volume log output (level 3)  - - - - - - - - - - - -
+  # A log message - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   #
-  print '3:%s  Address string "%s"' % (record_id, address_str) 
-  print '3:%s    Split into word list: %s' % (record_id, word_list)
-  print '3:%s            and tag list: %s' % (record_id, tag_list)
+  logging.debug('%s  Address string "%s"' % (record_id, address_str))
+  logging.debug('%s    Split into word list: %s' % (record_id, word_list))
+  logging.debug('%s            and tag list: %s' % (record_id, tag_list))
 
   return [word_list, tag_list]
 
@@ -170,7 +194,7 @@ def get_address_hmm(word_list, tag_list, address_hmm, tag_lookup_table,
       unit_type
       property_name
       institution_name
-      institution_type    
+      institution_type
       postaddress_number
       postaddress_type
       locality_name
@@ -200,24 +224,24 @@ def get_address_hmm(word_list, tag_list, address_hmm, tag_lookup_table,
        best_tag_list = t
        max_prob = prob
 
-    print '3:%s  Sequence: %s has Viterbi probability: %f' % \
-          (record_id, str(t), prob)
+    logging.debug('%s  Sequence: %s has Viterbi probability: %f' % \
+                  (record_id, str(t), prob))
 
-  print '2:%s  Best observation sequence: %s with tag sequence: %s' % \
-        (record_id, str(best_obs_seq), str(best_tag_list))
+  logging.debug('%s  Best observation sequence: %s with tag sequence: %s' % \
+        (record_id, str(best_obs_seq), str(best_tag_list)))
 
   # Now process the observation sequence and add elements into dictionary - - -
   #
   if (len(tag_list) != len(word_list)):
-    print 'error:%s Length of word list and tag list differs: %s, %s%s' % \
-          (record_id, str(word_list), str(tag_list), fields_str)
+    logging.exception('%s Length of word list and tag list differs: %s, %s%s' \
+                      % (record_id, str(word_list), str(tag_list), fields_str))
     raise Exception
 
   list_len = len(tag_list)
 
   if (list_len == 0):
-    print 'warning:%s Empty tag list returned from HMM %s' % \
-          (record_id, fields_str)
+    logging.warn('%s Empty tag list returned from HMM %s' % \
+                 (record_id, fields_str))
     return {}  # Return an empty dictionary if not output fields given
 
   # norm_max_prob = max_prob / float(list_len)  # Normalise max. probability
@@ -313,9 +337,9 @@ def get_address_hmm(word_list, tag_list, address_hmm, tag_lookup_table,
       address_dict.update({'country':v})
 
     else:  # Should never happen
-      print 'warning:%s This should never happen! ' % (record_id) + \
-            ' Tag: %s, word: %s, word list: %s, tag list: %s%s' % \
-            (str(s), w, str(word_list), str(tag_list),fields_str)
+      logging.warn('%s This should never happen! ' % (record_id) + \
+                   ' Tag: %s, word: %s, word list: %s, tag list: %s%s' % \
+                   (str(s), w, str(word_list), str(tag_list),fields_str))
 
   # Check if concatenated locality and territory words are in lookup-table  - -
   #
@@ -351,8 +375,8 @@ def get_address_hmm(word_list, tag_list, address_hmm, tag_lookup_table,
   #
   for i in address_items:
     if (len(i[1]) > 3):
-      print 'warning:%s Output field "%s" contains' % (record_id, str(i[0]))+ \
-            ' more than three elements: %s%s' % (str(i[1]), fields_str)
+      logging.warn('%s Output field "%s" contains' % (record_id, str(i[0]))+ \
+                   ' more than three elements: %s%s' % (str(i[1]), fields_str))
 
   # Check if 'number' elements only contain (alpha-) numerical values - - - - -
   # and also check how many numbers in an element
@@ -360,34 +384,34 @@ def get_address_hmm(word_list, tag_list, address_hmm, tag_lookup_table,
   if (address_dict.has_key('wayfare_number')): # Check how many wayfare numbers
     v = address_dict['wayfare_number']
     if (len(v) > 2):
-      print 'warning:%s More than two wayfare numbers: %s%s' % \
-            (record_id, str(v), fields_str)
+      logging.warn('%s More than two wayfare numbers: %s%s' % \
+                   (record_id, str(v), fields_str))
     for i in v:
       if (i.isalpha()):  # Element contains only letters
-        print 'warning:%s Wayfare number contains no ' % (record_id) + \
-              'digits: %s%s' % (str(v), fields_str)
+        logging.warn('%s Wayfare number contains no ' % (record_id) + \
+                     'digits: %s%s' % (str(v), fields_str))
         break  # Exit for loop
 
   if (address_dict.has_key('unit_number')):  # Check how many unit numbers
     v = address_dict['unit_number']
     if (len(v) > 1):
-      print 'warning:%s More than one unit number: %s%s' % \
-            (record_id, str(v), fields_str)
+      logging.warn('%s More than one unit number: %s%s' % \
+                   (record_id, str(v), fields_str))
     for i in v:
       if (i.isalpha()):  # Element contains only letters
-        print 'warning:%s Unit number contains no ' % (record_id) + \
-              'digits: %s%s' % (str(v), fields_str)
+        logging.warn('%s Unit number contains no ' % (record_id) + \
+                     'digits: %s%s' % (str(v), fields_str))
         break  # Exit for loop
 
   if (address_dict.has_key('postaddress_number')): # Check postaddress numbers
     v = address_dict['postaddress_number']
     if (len(v) > 1):
-      print 'warning:%s More than one post-address number: %s%s' % \
-            (record_id, str(v), fields_str)
+      logging.warn('%s More than one post-address number: %s%s' % \
+                   (record_id, str(v), fields_str))
     for i in v:
       if (i.isalpha()):  # Element contains only letters
-        print 'warning:%s Post-address number contains no ' % (record_id) + \
-              'digits: %s%s' % (str(v), fields_str)
+        logging.warn('%s Post-address number contains no ' % (record_id) + \
+                     'digits: %s%s' % (str(v), fields_str))
         break  # Exit for loop
 
   # Check if 'type' elements contain one word only  - - - - - - - - - - - - - -
@@ -396,61 +420,61 @@ def get_address_hmm(word_list, tag_list, address_hmm, tag_lookup_table,
   if (address_dict.has_key('wayfare_type')):  # Check wayfare type
     v = address_dict['wayfare_type']
     if (len(v) > 1):
-      print 'warning:%s More than one wayfare type: %s%s' % \
-            (record_id, str(v), fields_str)
+      logging.warn('%s More than one wayfare type: %s%s' % \
+                   (record_id, str(v), fields_str))
     for i in v:
       i = i.split('_')
       i = tuple(i)  # Make it a tuple
       if (not tag_lookup_table.has_key((i))) or \
-         (tag_lookup_table.has_key((i)) and 
+         (tag_lookup_table.has_key((i)) and
           (tag_lookup_table[(i)][1].find('WT') < 0)):
-        print 'warning:%s Wayfare type word is not known: %s%s' % \
-              (record_id, str(v), fields_str)
+        logging.warn('%s Wayfare type word is not known: %s%s' % \
+                     (record_id, str(v), fields_str))
         break  # Exit for loop
 
   if (address_dict.has_key('unit_type')):  # Check unit type
     v = address_dict['unit_type']
     if (len(v) > 1):
-      print 'warning:%s More than one unit type: %s%s' % \
-            (record_id, str(v), fields_str)
+      logging.warn('%s More than one unit type: %s%s' % \
+                   (record_id, str(v), fields_str))
     for i in v:
       i = i.split('_')
       i = tuple(i)  # Make it a tuple
       if (not tag_lookup_table.has_key((i))) or \
          (tag_lookup_table.has_key((i)) and \
           (tag_lookup_table[(i)][1].find('UT') < 0)):
-        print 'warning:%s Unit type word is not known: %s%s' % \
-              (record_id, str(v), fields_str)
+        logging.warn('%s Unit type word is not known: %s%s' % \
+                     (record_id, str(v), fields_str))
         break  # Exit for loop
 
   if (address_dict.has_key('institution_type')):  # Check institution type
     v = address_dict['institution_type']
     if (len(v) > 1):
-      print 'warning:%s More than one institution type: %s%s' % \
-            (record_id, str(v), fields_str)
+      logging.warn('%s More than one institution type: %s%s' % \
+                   (record_id, str(v), fields_str))
     for i in v:
       i = i.split('_')
       i = tuple(i)  # Make it a tuple
       if (not tag_lookup_table.has_key((i))) or \
          (tag_lookup_table.has_key((i)) and \
           (tag_lookup_table[(i)][1].find('IT') < 0)):
-        print 'warning:%s Institution type word is not known: %s%s' % \
-              (record_id, str(v), fields_str)
+        logging.warn('%s Institution type word is not known: %s%s' % \
+                     (record_id, str(v), fields_str))
         break  # Exit for loop
 
   if (address_dict.has_key('postaddress_type')):  # Check postaddress type
     v = address_dict['postaddress_type']
     if (len(v) > 2):
-      print 'warning:%s More than two post-address type: %s%s' % \
-            (record_id, str(v), fields_str)
+      logging.warn('%s More than two post-address type: %s%s' % \
+                   (record_id, str(v), fields_str))
     for i in v:
       i = i.split('_')
       i = tuple(i)  # Make it a tuple
       if (not tag_lookup_table.has_key((i))) or \
          (tag_lookup_table.has_key((i)) and \
           (tag_lookup_table[(i)][1].find('PA') < 0)):
-        print 'warning:%s Post-address type word is not known: %s%s' % \
-              (record_id, str(v), fields_str)
+        logging.warn('%s Post-address type word is not known: %s%s' % \
+                     (record_id, str(v), fields_str))
         break  # Exit for loop
 
   # Check if 'qualifier' elements only contain known qualifier words  - - - - -
@@ -461,8 +485,8 @@ def get_address_hmm(word_list, tag_list, address_hmm, tag_lookup_table,
       if (not tag_lookup_table.has_key((i,))) or \
          (tag_lookup_table.has_key((i,)) and \
           (tag_lookup_table[(i,)][1].find('LQ') < 0)):
-        print 'warning:%s Wayfare qualifier word is not known: %s%s' % \
-              (record_id, str(v), fields_str)
+        logging.warn('%s Wayfare qualifier word is not known: %s%s' % \
+                     (record_id, str(v), fields_str))
         break  # Exit for loop
 
   if (address_dict.has_key('locality_qualifier')):  # Check locality qualifier
@@ -471,8 +495,8 @@ def get_address_hmm(word_list, tag_list, address_hmm, tag_lookup_table,
       if (not tag_lookup_table.has_key((i,))) or \
          (tag_lookup_table.has_key((i,)) and \
           (tag_lookup_table[(i,)][1].find('LQ') < 0)):
-        print 'warning:%s Locality qualifier word is not known: %s%s' % \
-              (record_id, str(v), fields_str)
+        logging.warn('%s Locality qualifier word is not known: %s%s' % \
+                     (record_id, str(v), fields_str))
         break  # Exit for loop
 
   return address_dict

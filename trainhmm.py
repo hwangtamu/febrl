@@ -1,25 +1,47 @@
 # =============================================================================
-# trainhmm.py - Main module to train a Hidden Markov Model (HMM)
-#
-# Freely extensible biomedical record linkage (Febrl) Version 0.2.2
-# See http://datamining.anu.edu.au/projects/linkage.html
-#
-# =============================================================================
 # AUSTRALIAN NATIONAL UNIVERSITY OPEN SOURCE LICENSE (ANUOS LICENSE)
-# VERSION 1.1
-#
-# The contents of this file are subject to the ANUOS License Version 1.1 (the
-# "License"); you may not use this file except in compliance with the License.
-# Software distributed under the License is distributed on an "AS IS" basis,
-# WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License for
-# the specific language governing rights and limitations under the License.
-# The Original Software is "trainhmm.py".
-# The Initial Developers of the Original Software are Dr Peter Christen
-# (Department of Computer Science, Australian National University) and Dr Tim
-# Churches (Centre for Epidemiology and Research, New South Wales Department
-# of Health). Copyright (C) 2002, 2003 the Australian National University and
+# VERSION 1.2
+# 
+# The contents of this file are subject to the ANUOS License Version 1.2
+# (the "License"); you may not use this file except in compliance with
+# the License. You may obtain a copy of the License at:
+# 
+#   http://datamining.anu.edu.au/linkage.html
+# 
+# Software distributed under the License is distributed on an "AS IS"
+# basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See
+# the License for the specific language governing rights and limitations
+# under the License.
+# 
+# The Original Software is: "trainhmm.py"
+# 
+# The Initial Developers of the Original Software are:
+#   Dr Tim Churches (Centre for Epidemiology and Research, New South Wales
+#                    Department of Health)
+#   Dr Peter Christen (Department of Computer Science, Australian National
+#                      University)
+# 
+# Copyright (C) 2002 - 2005 the Australian National University and
 # others. All Rights Reserved.
+# 
 # Contributors:
+# 
+# Alternatively, the contents of this file may be used under the terms
+# of the GNU General Public License Version 2 or later (the "GPL"), in
+# which case the provisions of the GPL are applicable instead of those
+# above. The GPL is available at the following URL: http://www.gnu.org/
+# If you wish to allow use of your version of this file only under the
+# terms of the GPL, and not to allow others to use your version of this
+# file under the terms of the ANUOS License, indicate your decision by
+# deleting the provisions above and replace them with the notice and
+# other provisions required by the GPL. If you do not delete the
+# provisions above, a recipient may use your version of this file under
+# the terms of any one of the ANUOS License or the GPL.
+# =============================================================================
+#
+# Freely extensible biomedical record linkage (Febrl) - Version 0.3
+#
+# See: http://datamining.anu.edu.au/linkage.html
 #
 # =============================================================================
 
@@ -29,7 +51,7 @@
      This module can be used to train a Hidden Markov Model (HMM) using tagged
      data as created by 'tagdata.py' and then edited manually.
 
-     The 'hmm_component' can be either 'name' or 'address', and is used to 
+     The 'hmm_component' can be either 'name' or 'address', and is used to
      determine the possible HMM states and observations to be used.
 
      The format of the input training file is as follows:
@@ -49,6 +71,9 @@
      module ('train' routine) or e.g.
        V.Borkar et.al., Automatic Segmentation of Text into Structured Records
        Section 2.2
+
+   The directory separator 'dirsep' is a shorthand to os.sep as defined in
+   febrl.py.
 
    EXAMPLE:
      The following lines are an example of the input training file format:
@@ -74,8 +99,17 @@ from febrl import *      # Main Febrl classes
 from dataset import *    # Data set routines
 from simplehmm import *  # Hidden Markov model (HMM) routines
 
-import xreadlines  # Python standard module for efficient text file reading
+import logging
 import time        # Python standard module for time functions
+
+# =============================================================================
+# Define a project logger
+
+init_febrl_logger(log_file_name = 'febrl-trainhmm.log',
+                     file_level = 'WARN',
+                  console_level = 'INFO',
+                      clear_log = True,
+                parallel_output = 'host')
 
 # =============================================================================
 # Set up Febrl and create a new project (or load a saved project)
@@ -88,33 +122,23 @@ hmm_project = hmm_febrl.new_project(name = 'HMM-Train',
                                file_name = 'hmm.fbr')
 
 # =============================================================================
-# Define a project logger
-
-hmm_log = ProjectLog(file_name = 'hmm_train.log',
-                       project = hmm_project,
-                     log_level = 1,
-                 verbose_level = 1,
-                     clear_log = True,
-                       no_warn = False)
-
-# =============================================================================
 # Define settings for HMM training
 
 # Name of the file containing training records  - - - - - - - - - - - - - - - -
 #
-hmm_train_file = 'tagged_data.csv'  # './hmm/name-train.csv'
+hmm_train_file = 'hmm'+dirsep+'address-sample-training-data.csv'
 
 # Name of the HMM file to be written  - - - - - - - - - - - - - - - - - - - - -
 #
-hmm_model_file = 'test.hmm'
+hmm_model_file = 'test-address.hmm'
 
 # Name of the HMM - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 #
-hmm_name = 'Test Name HMM'
+hmm_name = 'Test Address HMM'
 
 # Component: Can either be 'name' or 'address'  - - - - - - - - - - - - - - - -
 #
-hmm_component = 'name'
+hmm_component = 'address'
 
 # HMM smoothing method, can be either None, 'laplace' or 'absdiscount'  - - - -
 #
@@ -145,21 +169,21 @@ address_tags = ['PC','N4','NU','AN','TR','CR','LN','ST','IN','IT','LQ','WT',
 # Test settings - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 #
 if (not isinstance(hmm_train_file, str)) or (hmm_train_file == ''):
-  print 'error:HMM training file is not a valid string: "%s"' % \
-        (str(hmm_train_file))
+  logging.exception('HMM training file is not a valid string: "%s"' % \
+                    (str(hmm_train_file)))
   raise Exception
 
 if (not isinstance(hmm_model_file, str)) or (hmm_model_file == ''):
-  print 'error:HMM model file is not a valid string: "%s"' % \
-        (str(hmm_model_file))
+  logging.exception('HMM model file is not a valid string: "%s"' % \
+                    (str(hmm_model_file)))
   raise Exception
 
 if (hmm_train_file == hmm_model_file):
-  print 'error:HMM training file and HMM model file must differ'
+  logging.exception('HMM training file and HMM model file must differ')
   raise Exception
 
 if (hmm_smoothing not in [None, 'laplace','absdiscount']):
-  print 'error:Illegal HMM smoothing method: %s' % (str(hmm_smoothing))
+  logging.exception('Illegal HMM smoothing method: %s' % (str(hmm_smoothing)))
   raise Exception
 
 if (hmm_component == 'name'):  # Set HMM states and observations for names
@@ -169,30 +193,29 @@ elif (hmm_component == 'address'):  # Set HMM states and observations for
   hmm_states = address_states       # addresses
   hmm_observ = address_tags
 else:
-  print 'error:Illegal HMM component: %s' % (str(hmm_component))
+  logging.exception('Illegal HMM component: %s' % (str(hmm_component)))
   raise Exception
 
 # Print header (and write it to the log file if activated)  - - - - - - - - - -
 #
-print '1:'
-print '1:'+'#'*75
-print '1:#'
-print '1:# "hmmtrain.py" - Version 0.2'
-print '1:# Process started at: %s' % (time.ctime(time.time()))
-print '1:#'
-print '1:# Training file:        %s' % (str(hmm_train_file))
-print '1:# HMM model file:       %s' % (str(hmm_model_file))
-print '1:# HMM component:        %s' % (str(hmm_component))
+logging.info(''+'#'*75)
+logging.info('#')
+logging.info('# "hmmtrain.py" - Version 0.2')
+logging.info('# Process started at: %s' % (time.ctime(time.time())))
+logging.info('#')
+logging.info('# Training file:        %s' % (str(hmm_train_file)))
+logging.info('# HMM model file:       %s' % (str(hmm_model_file)))
+logging.info('# HMM component:        %s' % (str(hmm_component)))
 if (hmm_smoothing != None):
-  print '1:# HMM smoothing method: %s' % (str(hmm_smoothing))
-print '1:#'
+  logging.info('# HMM smoothing method: %s' % (str(hmm_smoothing)))
+logging.info('#')
 
 # Open training file  - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 #
 try:
   f_in = open(hmm_train_file, 'r')
 except:
-  print 'error:Cannot open training file: "%s"' % (str(hmm_train_file))
+  logging.exception('Cannot open training file: "%s"' % (str(hmm_train_file)))
   raise IOError
 
 rec_count  = 0  # Counter for training records read
@@ -202,7 +225,7 @@ line_count = 0  # Counter for lines in training file
 #
 train_records = []  # List of training records
 
-for line in xreadlines.xreadlines(f_in):
+for line in f_in:
 
   if (line[0] != '#') and (line.strip() != ''): # Skip comment or empty linea
 
@@ -217,21 +240,23 @@ for line in xreadlines.xreadlines(f_in):
       state = values.strip()
 
       if (state not in hmm_states):
-        print 'error:Illegal state name "%s" in record ' % (str(state)) + \
-              '%s in training file line %i' % (str(rec_count), line_count) + \
-              ', possible values: %s' % (str(hmm_states))
+        logging.exception('Illegal state name "%s" in record ' % (str(state)) \
+                          + '%s in training file line %i' % (str(rec_count), \
+                          line_count) + ', possible values: %s' % \
+                          (str(hmm_states)))
         raise Exception
 
       if (tag not in hmm_observ):
-        print 'error:Illegal observation (tag) name "%s"' % (str(state)) + \
-              ' in record %i in training file line ' % (rec_count) + \
-              '%i, possible values: %s' % (line_count, str(hmm_observ))
+        logging.exception('Illegal observation (tag) name "%s"' % \
+                          (str(state)) + ' in record %i in training file ' + \
+                          'line ' % (rec_count) + '%i, possible values: %s' % \
+                          (line_count, str(hmm_observ)))
         raise Exception
 
       if (state in hmm_states) and (tag in hmm_observ):
         line_data.append((state, tag))  # Append (state,tag) tuple
 
-    print '3:  Training record %s: %s' % (str(rec_count), str(line_data))
+    logging.debug('  Training record %s: %s' % (str(rec_count),str(line_data)))
 
     if (line_data != []):  # Only append training records which are valid
       train_records.append(line_data)
@@ -246,7 +271,7 @@ f_in.close()
 # Check if there are training records avaiable  - - - - - - - - - - - - - - - -
 #
 if (train_records == []):
-  print 'error:No training records extracted from training file'
+  logging.exception('No training records extracted from training file')
   raise Exception
 
 # Initalise HMM and train it with training data - - - - - - - - - - - - - - - -
@@ -258,9 +283,8 @@ train_hmm.print_hmm()
 
 # Save trained HMM  - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 #
-train_hmm.save_hmm(hmm_model_file)  
+train_hmm.save_hmm(hmm_model_file)
 
-print '1:'
-print '1:End.'
+logging.info('End.')
 
 # =============================================================================

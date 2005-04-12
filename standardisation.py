@@ -1,31 +1,53 @@
 # =============================================================================
-# standardisation.py - Classes for cleaning and standardisations
-#
-# Freely extensible biomedical record linkage (Febrl) Version 0.2.2
-# See http://datamining.anu.edu.au/projects/linkage.html
-#
-# =============================================================================
 # AUSTRALIAN NATIONAL UNIVERSITY OPEN SOURCE LICENSE (ANUOS LICENSE)
-# VERSION 1.1
-#
-# The contents of this file are subject to the ANUOS License Version 1.1 (the
-# "License"); you may not use this file except in compliance with the License.
-# Software distributed under the License is distributed on an "AS IS" basis,
-# WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License for
-# the specific language governing rights and limitations under the License.
-# The Original Software is "standardisation.py".
-# The Initial Developers of the Original Software are Dr Peter Christen
-# (Department of Computer Science, Australian National University) and Dr Tim
-# Churches (Centre for Epidemiology and Research, New South Wales Department
-# of Health). Copyright (C) 2002, 2003 the Australian National University and
+# VERSION 1.2
+# 
+# The contents of this file are subject to the ANUOS License Version 1.2
+# (the "License"); you may not use this file except in compliance with
+# the License. You may obtain a copy of the License at:
+# 
+#   http://datamining.anu.edu.au/linkage.html
+# 
+# Software distributed under the License is distributed on an "AS IS"
+# basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See
+# the License for the specific language governing rights and limitations
+# under the License.
+# 
+# The Original Software is: "standardisation.py"
+# 
+# The Initial Developers of the Original Software are:
+#   Dr Tim Churches (Centre for Epidemiology and Research, New South Wales
+#                    Department of Health)
+#   Dr Peter Christen (Department of Computer Science, Australian National
+#                      University)
+# 
+# Copyright (C) 2002 - 2005 the Australian National University and
 # others. All Rights Reserved.
+# 
 # Contributors:
+# 
+# Alternatively, the contents of this file may be used under the terms
+# of the GNU General Public License Version 2 or later (the "GPL"), in
+# which case the provisions of the GPL are applicable instead of those
+# above. The GPL is available at the following URL: http://www.gnu.org/
+# If you wish to allow use of your version of this file only under the
+# terms of the GPL, and not to allow others to use your version of this
+# file under the terms of the ANUOS License, indicate your decision by
+# deleting the provisions above and replace them with the notice and
+# other provisions required by the GPL. If you do not delete the
+# provisions above, a recipient may use your version of this file under
+# the terms of any one of the ANUOS License or the GPL.
+# =============================================================================
+#
+# Freely extensible biomedical record linkage (Febrl) - Version 0.3
+#
+# See: http://datamining.anu.edu.au/linkage.html
 #
 # =============================================================================
 
 """Module standardisation.py - Classes for cleaning and standardisations.
 
-   This module provides classes for record cleaning and standardisations, 
+   This module provides classes for record cleaning and standardisations,
    either based on rules or a machine learning approach (Hidden Markov models)
 
    TODO
@@ -36,13 +58,15 @@
 # =============================================================================
 # Imports go here
 
+import logging
 import os
 import string
 import time
 
-import date     # Module with routines for dates
-import name     # Module with name standardisation routines
-import address  # Module with routines for address standardisation
+import address   # Module with routines for address standardisation
+import date      # Module with routines for dates
+import name      # Module with routines for name standardisation
+import phonenum  # Module with routines for telephone number standardisation
 
 # =============================================================================
 
@@ -67,6 +91,10 @@ def clean_component(raw_str, correction_list, record_id):
   if (raw_str.strip() == ''):
     return ''
 
+  # Replace tabs with whitespaces - - - - - - - - - - - - - - - - - - - - - - -
+  #
+  raw_str.replace('\t',' ')
+
   # First add a trailing and leading space  - - - - - - - - - - - - - - - - - -
   # (this is to make sure replacement strings do match at beginning and end)
   #
@@ -80,12 +108,18 @@ def clean_component(raw_str, correction_list, record_id):
   # Make sure commas are separated from words so they become list elements  - -
   #
   tmp_str = tmp_str.replace(',', ' , ')
+
+  # Make sure there a no double or triple spaces - - - - - - - - - - - - - - -
+  #
+  while ('  ' in tmp_str):
+    tmp_str = tmp_str.replace('  ', ' ')
+
   tmp_str = tmp_str.strip()
 
-  # A log message for high volume log output (level 3)  - - - - - - - - - - - -
+  # A log message - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   #
-  print '3:%s    Raw input string:     "%s"' % (record_id, raw_str)
-  print '3:%s    Cleaned input string: "%s"' % (record_id, tmp_str)
+  logging.debug('%s    Raw input string:     "%s"' % (record_id, raw_str))
+  logging.debug('%s    Cleaned input string: "%s"' % (record_id, tmp_str))
 
   return tmp_str
 
@@ -136,9 +170,10 @@ def check_field_spilling(str1, str2, tag_lookup_table, record_id, fields_str):
         entry_tags = entry_tags[3:]  # Remove first tag and '/'
 
       if (do_spilling == True):
-        print '2:%s    Found (and corrected) word  spilling:' % (record_id) + \
-              ' "%s","%s" -> "%s"%s' % (org_str1.strip(), org_str2.strip(), \
-              check_word, fields_str)
+        logging.debug('%s    Found (and corrected) word  spilling:' % \
+                      (record_id) + ' "%s","%s" -> "%s"%s' % \
+                      (org_str1.strip(), org_str2.strip(), check_word, \
+                      fields_str))
         return True  # Found a word spilling
       else:
         return False
@@ -203,26 +238,26 @@ class RecordStandardiser:
 
       elif (keyword in ['comp_std','component_standardisers']):
         if (not isinstance(value, list)):
-          print 'error:Argument "component_standardisers" is not a list'
+          logging.exception('Argument "component_standardisers" is not a list')
           raise Exception
         self.component_standardisers = value
 
       else:
-        print 'error:Illegal constructor argument keyword: '+keyword
+        logging.exception('Illegal constructor argument keyword: '+keyword)
         raise Exception
 
     # Check if the needed attributes are set  - - - - - - - - - - - - - - - - -
     #
     if (self.input_dataset == None):
-      print 'error:Input data set is not defined'
+      logging.exception('Input data set is not defined')
       raise Exception
 
     if (self.output_dataset == None):
-      print 'error:Output data set is not defined'
+      logging.exception('Output data set is not defined')
       raise Exception
 
     if (self.component_standardisers == None):
-      print'error:No component standardiser defined'
+      logging.excpetion('No component standardiser defined')
       raise Exception
 
     # Set the data set attributes in the component standardisers and check  - -
@@ -234,15 +269,16 @@ class RecordStandardiser:
 
       for field in cs.input_fields:
         if (not self.input_dataset.fields.has_key(field)):
-          print 'error:Input data set "%s" does not have a field "%s"' % \
-                (str(self.input_dataset.name), str(field))
+          logging.exception('Input data set "%s" does not have a field "%s"' \
+                            % (str(self.input_dataset.name), str(field)))
           raise Exception
 
       for field in cs.output_fields:
         if (field != None):  # Only check fields that are not set to None
           if (not self.output_dataset.fields.has_key(field)):
-            print 'error:Output data set "%s" does not have a field "%s"' % \
-                  (str(self.output_dataset.name), str(field))
+            logging.exception('Output data set "%s" does not have a field ' % \
+                              (str(self.output_dataset.name)) + '"%s"' % \
+                              (str(field)))
             raise Exception
 
     # Check if there is no conflict in the output fields definition - - - - - -
@@ -254,22 +290,21 @@ class RecordStandardiser:
       for field in cs.output_fields:
         if (field != None):  # Only check fields that are not set to None
           if (output_fields_dict.has_key(field)):
-            print 'error:Output fields definition conflict with field "%s"' % \
-                  (str(field))
+            logging.exception('Output fields definition conflict with ' + \
+                              'field "%s"' % (str(field)))
             raise Exception
           output_fields_dict[field] = 1
 
-    # A log message for low volume log output (level 1) - - - - - - - - - - - -
+    # A log message - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     #
-    print '1:'
-    print '1:Initialised record standardiser'
-    print '1:  Input data set:  %s' % (str(self.input_dataset.name))
-    print '1:  Output data set: %s' % (str(self.output_dataset.name))
-    print '1:  Component standardisers:'
+    logging.info('Initialised record standardiser')
+    logging.info('  Input data set:  %s' % (str(self.input_dataset.name)))
+    logging.info('  Output data set: %s' % (str(self.output_dataset.name)))
+    logging.info('  Component standardisers:')
     for cs in self.component_standardisers:
-      print '1:    Name: %s' % (str(cs.name))
-      print '1:      Input fields:  %s' % (str(cs.input_fields))
-      print '1:      Output fields: %s' % (str(cs.output_fields))
+      logging.info('    Name: %s' % (str(cs.name)))
+      logging.info('      Input fields:  %s' % (str(cs.input_fields)))
+      logging.info('      Output fields: %s' % (str(cs.output_fields)))
 
   # ---------------------------------------------------------------------------
 
@@ -278,7 +313,7 @@ class RecordStandardiser:
     """
 
     if (not isinstance(record, dict)):
-      print 'error:Input record is not a dictionary: %s' % (str(record))
+      logging.exception('Input record is not a dictionary: %s' % (str(record)))
       raise Exception
 
     output_record = {}
@@ -309,11 +344,11 @@ class RecordStandardiser:
       output_record['_rec_num_'] =      record['_rec_num_']
       output_record['_dataset_name_'] = record['_dataset_name_']
 
-    # A log message for medium volume log output (level 2)  - - - - - - - - - -
+    # A log message - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     #
-    print '2:%s  Record standardisation:' % (record_id)
-    print '2:%s    Input record:  %s' % (str(record), record_id)
-    print '2:%s    Output record: %s' % (str(output_record), record_id)
+    logging.debug('%s  Record standardisation:' % (record_id))
+    logging.debug('%s    Input record:  %s' % (str(record), record_id))
+    logging.debug('%s    Output record: %s' % (str(output_record), record_id))
 
     return output_record
 
@@ -324,7 +359,7 @@ class RecordStandardiser:
     """
 
     if (not isinstance(record_list, list)):
-      print 'error:Input record list is not a list'
+      logging.exception('Input record list is not a list')
       raise Exception
 
     output_list = []
@@ -387,8 +422,8 @@ class ComponentStandardiser:
         if (isinstance(value, str)):
           value = [value]
         if (not isinstance(value, list)):
-          print 'error:Argument "input_fields" is not a string or a ' + \
-                'list: %s' % (str(value))
+          logging.exception('Argument "input_fields" is not a string or a ' + \
+                            'list: %s' % (str(value)))
           raise Exception
         self.input_fields = value
 
@@ -396,23 +431,24 @@ class ComponentStandardiser:
         if (isinstance(value, str)):
           value = [value]
         if (not isinstance(value, list)):
-          print 'error:Argument "output_fields" is not a string or a ' + \
-                'list: %s' % (str(value))
+          logging.exception('Argument "output_fields" is not a string or a ' \
+                            + 'list: %s' % (str(value)))
           raise Exception
         self.output_fields = value
 
       else:
-        print 'error:Illegal constructor argument keyword: %s' % (str(keyword))
+        logging.exception('Illegal constructor argument keyword: %s' % \
+                          (str(keyword)))
         raise Exception
 
     # Check if fields are defined and not empty - - - - - - - - - - - - - - - -
     #
     if (self.input_fields == None) or (self.output_fields == None):
-      print 'error:Input or output fields are not defined'
+      logging.exception('Input or output fields are not defined')
       raise Exception
 
     if (len(self.input_fields) == 0) or (len(self.output_fields) == 0):
-      print 'error:Fields must not be empty lists'
+      logging.exception('Fields must not be empty lists')
       raise Exception
 
     output_field_def = 0
@@ -421,7 +457,7 @@ class ComponentStandardiser:
         output_field_def = 1  # An output field is defined (not set to None)
         break
     if (output_field_def == 0):
-      print 'error:At least one output field must be defined'
+      logging.exception('At least one output field must be defined')
       raise Exception
 
   # ---------------------------------------------------------------------------
@@ -432,74 +468,8 @@ class ComponentStandardiser:
        See implementations in derived classes for details.
     """
 
-    print 'error:Override abstract method in derived class'
+    logging.exception('Override abstract method in derived class')
     raise Exception
-
-# =============================================================================
-
-class PassFieldStandardiser(ComponentStandardiser):
-  """Dummy standardiser used to simply pass fields from input to output data
-     set without doing any standardisation. Values are simply copied directly
-     from the input field(s) to the output field(s).
-
-     The number of input fields must be the same as the number of output fields
-     as values are copied directly from an input field to the corresponding
-     output field.
-
-     No additional argument besides the base class arguments can be given to
-     this field standardiser.
-  """
-
-  # ---------------------------------------------------------------------------
-
-  def __init__(self, **kwargs):
-    """Constructor.
-    """
-
-    ComponentStandardiser.__init__(self, kwargs)  # Initialise base class
-
-    # Check if the number of input fields equals to the number of output fields
-    #
-    if (len(self.input_fields) != len(self.output_fields)):
-      print 'error:Different number of input and output fields for ' + \
-            '"PassField" standardiser'
-      raise Exception
-
-    self.num_fields = len(self.input_fields)  # Save number of fields
-
-    # A log message for low/medium volume log output (level 1/2)  - - - - - - -
-    #
-    print '1:'
-    print '1:Initialised "PassField" standardiser: "%s"' % \
-          (str(self.name))
-    print '1:  Input fields:            %s' % (str(self.input_fields))
-    print '1:  Output fields:           %s' % (str(self.output_fields))
- 
-  # ---------------------------------------------------------------------------
-
-  def standardise(self, fields, record_id, fields_str):
-    """Copy the values from the input fields into corresponding output fields.
-    """
-
-    result = {}  # Output results dictionary
-
-    if (self.num_fields == 1) and (isinstance(fields, str)):
-      fields = [fields]
-
-    if (not isinstance(fields, list)):
-      print 'error:Input fields are not a list or a string: %s' % (str(fields))
-      raise Exception
-
-    if (self.num_fields != len(fields)):
-      print 'error:Wrong number of input fields: %i (should be %i)' % \
-            (len(fields), self.num_fields)
-      raise Exception
-
-    for i in range(self.num_fields):
-      if (fields[i].strip() != ''):  # Only copy non-empty fields
-        result[self.output_fields[i]] = fields[i]  # Copy into output fields
-
-    return result
 
 # =============================================================================
 
@@ -546,14 +516,15 @@ class DateStandardiser(ComponentStandardiser):
         if (isinstance(value, str)):
           value = [value]
         if (not isinstance(value, list)):
-          print 'error:Argument "parse_formats" is not a string or a list'
+          logging.exception('Argument "parse_formats" is not a string or ' + \
+                            'a list')
           raise Exception
         self.parse_formats = value
 
       elif (keyword == 'pivot_year'):
         if (not isinstance(value, int)) or (value < 0) or (value > 99):
-          print 'error:Argument "pivot_year" is not an integer number '+ \
-                'between 0 and 99: %s' % (str(value))
+          logging.exception('Argument "pivot_year" is not an integer ' + \
+                            'number between 0 and 99: %s' % (str(value)))
           raise Exception
         self.pivot_year = value
 
@@ -565,27 +536,28 @@ class DateStandardiser(ComponentStandardiser):
     # Check if the needed attributes are set  - - - - - - - - - - - - - - - - -
     #
     if (len(self.output_fields) != 3):
-      print 'error:Attribute "output_fields" is not a list with three '+ \
-            'elements: %s' % (str(self.output_fields))
+      logging.exception('Attribute "output_fields" is not a list with ' + \
+                        'three elements: %s' % (str(self.output_fields)))
       raise Exception
 
     if (self.parse_formats == None):
-      print 'error:Date parse format strings not defined'
+      logging.exception('Date parse format strings not defined')
       raise Exception
 
     # Check if parse format strings are in a valid form - - - - - - - - - - - -
     #
     for format_str in self.parse_formats:
       if (not isinstance(format_str, str)):
-        print 'error:Format string "%s" is not a string' % (str(format_str))
+        logging.exception('Format string "%s" is not a string' % \
+                          (str(format_str)))
         raise Exception
       tmp_str = format_str
 
       # Check if beginning of format string is a valid directive
       #
       if (tmp_str[:2] not in ['%b','%B','%d','%m','%M','%y','%Y']):
-        print 'error:Illegal first directive in format string "%s"' % \
-              (format_str)
+        logging.exception('Illegal first directive in format string "%s"' % \
+                          (format_str))
         raise Exception
 
       tmp_str = tmp_str[2:]  # Remove first diective
@@ -596,8 +568,8 @@ class DateStandardiser(ComponentStandardiser):
       # Check if middle of format string is a valid directive
       #
       if (tmp_str[:2] not in ['%b','%B','%d','%m','%M','%y','%Y']):
-        print 'error:Illegal second directive in format string "%s"' % \
-              (format_str)
+        logging.exception('Illegal second directive in format string "%s"' % \
+                          (format_str))
         raise Exception
 
       tmp_str = tmp_str[2:]  # Remove second diective
@@ -608,14 +580,14 @@ class DateStandardiser(ComponentStandardiser):
       # Check if end of format string is a valid directive
       #
       if (tmp_str[:2] not in ['%b','%B','%d','%m','%M','%y','%Y']):
-        print 'error:Illegal third directive in format string "%s"' % \
-              (format_str)
+        logging.exception('Illegal third directive in format string "%s"' % \
+                          (format_str))
         raise Exception
 
       # Check if there is nothing after the directive
       #
       if (len(tmp_str) != 2):
-        print 'error:Illegal format string "%s"' % (format_str)
+        logging.exception('Illegal format string "%s"' % (format_str))
         raise Exception
 
     # Save the number of date parse format strings  - - - - - - - - - - - - - -
@@ -630,21 +602,21 @@ class DateStandardiser(ComponentStandardiser):
       next_year = (int(today[2]) % 100) + 1  # Get next year as integer number
 
       if (next_year < 0) or (next_year > 99):
-        print 'error:Illegal value for "next_year" (not between 0 and 99): '+ \
-              str(next_year)
+        logging.exception('Illegal value for "next_year" (not between 0 ' + \
+                          'and 99): '+ str(next_year))
         raise Exception
 
       self.pivot_year = next_year
 
-    # A log message for low/medium volume log output (level 1/2)  - - - - - - -
+    # A log message - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     #
-    print '1:'
-    print '1:Initialised "Date" component standardiser: "%s"' % \
-          (str(self.name))
-    print '1:  Input fields:            %s' % (str(self.input_fields))
-    print '1:  Output fields:           %s' % (str(self.output_fields))
-    print '1:  Number of parse formats: %s' % (str(self.num_date_formats))
-    print '1:  Pivot year:              %s' % (str(self.pivot_year))
+    logging.info('Initialised "Date" component standardiser: "%s"' % \
+          (str(self.name)))
+    logging.info('  Input fields:            %s' % (str(self.input_fields)))
+    logging.info('  Output fields:           %s' % (str(self.output_fields)))
+    logging.info('  Number of parse formats: %s' % \
+                 (str(self.num_date_formats)))
+    logging.info('  Pivot year:              %s' % (str(self.pivot_year)))
 
   # ---------------------------------------------------------------------------
 
@@ -678,16 +650,16 @@ class DateStandardiser(ComponentStandardiser):
       month = date_try[1]
       year =  date_try[2]
 
-      # A log message for high volume log output (level 3)  - - - - - - - - - -
+      # A log message - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
       #
-      print '3:%s    Date string: "%s" parsed with ' % (record_id, date_str)+ \
-            'format string "%s" and pivot year %s: %s' % \
-            (self.parse_formats[iter], str(self.pivot_year), \
-            str([day,month,year]))
+      logging.debug('%s    Date string: "%s" parsed with format string ' % \
+                    (record_id, date_str)+ '"%s" and pivot year %s: %s' % \
+                    (self.parse_formats[iter], str(self.pivot_year), \
+                    str([day,month,year])))
     else:
 
-      print 'warning:%s Could not parse date string "%s"%s' % \
-            (record_id, date_str, fields_str)
+      logging.warn('%s Could not parse date string "%s"%s' % \
+                   (record_id, date_str, fields_str))
 
       # The input fields could not be parsed into a valid date, so set  - - - -
       # to missing values (first missing value in the output dat set's
@@ -702,20 +674,131 @@ class DateStandardiser(ComponentStandardiser):
     if (self.output_fields[0] != None):  # Day is defined
       result[self.output_fields[0]] = day
     else:
-      print '3:%s    Throw away "day" value: %s' % (record_id, str(day))
+      logging.debug('%s    Throw away "day" value: %s' % (record_id, str(day)))
 
     if (self.output_fields[1] != None):  # Month is defined
       result[self.output_fields[1]] = month
     else:
-      print '3:%s    Throw away "month" value: %s' % (record_id, str(month))
+      logging.debug('%s    Throw away "month" value: %s' % \
+                    (record_id, str(month)))
 
     if (self.output_fields[2] != None):  # Year is defined
       result[self.output_fields[2]] = year
     else:
-      print '3:%s    Throw away "year" value: %s' % (record_id, str(year))
+      logging.debug('%s    Throw away "year" value: %s' % \
+                    (record_id, str(year)))
 
-    print '2:%s  Input date string "%s" parsed into date: %s' % \
-          (record_id, date_str, str(result))
+    logging.debug('%s  Input date string "%s" parsed into date: %s' % \
+                  (record_id, date_str, str(result)))
+
+    return result
+
+# =============================================================================
+
+class PhoneNumStandardiser(ComponentStandardiser):
+  """Routines for standardising telephone numbers into lists with elements
+     [country_code, country_name, area_code, number, extension].
+
+     The 'output_fields' must be a list of five fields with the above given
+     elements. Fields can be set to 'None' if no output is to be written, as
+     long as at least one field is set.
+
+     The additional arguments (besides the base class arguments) are
+       default_country  A string which sets the default country for parsing
+                        telephone numbers (if no country code is available in
+                        the input phone number). Currently 'australia' or
+                        'canada/usa' are possible values.
+
+     If no 'default_country' is given the value will be set to 'australia'.
+  """
+
+  # ---------------------------------------------------------------------------
+
+  def __init__(self, **kwargs):
+    """Constructor.
+    """
+
+    # Initialise attributes
+    #
+    self.default_country = 'australia'
+
+    # Process all keyword arguments
+    #
+    base_kwargs = {}  # Dictionary, will contain unprocessed arguments for base
+                      # class constructor
+
+    for (keyword, value) in kwargs.items():
+      if (keyword == 'default_country'):
+        if (not isinstance(value, str)):
+          logging.exception('Argument "default_country" is not a string')
+          raise Exception
+        if (value.lower() not in ['australia','canada/usa']):
+          logging.exception('Illegal value for argument "default_country"' + \
+                            ' (not "australia" or "canada/usa"): %s' % (value))
+        self.default_country = value.lower()
+
+      else:
+        base_kwargs[keyword] = value
+
+    ComponentStandardiser.__init__(self, base_kwargs)  # Process base arguments
+
+    # Check if the needed attributes are set  - - - - - - - - - - - - - - - - -
+    #
+    if (len(self.output_fields) != 5):
+      logging.exception('Attribute "output_fields" is not a list with five '+ \
+                        'elements: %s' % (str(self.output_fields)))
+      raise Exception
+
+    if (self.default_country == None):
+      logging.exception('Default country is not defined')
+      raise Exception
+
+    # A log message - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    #
+    logging.info('Initialised "PhoneNum" component standardiser: "%s"' % \
+          (str(self.name)))
+    logging.info('  Input fields:    %s' % (str(self.input_fields)))
+    logging.info('  Output fields:   %s' % (str(self.output_fields)))
+    logging.info('  Default country: %s' % (self.default_country))
+
+  # ---------------------------------------------------------------------------
+
+  def standardise(self, fields, record_id, fields_str):
+    """Standardise the phone number in the input fields for the given record.
+    """
+
+    # Concatenate into a strings without whitespaces  - - - - - - - - - - - - -
+    #
+    phone_num_str = ''.join(fields)
+
+    if (phone_num_str.strip() == ''):  # No phone number given
+      return {}
+
+    parsed_phone_number = phonenum.str_to_phonenum(phone_num_str)
+
+    # Check for an empty parsed phone number
+    #
+    if (parsed_phone_number == []):
+      logging.warn('%s Could not parse phone number string "%s"%s' % \
+                   (record_id, phone_num_str, fields_str))
+      return {}
+
+    # Now copy result into defined (not None) output fields - - - - - - - - - -
+    #
+    result = {}
+
+    for i in range(5):  # Check all five parsed phone number fields
+
+      if (self.output_fields[i] != None):  # This field is defined
+        if (parsed_phone_number[i] != ''):
+          result[self.output_fields[i]] = parsed_phone_number[i]
+      else:
+        logging.debug('%s    Throw away "%s" value: %s' % \
+                      (record_id, str(self.output_fields[i]), \
+                      parsed_phone_number[i]))
+
+    logging.debug('%s  Input phone number string "%s" parsed into: %s' % \
+                  (record_id, phone_num_str, str(result)))
 
     return result
 
@@ -783,35 +866,36 @@ class NameRulesStandardiser(ComponentStandardiser):
     for (keyword, value) in kwargs.items():
       if (keyword == 'male_titles'):
         if (not isinstance(value, list)):
-          print 'error:Argument "male_titles" is not a list'
+          logging.exception('Argument "male_titles" is not a list')
           raise Exception
         self.male_titles = value
 
       elif (keyword == 'female_titles'):
         if (not isinstance(value, list)):
-          print 'error:Argument "female_titles" is not a list'
+          logging.exception('Argument "female_titles" is not a list')
           raise Exception
         self.female_titles = value
 
       elif (keyword == 'first_name_comp'):
         if (value not in ['gname','sname']):
-          print 'error:Argument "first_name_comp" must be either "gname" '+ \
-                'or "sname"'
+          logging.exception('Argument "first_name_comp" must be either ' + \
+                            '"gname" or "sname"')
           raise Exception
         self.first_name_comp = value
 
       elif (keyword == 'field_separator'):
         if (not isinstance(value, str)):
-          print 'error:Argument "field_separator" is not a string'
+          logging.exception('Argument "field_separator" is not a string')
           raise Exception
         self.field_separator = value
 
       elif (keyword == 'check_word_spill'):
         if (value not in [True,False]):
-          print 'error:Argument "check_word_spill" must be "True" or "False"'
+          logging.exception('Argument "check_word_spill" must be True or ' + \
+                            'False')
           raise Exception
         self.check_word_spill = value
- 
+
       elif (keyword in ['name_corr_list','name_list','corr_list']):
         self.name_corr_list = value
       elif (keyword in ['name_tag_table','tag_table','name_tag']):
@@ -825,32 +909,33 @@ class NameRulesStandardiser(ComponentStandardiser):
     # Check if the needed attributes are set  - - - - - - - - - - - - - - - - -
     #
     if (len(self.output_fields) != 6):
-      print 'error:Attribute "output_fields" is not a list with six '+ \
-            'elements: %s' % (str(self.output_fields))
+      logging.exception('Attribute "output_fields" is not a list with six '+ \
+                        'elements: %s' % (str(self.output_fields)))
       raise Exception
 
     if (self.name_corr_list == None):
-      print 'error:Name correction list is not defined'
+      logging.exception('Name correction list is not defined')
       raise Exception
 
     if (self.name_tag_table == None):
-      print 'error:Name tag table is not defined'
+      logging.exception('Name tag table is not defined')
       raise Exception
 
-    # A log message for low/medium volume log output (level 1/2)  - - - - - - -
+    # A log message - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     #
-    print '1:'
-    print '1:Initialised "NameRules" component standardiser: "%s"' % \
-          (str(self.name))
-    print '1:  Input fields:           %s' % (str(self.input_fields))
-    print '1:  Output fields:          %s' % (str(self.output_fields))
-    print '1:  Male title list:        %s' % (str(self.male_titles))
-    print '1:  Female title list:      %s' % (str(self.female_titles))
-    print '1:  First name component:   %s' % (str(self.first_name_comp))
-    print '1:  Name correction list:   %s' % (str(self.name_corr_list.name))
-    print '1:  Name tag look-up table: %s' % (str(self.name_tag_table.name))
-    print '1:  Field separator:        "%s"' % (self.field_separator)
-    print '1:  Check word spilling:    %s' % (str(self.check_word_spill))
+    logging.info('Initialised "NameRules" component standardiser: "%s"' % \
+                 (str(self.name)))
+    logging.info('  Input fields:           %s' % (str(self.input_fields)))
+    logging.info('  Output fields:          %s' % (str(self.output_fields)))
+    logging.info('  Male title list:        %s' % (str(self.male_titles)))
+    logging.info('  Female title list:      %s' % (str(self.female_titles)))
+    logging.info('  First name component:   %s' % (str(self.first_name_comp)))
+    logging.info('  Name correction list:   %s' % \
+                 (str(self.name_corr_list.name)))
+    logging.info('  Name tag look-up table: %s' % \
+                 (str(self.name_tag_table.name)))
+    logging.info('  Field separator:        "%s"' % (self.field_separator))
+    logging.info('  Check word spilling:    %s' % (str(self.check_word_spill)))
 
   # ---------------------------------------------------------------------------
 
@@ -911,51 +996,51 @@ class NameRulesStandardiser(ComponentStandardiser):
       if (tmp_value != ''):
         result[self.output_fields[0]] = tmp_value
     else:
-      print '3:%s    Throw away "title" value: %s' % \
-            (record_id, string.join(title_list,' '))
+      logging.debug('%s    Throw away "title" value: %s' % \
+                    (record_id, string.join(title_list,' ')))
 
     if (self.output_fields[1] != None):  # Gender guess is defined
       tmp_value = gender_guess.strip()
       if (tmp_value != ''):
         result[self.output_fields[1]] = tmp_value
     else:
-      print '3:%s    Throw away "gender guess" value: %s' % \
-            (record_id, gender_guess)
+      logging.debug('%s    Throw away "gender guess" value: %s' % \
+                    (record_id, gender_guess))
 
     if (self.output_fields[2] != None):  # Given name is defined
       tmp_value = string.join(names_list[0],' ').strip()
       if (tmp_value != ''):
         result[self.output_fields[2]] = tmp_value
     else:
-      print '3:%s    Throw away "given name" value: %s' % \
-            (record_id, string.join(names_list[0],' '))
+      logging.debug('%s    Throw away "given name" value: %s' % \
+                    (record_id, string.join(names_list[0],' ')))
 
     if (self.output_fields[3] != None):  # Alternative given name is defined
       tmp_value = string.join(names_list[1],' ').strip()
       if (tmp_value != ''):
         result[self.output_fields[3]] = tmp_value
     else:
-      print '3:%s    Throw away "alternative given name" value: %s' % \
-            (record_id, string.join(names_list[1],' '))
+      logging.debug('%s    Throw away "alternative given name" value: %s' % \
+                    (record_id, string.join(names_list[1],' ')))
 
     if (self.output_fields[4] != None):  # Surname is defined
       tmp_value = string.join(names_list[2],' ').strip()
       if (tmp_value != ''):
         result[self.output_fields[4]] = tmp_value
     else:
-      print '3:%s    Throw away "surname" value: %s' % \
-            (record_id, string.join(names_list[2],' '))
+      logging.debug('%s    Throw away "surname" value: %s' % \
+                    (record_id, string.join(names_list[2],' ')))
 
     if (self.output_fields[5] != None):  # Alternative surname is defined
       tmp_value = string.join(names_list[3],' ').strip()
       if (tmp_value != ''):
         result[self.output_fields[5]] = tmp_value
     else:
-      print '3:%s    Throw away "alternative surname" value: %s'+ \
-            (record_id, string.join(names_list[3],' '))
+      logging.debug('%s    Throw away "alternative surname" value: %s'+ \
+                    (record_id, string.join(names_list[3],' ')))
 
-    print '2:%s  Input name string "%s" standardised into: %s' %\
-          (record_id, name_str, str(result))
+    logging.debug('%s  Input name string "%s" standardised into: %s' %\
+                  (record_id, name_str, str(result)))
 
     return result
 
@@ -1025,35 +1110,36 @@ class NameHMMStandardiser(ComponentStandardiser):
     for (keyword, value) in kwargs.items():
       if (keyword == 'male_titles'):
         if (not isinstance(value, list)):
-          print 'error:Argument "male_titles" is not a list'
+          logging.exception('Argument "male_titles" is not a list')
           raise Exception
         self.male_titles = value
 
       elif (keyword == 'female_titles'):
         if (not isinstance(value, list)):
-          print 'error:Argument "female_titles" is not a list'
+          logging.exception('Argument "female_titles" is not a list')
           raise Exception
         self.female_titles = value
 
       elif (keyword == 'first_name_comp'):
         if (value not in ['gname','sname']):
-          print 'error:Argument "first_name_comp" must be either "gname" '+ \
-                'or "sname"'
+          logging.exception('Argument "first_name_comp" must be either ' + \
+                            '"gname" or "sname"')
           raise Exception
         self.first_name_comp = value
 
       elif (keyword == 'field_separator'):
         if (not isinstance(value, str)):
-          print 'error:Argument "field_separator" is not a string'
+          logging.exception('Argument "field_separator" is not a string')
           raise Exception
         self.field_separator = value
 
       elif (keyword == 'check_word_spill'):
         if (value not in [True,False]):
-          print 'error:Argument "check_word_spill" must be "True" or "False"'
+          logging.exception('Argument "check_word_spill" must be True or ' + \
+                            'False')
           raise Exception
         self.check_word_spill = value
- 
+
       elif (keyword in ['name_corr_list','name_list','corr_list']):
         self.name_corr_list = value
       elif (keyword in ['name_tag_table','tag_table','name_tag']):
@@ -1070,37 +1156,40 @@ class NameHMMStandardiser(ComponentStandardiser):
     # Check if the needed attributes are set  - - - - - - - - - - - - - - - - -
     #
     if (len(self.output_fields) != 6):
-      print 'error:Attribute "output_fields" is not a list with six '+ \
-            'elements: %s' % (str(self.output_fields))
+      logging.exception('Attribute "output_fields" is not a list with six '+ \
+                        'elements: %s' % (str(self.output_fields)))
       raise Exception
 
     if (self.name_corr_list == None):
-      print 'error:Name correction list is not defined'
+      logging.exception('Name correction list is not defined')
       raise Exception
 
     if (self.name_tag_table == None):
-      print 'error:Name tag table is not defined'
+      logging.exception('Name tag table is not defined')
       raise Exception
 
     if (self.name_hmm == None):
-      print 'error:Name hidden Markov model (HMM) is not defined'
+      logging.exception('Name hidden Markov model (HMM) is not defined')
       raise Exception
 
-    # A log message for low/medium volume log output (level 1/2)  - - - - - - -
+    # A log message - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     #
-    print '1:'
-    print '1:Initialised "NameHMM" component standardiser: "%s"' % \
-          (str(self.name))
-    print '1:  Input fields:             %s' % (str(self.input_fields))
-    print '1:  Output fields:            %s' % (str(self.output_fields))
-    print '1:  Male title list:          %s' % (str(self.male_titles))
-    print '1:  Female title list:        %s' % (str(self.female_titles))
-    print '1:  First name component:     %s' % (str(self.first_name_comp))
-    print '1:  Name correction list:     %s' % (str(self.name_corr_list.name))
-    print '1:  Name tag look-up table:   %s' % (str(self.name_tag_table.name))
-    print '1:  Field separator:          "%s"' % (self.field_separator)
-    print '1:  Check word spilling:      %s' % (str(self.check_word_spill))
-    print '1:  Name hidden Markov model: %s' % (str(self.name_hmm.name))
+    logging.info('Initialised "NameHMM" component standardiser: "%s"' % \
+                 (str(self.name)))
+    logging.info('  Input fields:             %s' % (str(self.input_fields)))
+    logging.info('  Output fields:            %s' % (str(self.output_fields)))
+    logging.info('  Male title list:          %s' % (str(self.male_titles)))
+    logging.info('  Female title list:        %s' % (str(self.female_titles)))
+    logging.info('  First name component:     %s' % \
+                 (str(self.first_name_comp)))
+    logging.info('  Name correction list:     %s' % \
+                 (str(self.name_corr_list.name)))
+    logging.info('  Name tag look-up table:   %s' % \
+                 (str(self.name_tag_table.name)))
+    logging.info('  Field separator:          "%s"' % (self.field_separator))
+    logging.info('  Check word spilling:      %s' % \
+                 (str(self.check_word_spill)))
+    logging.info('  Name hidden Markov model: %s' % (str(self.name_hmm.name)))
 
   # ---------------------------------------------------------------------------
 
@@ -1164,51 +1253,51 @@ class NameHMMStandardiser(ComponentStandardiser):
       if (tmp_value != ''):
         result[self.output_fields[0]] = tmp_value
     else:
-      print '3:%s    Throw away "title" value: %s' % \
-            (record_id, string.join(title_list,' '))
+      logging.debug('%s    Throw away "title" value: %s' % \
+                    (record_id, string.join(title_list,' ')))
 
     if (self.output_fields[1] != None):  # Gender guess is defined
       tmp_value = gender_guess.strip()
       if (tmp_value != ''):
         result[self.output_fields[1]] = tmp_value
     else:
-      print '3:%s    Throw away "gender guess" value: %s' % \
-            (record_id, gender_guess)
+      logging.debug('%s    Throw away "gender guess" value: %s' % \
+                    (record_id, gender_guess))
 
     if (self.output_fields[2] != None):  # Given name is defined
       tmp_value = string.join(names_list[1],' ').strip()
       if (tmp_value != ''):
         result[self.output_fields[2]] = tmp_value
     else:
-      print '3:%s    Throw away "given name" value: %s' % \
-            (record_id, string.join(names_list[0],' '))
+      logging.debug('%s    Throw away "given name" value: %s' % \
+                    (record_id, string.join(names_list[0],' ')))
 
     if (self.output_fields[3] != None):  # Alternative given name is defined
       tmp_value = string.join(names_list[2],' ').strip()
       if (tmp_value != ''):
         result[self.output_fields[3]] = tmp_value
     else:
-      print '3:%s    Throw away "alternative given name" value: %s' % \
-            (record_id, string.join(names_list[1],' '))
+      logging.debug('%s    Throw away "alternative given name" value: %s' % \
+                    (record_id, string.join(names_list[1],' ')))
 
     if (self.output_fields[4] != None):  # Surname is defined
       tmp_value = string.join(names_list[3],' ').strip()
       if (tmp_value != ''):
         result[self.output_fields[4]] = tmp_value
     else:
-      print '3:%s    Throw away "surname" value: %s' % \
-            (record_id, string.join(names_list[2],' '))
+      logging.debug('%s    Throw away "surname" value: %s' % \
+                    (record_id, string.join(names_list[2],' ')))
 
     if (self.output_fields[5] != None):  # Alternative surname is defined
       tmp_value = string.join(names_list[4],' ').strip()
       if (tmp_value != ''):
         result[self.output_fields[5]] = tmp_value
     else:
-      print '3:%s    Throw away "alternative surname" value: %s'+ \
-            (record_id, string.join(names_list[3],' '))
+      logging.debug('%s    Throw away "alternative surname" value: %s'+ \
+                    (record_id, string.join(names_list[3],' ')))
 
-    print '2:%s  Input name string "%s" standardised into: %s' %\
-          (record_id, name_str, str(result))
+    logging.debug('%s  Input name string "%s" standardised into: %s' %\
+                  (record_id, name_str, str(result)))
 
     return result
 
@@ -1228,7 +1317,7 @@ class AddressHMMStandardiser(ComponentStandardiser):
       unit_type
       property_name
       institution_name
-      institution_type    
+      institution_type
       postaddress_number
       postaddress_type
       locality_name
@@ -1284,16 +1373,17 @@ class AddressHMMStandardiser(ComponentStandardiser):
 
       elif (keyword == 'field_separator'):
         if (not isinstance(value, str)):
-          print 'error:Argument "field_separator" is not a string'
+          logging.exception('Argument "field_separator" is not a string')
           raise Exception
         self.field_separator = value
 
       elif (keyword == 'check_word_spill'):
         if (value not in [True,False]):
-          print 'error:Argument "check_word_spill" must be "True" or "False"'
+          logging.exception('Argument "check_word_spill" must be True or ' + \
+                            'False')
           raise Exception
         self.check_word_spill = value
- 
+
       elif (keyword == 'address_hmm'):
         self.address_hmm = value
 
@@ -1305,37 +1395,38 @@ class AddressHMMStandardiser(ComponentStandardiser):
     # Check if the needed attributes are set  - - - - - - - - - - - - - - - - -
     #
     if (len(self.output_fields) != 17):
-      print 'error:Attribute "output_fields" is not a list with 17 '+ \
-            'elements: %s' % (str(self.output_fields))
+      logging.exception('Attribute "output_fields" is not a list with 17 '+ \
+                        'elements: %s' % (str(self.output_fields)))
       raise Exception
 
     if (self.address_corr_list == None):
-      print 'error:Address correction list is not defined'
+      logging.exception('Address correction list is not defined')
       raise Exception
 
     if (self.address_tag_table == None):
-      print 'error:Address tag table is not defined'
+      logging.exception('Address tag table is not defined')
       raise Exception
 
     if (self.address_hmm == None):
-      print 'error:Address hidden Markov model (HMM) is not defined'
+      logging.exception('Address hidden Markov model (HMM) is not defined')
       raise Exception
 
-    # A log message for low/medium volume log output (level 1/2)  - - - - - - -
+    # A log message - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     #
-    print '1:'
-    print '1:Initialised "AddressHMM" component standardiser: "%s"' % \
-          (str(self.name))
-    print '1:  Input fields:               %s' % (str(self.input_fields))
-    print '1:  Output fields:              %s' % (str(self.output_fields))
-    print '1:  Address correction list:    %s' % \
-          (str(self.address_corr_list.name))
-    print '1:  Address tag look-up table:  %s' % \
-          (str(self.address_tag_table.name))
-    print '1:  Address hidden Markov mdel: %s' % \
-          (str(self.address_hmm.name))
-    print '1:  Field separator:            "%s"' % (self.field_separator)
-    print '1:  Check word spilling:        %s' % (str(self.check_word_spill))
+    logging.info('Initialised "AddressHMM" component standardiser: "%s"' % \
+          (str(self.name)))
+    logging.info('  Input fields:               %s' % (str(self.input_fields)))
+    logging.info('  Output fields:              %s' % \
+                 (str(self.output_fields)))
+    logging.info('  Address correction list:    %s' % \
+          (str(self.address_corr_list.name)))
+    logging.info('  Address tag look-up table:  %s' % \
+          (str(self.address_tag_table.name)))
+    logging.info('  Address hidden Markov mdel: %s' % \
+          (str(self.address_hmm.name)))
+    logging.info('  Field separator:            "%s"' % (self.field_separator))
+    logging.info('  Check word spilling:        %s' % \
+                 (str(self.check_word_spill)))
 
   # ---------------------------------------------------------------------------
 
@@ -1394,11 +1485,77 @@ class AddressHMMStandardiser(ComponentStandardiser):
         if (tmp_value != ''):
           result[key] = tmp_value
       else:
-        print '3:%s    Throw away field "%s" with value: %s' % \
-              (record_id, str(key), string.join(val,' '))
+        logging.debug('%s    Throw away field "%s" with value: %s' % \
+                      (record_id, str(key), string.join(val,' ')))
 
-    print '2:%s  Input address string "%s" standardised into: %s' % \
-          (record_id, address_str, str(result))
+    logging.debug('%s  Input address string "%s" standardised into: %s' % \
+                  (record_id, address_str, str(result)))
+
+    return result
+
+# =============================================================================
+
+class PassFieldStandardiser(ComponentStandardiser):
+  """Dummy standardiser used to simply pass fields from input to output data
+     set without doing any standardisation. Values are simply copied directly
+     from the input field(s) to the output field(s).
+
+     The number of input fields must be the same as the number of output fields
+     as values are copied directly from an input field to the corresponding
+     output field.
+
+     No additional argument besides the base class arguments can be given to
+     this field standardiser.
+  """
+
+  # ---------------------------------------------------------------------------
+
+  def __init__(self, **kwargs):
+    """Constructor.
+    """
+
+    ComponentStandardiser.__init__(self, kwargs)  # Initialise base class
+
+    # Check if the number of input fields equals to the number of output fields
+    #
+    if (len(self.input_fields) != len(self.output_fields)):
+      logging.exception('Different number of input and output fields for ' + \
+                        '"PassField" standardiser')
+      raise Exception
+
+    self.num_fields = len(self.input_fields)  # Save number of fields
+
+    # A log message - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    #
+    logging.info('Initialised "PassField" standardiser: "%s"' % \
+                 (str(self.name)))
+    logging.info('  Input fields:            %s' % (str(self.input_fields)))
+    logging.info('  Output fields:           %s' % (str(self.output_fields)))
+
+  # ---------------------------------------------------------------------------
+
+  def standardise(self, fields, record_id, fields_str):
+    """Copy the values from the input fields into corresponding output fields.
+    """
+
+    result = {}  # Output results dictionary
+
+    if (self.num_fields == 1) and (isinstance(fields, str)):
+      fields = [fields]
+
+    if (not isinstance(fields, list)):
+      logging.exception('Input fields are not a list or a string: %s' % \
+                        (str(fields)))
+      raise Exception
+
+    if (self.num_fields != len(fields)):
+      logging.exception('Wrong number of input fields: %i (should be %i)' % \
+                        (len(fields), self.num_fields))
+      raise Exception
+
+    for i in range(self.num_fields):
+      if (fields[i].strip() != ''):  # Only copy non-empty fields
+        result[self.output_fields[i]] = fields[i]  # Copy into output fields
 
     return result
 

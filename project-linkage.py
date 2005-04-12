@@ -1,25 +1,47 @@
 # =============================================================================
-# project-linkage.py - Configuration for a record linkage project.
-#
-# Freely extensible biomedical record linkage (Febrl) Version 0.2.2
-# See http://datamining.anu.edu.au/projects/linkage.html
-#
-# =============================================================================
 # AUSTRALIAN NATIONAL UNIVERSITY OPEN SOURCE LICENSE (ANUOS LICENSE)
-# VERSION 1.1
-#
-# The contents of this file are subject to the ANUOS License Version 1.1 (the
-# "License"); you may not use this file except in compliance with the License.
-# Software distributed under the License is distributed on an "AS IS" basis,
-# WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License for
-# the specific language governing rights and limitations under the License.
-# The Original Software is "project-linkage.py".
-# The Initial Developers of the Original Software are Dr Peter Christen
-# (Department of Computer Science, Australian National University) and Dr Tim
-# Churches (Centre for Epidemiology and Research, New South Wales Department
-# of Health). Copyright (C) 2002, 2003 the Australian National University and
+# VERSION 1.2
+# 
+# The contents of this file are subject to the ANUOS License Version 1.2
+# (the "License"); you may not use this file except in compliance with
+# the License. You may obtain a copy of the License at:
+# 
+#   http://datamining.anu.edu.au/linkage.html
+# 
+# Software distributed under the License is distributed on an "AS IS"
+# basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See
+# the License for the specific language governing rights and limitations
+# under the License.
+# 
+# The Original Software is: "project-linkage.py"
+# 
+# The Initial Developers of the Original Software are:
+#   Dr Tim Churches (Centre for Epidemiology and Research, New South Wales
+#                    Department of Health)
+#   Dr Peter Christen (Department of Computer Science, Australian National
+#                      University)
+# 
+# Copyright (C) 2002 - 2005 the Australian National University and
 # others. All Rights Reserved.
+# 
 # Contributors:
+# 
+# Alternatively, the contents of this file may be used under the terms
+# of the GNU General Public License Version 2 or later (the "GPL"), in
+# which case the provisions of the GPL are applicable instead of those
+# above. The GPL is available at the following URL: http://www.gnu.org/
+# If you wish to allow use of your version of this file only under the
+# terms of the GPL, and not to allow others to use your version of this
+# file under the terms of the ANUOS License, indicate your decision by
+# deleting the provisions above and replace them with the notice and
+# other provisions required by the GPL. If you do not delete the
+# provisions above, a recipient may use your version of this file under
+# the terms of any one of the ANUOS License or the GPL.
+# =============================================================================
+#
+# Freely extensible biomedical record linkage (Febrl) - Version 0.3
+#
+# See: http://datamining.anu.edu.au/linkage.html
 #
 # =============================================================================
 
@@ -46,7 +68,10 @@
    in the Febrl manual.
 
    This project module will standardised and then link the example data sets
-   'dataset4a.csv' and 'dataset4b.csv' given in the 'dbgen' directory.
+   'dataset4a.csv' and 'dataset4b.csv' given in the 'dsgen' directory.
+
+   The directory separator 'dirsep' is a shorthand to os.sep as defined in
+   febrl.py.
 """
 
 # =============================================================================
@@ -65,6 +90,15 @@ from simplehmm import *        # Hidden Markov model (HMM) routines
 from classification import *   # Classifiers for weight vectors
 
 # =============================================================================
+# Define a project logger
+
+init_febrl_logger(log_file_name = 'febrl-example-linkage.log',
+                     file_level = 'WARN',
+                  console_level = 'INFO',
+                      clear_log = True,
+                parallel_output = 'host')
+
+# =============================================================================
 # Set up Febrl and create a new project (or load a saved project)
 
 myfebrl = Febrl(description = 'Example linkage Febrl instance',
@@ -73,19 +107,8 @@ myfebrl = Febrl(description = 'Example linkage Febrl instance',
 myproject = myfebrl.new_project(name = 'example-link',
                          description = 'Link example data sets 4',
                            file_name = 'example-linkage.fbr',
-                          block_size = 1000,
+                          block_size = 100,
                       parallel_write = 'host')
-
-# =============================================================================
-# Define a project logger
-
-mylog = ProjectLog(file_name = 'example-linkage.log',
-                     project = myproject,
-                   log_level = 1,
-               verbose_level = 1,
-                   clear_log = True,
-                     no_warn = False,
-              parallel_print = 'host')
 
 # =============================================================================
 # Define original input data set(s)
@@ -95,7 +118,7 @@ indata_a = DataSetCSV(name = 'example4a-in',
                description = 'Example data set 4a',
                access_mode = 'read',
               header_lines = 1,
-               file_name = './dbgen/dataset4a.csv',
+               file_name = 'dsgen'+dirsep+'dataset4a.csv',
                   fields = {'rec_id':0,
                             'given_name':1,
                             'surname':2,
@@ -116,7 +139,7 @@ indata_b = DataSetCSV(name = 'example4b-in',
                access_mode = 'read',
               header_lines = 1,
               write_header = True,
-               file_name = './dbgen/dataset4b.csv',
+               file_name = 'dsgen'+dirsep+'dataset4b.csv',
                   fields = {'rec_id':0,
                             'given_name':1,
                             'surname':2,
@@ -139,7 +162,7 @@ indata_b = DataSetCSV(name = 'example4b-in',
 
 tmpdata_a = DataSetMemory(name = 'example4a-tmp',
 #tmpdata_a = DataSetShelve(name = 'example4a-tmp',
-#                     file_name = './example4a-shelve',
+#                     file_name = 'example4a-shelve',
 #                         clear = True,
                    description = 'Temporary example 4a data set',
                    access_mode = 'readwrite',
@@ -178,7 +201,7 @@ tmpdata_a = DataSetMemory(name = 'example4a-tmp',
 
 tmpdata_b = DataSetMemory(name = 'example4b-tmp',
 #tmpdata_b = DataSetShelve(name = 'example4b-tmp',
-#                     file_name = './example4b-shelve',
+#                     file_name = 'example4b-shelve',
 #                         clear = True,
                    description = 'Temporary example 4b data set',
                    access_mode = 'readwrite',
@@ -220,40 +243,43 @@ tmpdata_b = DataSetMemory(name = 'example4b-tmp',
 
 name_lookup_table = TagLookupTable(name = 'Name lookup table',
                                 default = '')
-
-name_lookup_table.load(['./data/givenname_f.tbl',
-                        './data/givenname_m.tbl',
-                        './data/name_prefix.tbl',
-                        './data/name_misc.tbl',
-                        './data/saints.tbl',
-                        './data/surname.tbl',
-                        './data/title.tbl'])
+name_lookup_table.load(['data'+dirsep+'givenname_f.tbl',
+                        'data'+dirsep+'givenname_m.tbl',
+                        'data'+dirsep+'name_prefix.tbl',
+                        'data'+dirsep+'name_misc.tbl',
+                        'data'+dirsep+'saints.tbl',
+                        'data'+dirsep+'surname.tbl',
+                        'data'+dirsep+'title.tbl'])
 
 name_correction_list = CorrectionList(name = 'Name correction list')
+name_correction_list.load('data'+dirsep+'name_corr.lst')
 
-name_correction_list.load('./data/name_corr.lst')
+surname_freq_table = FrequencyLookupTable(name = 'Surname frequency table',
+                                       default = 1)
+surname_freq_table.load('data'+dirsep+'surname_nsw_freq.csv')
 
 address_lookup_table = TagLookupTable(name = 'Address lookup table',
                                    default = '')
-
-address_lookup_table.load(['./data/country.tbl',
-                           './data/address_misc.tbl',
-                           './data/address_qual.tbl',
-                           './data/institution_type.tbl',
-                           './data/post_address.tbl',
-                           './data/saints.tbl',
-                           './data/territory.tbl',
-                           './data/unit_type.tbl',
-                           './data/wayfare_type.tbl'])
+address_lookup_table.load(['data'+dirsep+'country.tbl',
+                           'data'+dirsep+'address_misc.tbl',
+                           'data'+dirsep+'address_qual.tbl',
+                           'data'+dirsep+'institution_type.tbl',
+                           'data'+dirsep+'locality_name_act.tbl',
+                           'data'+dirsep+'locality_name_nsw.tbl',
+                           'data'+dirsep+'post_address.tbl',
+                           'data'+dirsep+'postcode_act.tbl',
+                           'data'+dirsep+'postcode_nsw.tbl',
+                           'data'+dirsep+'saints.tbl',
+                           'data'+dirsep+'territory.tbl',
+                           'data'+dirsep+'unit_type.tbl',
+                           'data'+dirsep+'wayfare_type.tbl'])
 
 address_correction_list = CorrectionList(name = 'Address correction list')
+address_correction_list.load('data'+dirsep+'address_corr.lst')
 
-address_correction_list.load('./data/address_corr.lst')
-
-pc_geocode_table = GeocodeLookupTable(name = 'Postcode centroids',
+pc_geocode_table = GeocodeLookupTable(name = 'Postcode locations',
                                    default = [])
-
-pc_geocode_table.load('./data/postcode_centroids.csv')
+pc_geocode_table.load('data'+dirsep+'postcode_centroids.csv')
 
 # =============================================================================
 # Define and load hidden Markov models (HMMs)
@@ -266,9 +292,9 @@ name_tags = ['NU','AN','TI','PR','GF','GM','SN','ST','SP','HY','CO','NE','II',
              'BO','VB','UN','RU']
 
 myname_hmm = hmm('Name HMM', name_states, name_tags)
-myname_hmm.load_hmm('./hmm/name-absdiscount.hmm')
-# myname_hmm.load_hmm('./hmm/name.hmm')
-# myname_hmm.load_hmm('./hmm/name-laplace.hmm')
+myname_hmm.load_hmm('hmm'+dirsep+'name-absdiscount.hmm')
+# myname_hmm.load_hmm('hmm'+dirsep+'name.hmm')
+# myname_hmm.load_hmm('hmm'+dirsep+'name-laplace.hmm')
 
 address_states = ['wfnu','wfna1','wfna2','wfql','wfty','unnu','unty','prna1',
                   'prna2','inna1','inna2','inty','panu','paty','hyph','sla',
@@ -278,9 +304,9 @@ address_tags = ['PC','N4','NU','AN','TR','CR','LN','ST','IN','IT','LQ','WT',
                 'WN','UT','HY','SL','CO','VB','PA','UN','RU']
 
 myaddress_hmm = hmm('Address HMM', address_states, address_tags)
-myaddress_hmm.load_hmm('./hmm/address-absdiscount.hmm')
-# myaddress_hmm.load_hmm('./hmm/address.hmm')
-# myaddress_hmm.load_hmm('./hmm/address-laplace.hmm')
+myaddress_hmm.load_hmm('hmm'+dirsep+'address-absdiscount.hmm')
+# myaddress_hmm.load_hmm('hmm'+dirsep+'address.hmm')
+# myaddress_hmm.load_hmm('hmm'+dirsep+'address-laplace.hmm')
 
 # =============================================================================
 # Define a list of date parsing format strings
@@ -544,7 +570,10 @@ surname_dmetaphone = FieldComparatorEncodeString(name = 'Surname D-Metaphone',
                                                u_prob = 0.001,
                                        missing_weight = 0.0,
                                         encode_method = 'dmetaphone',
-                                              reverse = False)
+                                              reverse = False,
+                                      frequency_table = surname_freq_table,
+                                freq_table_max_weight = 9.9,
+                                freq_table_min_weight = -4.3)
 
 wayfare_name_winkler = FieldComparatorApproxString(name = 'Wayfare name ' + \
                                                           'Winkler',
@@ -629,7 +658,7 @@ myproject.link(input_dataset_a = indata_a,
               number_records_b = 5000,
               output_histogram = 'link-example-histogram.res',
        output_rec_pair_details = 'link-example-details.res',
-       output_rec_pair_weights = 'link-example-weights.res',
+       output_rec_pair_weights = 'link-example-weights.csv',
               output_threshold = 10.0,
              output_assignment = 'one2one')
 

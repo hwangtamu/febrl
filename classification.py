@@ -1,25 +1,47 @@
 # =============================================================================
-# classification.py - Record linkage classifiers
-#
-# Freely extensible biomedical record linkage (Febrl) Version 0.2.2
-# See http://datamining.anu.edu.au/projects/linkage.html
-#
-# =============================================================================
 # AUSTRALIAN NATIONAL UNIVERSITY OPEN SOURCE LICENSE (ANUOS LICENSE)
-# VERSION 1.1
-#
-# The contents of this file are subject to the ANUOS License Version 1.1 (the
-# "License"); you may not use this file except in compliance with the License.
-# Software distributed under the License is distributed on an "AS IS" basis,
-# WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License for
-# the specific language governing rights and limitations under the License.
-# The Original Software is "classification.py".
-# The Initial Developers of the Original Software are Dr Peter Christen
-# (Department of Computer Science, Australian National University) and Dr Tim
-# Churches (Centre for Epidemiology and Research, New South Wales Department
-# of Health). Copyright (C) 2002, 2003 the Australian National University and
+# VERSION 1.2
+# 
+# The contents of this file are subject to the ANUOS License Version 1.2
+# (the "License"); you may not use this file except in compliance with
+# the License. You may obtain a copy of the License at:
+# 
+#   http://datamining.anu.edu.au/linkage.html
+# 
+# Software distributed under the License is distributed on an "AS IS"
+# basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See
+# the License for the specific language governing rights and limitations
+# under the License.
+# 
+# The Original Software is: "classification.py"
+# 
+# The Initial Developers of the Original Software are:
+#   Dr Tim Churches (Centre for Epidemiology and Research, New South Wales
+#                    Department of Health)
+#   Dr Peter Christen (Department of Computer Science, Australian National
+#                      University)
+# 
+# Copyright (C) 2002 - 2005 the Australian National University and
 # others. All Rights Reserved.
+# 
 # Contributors:
+# 
+# Alternatively, the contents of this file may be used under the terms
+# of the GNU General Public License Version 2 or later (the "GPL"), in
+# which case the provisions of the GPL are applicable instead of those
+# above. The GPL is available at the following URL: http://www.gnu.org/
+# If you wish to allow use of your version of this file only under the
+# terms of the GPL, and not to allow others to use your version of this
+# file under the terms of the ANUOS License, indicate your decision by
+# deleting the provisions above and replace them with the notice and
+# other provisions required by the GPL. If you do not delete the
+# provisions above, a recipient may use your version of this file under
+# the terms of any one of the ANUOS License or the GPL.
+# =============================================================================
+#
+# Freely extensible biomedical record linkage (Febrl) - Version 0.3
+#
+# See: http://datamining.anu.edu.au/linkage.html
 #
 # =============================================================================
 
@@ -30,6 +52,8 @@
 
 # =============================================================================
 # Imports go here
+
+import logging
 
 # =============================================================================
 
@@ -90,13 +114,14 @@ class Classifier:
         self.dataset_b = value
 
       else:
-        print 'error:Illegal constructor argument keyword: %s' (str(keyword))
+        logging.exception('Illegal constructor argument keyword: %s' \
+                          (str(keyword)))
         raise Exception
 
     # Check if the needed attributes are set  - - - - - - - - - - - - - - - - -
     #
     if (self.dataset_a == None) or (self.dataset_b == None):
-      print 'error:One or both data sets are not defined'
+      logging.exception('One or both data sets are not defined')
       raise Exception
 
   # ---------------------------------------------------------------------------
@@ -106,7 +131,7 @@ class Classifier:
        See implementations in derived classes for details.
     """
 
-    print 'error:Override abstract method in derived class'
+    logging.exception('Override abstract method in derived class')
     raise Exception
 
   # ---------------------------------------------------------------------------
@@ -116,7 +141,7 @@ class Classifier:
     """
 
     if (not isinstance(vector_list, list)):
-      print 'error:Weight vector list is not a list: %s' % (str(vector))
+      logging.exception('Weight vector list is not a list: %s' % (str(vector)))
       raise Exception
 
     for vector in vector_list:
@@ -128,7 +153,7 @@ class Classifier:
     """Merge the results of another classifier into the classfier.
     """
 
-    print '1:  Merging classifiers result dictionaries'
+    logging.info('  Merging classifiers result dictionaries')
 
     # Update dictionary - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     #
@@ -143,13 +168,14 @@ class Classifier:
       for (rec_num_b, weight) in rec_data.items():
         if (dict_a.has_key(rec_num_b)):
           if (dict_a[rec_num_b] == weight):  # Same weight
-            print '3:    Record pair (%s,%s) in both result dictionaries' % \
-                  (str(rec_num_a), str(rec_num_b)) + ' with same weight'
+            logging.debug('    Record pair (%s,%s) in both result ' +\
+                          'dictionaries' % (str(rec_num_a), str(rec_num_b)) + \
+                          ' with same weight')
           else:
-            print 'warning:Record pair (%s,%s) in both result dictionaries' % \
+            logging.warn('Record pair (%s,%s) in both result dictionaries' % \
                   (str(rec_num_a), str(rec_num_b)) + ' with different ' + \
                   'weights: %f / %f' % (dict_a[rec_num_b], weight) + \
-                  ' (keep old weight value)'
+                  ' (keep old weight value)')
         else:
           dict_a[rec_num_b] = weight  # Insert into this results dictionary
 
@@ -190,13 +216,13 @@ class FellegiSunterClassifier(Classifier):
     for (keyword, value) in kwargs.items():
       if (keyword in ['upper','upper_threshold']):
         if (not (isinstance(value, int) or isinstance(value, float))):
-          print 'error:Argument "upper_threshold" is not a number'
+          logging.exception('Argument "upper_threshold" is not a number')
           raise Exception
         self.upper_threshold = value
 
       elif (keyword in ['lower','lower_threshold']):
         if (not (isinstance(value, int) or isinstance(value, float))):
-          print 'error:Argument "lower_threshold" is not a number'
+          logging.exception('Argument "lower_threshold" is not a number')
           raise Exception
         self.lower_threshold = value
 
@@ -208,26 +234,25 @@ class FellegiSunterClassifier(Classifier):
     # Check if thresholds are defined - - - - - - - - - - - - - - - - - - - - -
     #
     if (self.lower_threshold == None) or (self.upper_threshold == None):
-      print 'error:Lower and/or upper threshold not defined'
+      logging.exception('Lower and/or upper threshold not defined')
       raise Exception
 
     # Check if lower threshold is smaller than upper threshold  - - - - - - - -
     #
     if (self.lower_threshold >= self.upper_threshold):
-      print 'error:Lower threshold is equal to or larger than upper ' + \
+      logging.exception('Lower threshold is equal to or larger than upper ' + \
             'threshold: Lower=%f, upper: %f' % \
-            (self.lower_threshold, self.upper_threshold)
+            (self.lower_threshold, self.upper_threshold))
       raise Exception
 
-    # A log message for low volume log output (level 1) - - - - - - - - - - - -
+    # A log message - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     #
-    print '1:'
-    print '1:Initialised Felligi and Sunter classifier'
-    print '1:  Name:            %s' % (str(self.name))
-    print '1:  Data set A:      %s' % (str(self.dataset_a.name))
-    print '1:  Data set B:      %s' % (str(self.dataset_b.name))
-    print '1:  Lower threshold: %f' % (self.lower_threshold)
-    print '1:  Upper threshold: %f' % (self.upper_threshold)
+    logging.info('Initialised Felligi and Sunter classifier')
+    logging.info('  Name:            %s' % (str(self.name)))
+    logging.info('  Data set A:      %s' % (str(self.dataset_a.name)))
+    logging.info('  Data set B:      %s' % (str(self.dataset_b.name)))
+    logging.info('  Lower threshold: %f' % (self.lower_threshold))
+    logging.info('  Upper threshold: %f' % (self.upper_threshold))
 
   # ---------------------------------------------------------------------------
 
@@ -236,25 +261,25 @@ class FellegiSunterClassifier(Classifier):
     """
 
     if (not isinstance(vector, list)):
-      print 'error:Weight vector is not a list: %s' % (str(vector))
+      logging.exception('Weight vector is not a list: %s' % (str(vector)))
       raise Exception
 
     if (vector[0] != self.dataset_a.name):
-      print 'error:Wrong data set A name in weight vector '+ \
-            '(should be: %s): %s' % (str(self.dataset_a.name), str(vector[0]))
+      logging.exception('Wrong data set A name in weight vector (should '+ \
+            'be: %s): %s' % (str(self.dataset_a.name), str(vector[0])))
 
     if (vector[2] != self.dataset_b.name):
-      print 'error:Wrong data set B name in weight vector '+ \
-            '(should be: %s): %s' % (str(self.dataset_b.name), str(vector[0]))
+      logging.exception('Wrong data set B name in weight vector (should '+ \
+            'be: %s): %s' % (str(self.dataset_b.name), str(vector[0])))
 
     if (not isinstance(vector[1], int)) or (vector[1] < 0):
-      print 'error:Record identifier A is not a valid number: %s' % \
-            (str(vector[1]))
+      logging.exception('Record identifier A is not a valid number: %s' % \
+            (str(vector[1])))
       raise Exception
 
     if (not isinstance(vector[3], int)) or (vector[3] < 0):
-      print 'error:Record identifier B is not a valid number: %s' % \
-            (str(vector[3]))
+      logging.exception('Record identifier B is not a valid number: %s' % \
+            (str(vector[3])))
       raise Exception
 
     rec_num_a = vector[1]
@@ -284,8 +309,8 @@ class FellegiSunterClassifier(Classifier):
       self.non_link_count += 1
       link_status = 'non-link'
 
-    print '3:    Weight vector:  %s' % (str(vector))
-    print '3:      Final weight: %f (%s)' % (final, link_status)
+    logging.debug('    Weight vector:  %s' % (str(vector)))
+    logging.debug('      Final weight: %f (%s)' % (final, link_status))
 
 # =============================================================================
 
@@ -355,25 +380,26 @@ class FlexibleClassifier(Classifier):
     for (keyword, value) in kwargs.items():
       if (keyword in ['upper','upper_threshold']):
         if (not (isinstance(value, int) or isinstance(value, float))):
-          print 'error:Argument "upper_threshold" is not a number'
+          logging.exception('Argument "upper_threshold" is not a number')
           raise Exception
         self.upper_threshold = value
 
       elif (keyword in ['lower','lower_threshold']):
         if (not (isinstance(value, int) or isinstance(value, float))):
-          print 'error:Argument "lower_threshold" is not a number'
+          logging.exception('Argument "lower_threshold" is not a number')
           raise Exception
         self.lower_threshold = value
 
       elif (keyword in ['calc', 'calculate']):
         if (not isinstance(value, list)):
-          print 'error:Argument "calculate" is not a list'
+          logging.exception('Argument "calculate" is not a list')
           raise Exception
         self.calculate = value
 
       elif (keyword == 'final_funct'):
         if (value not in ['min','max','add','mult','avrg']):
-          print 'error:Illegal final function definition: %s' % (str(value))
+          logging.exception('Illegal final function definition: %s' % \
+                            (str(value)))
           raise Exception
         self.final_funct = value
 
@@ -385,55 +411,54 @@ class FlexibleClassifier(Classifier):
     # Check if thresholds are defined - - - - - - - - - - - - - - - - - - - - -
     #
     if (self.lower_threshold == None) or (self.upper_threshold == None):
-      print 'error:Lower and/or upper threshold not defined'
+      logging.exception('Lower and/or upper threshold not defined')
       raise Exception
 
     # Check if lower threshold is smaller than upper threshold  - - - - - - - -
     #
     if (self.lower_threshold >= self.upper_threshold):
-      print 'error:Lower threshold is equal to or larger than upper ' + \
+      logging.exception('Lower threshold is equal to or larger than upper ' + \
             'threshold: Lower=%f, upper: %f' % \
-            (self.lower_threshold, self.upper_threshold)
+            (self.lower_threshold, self.upper_threshold))
       raise Exception
 
     # Check if the calculate definition is correct  - - - - - - - - - - - - - -
     #
     if (self.calculate == None):
-      print 'error:No "calculate" functions defined'
+      logging.exception('No "calculate" functions defined')
       raise Exception
 
     for calc_tup in self.calculate:
       if (not (isinstance(calc_tup, tuple) or isinstance(calc_tup, list))) or \
          (len(calc_tup) != 2):
-        print 'error:Definition in "calculate" argument is not a valid ' + \
-              'tuple: %s' % (str(calc_tup))
+        logging.exception('Definition in "calculate" argument is not a ' + \
+              'valid tuple: %s' % (str(calc_tup)))
         raise Exception
       if (calc_tup[0] not in ['min','max','avrg','add','mult']):
-        print 'error:Illegal function definition in tuple "%s"' % \
-              (str(calc_tup))
+        logging.exception('Illegal function definition in tuple "%s"' % \
+              (str(calc_tup)))
         raise Exception
       if (not isinstance(calc_tup[1], list)):
-        print 'error:Weight vector elements definition is not a list: %s' % \
-              (str(calc_tup[1]))
+        logging.exception('Weight vector elements definition is not a list' + \
+                          ': %s' % (str(calc_tup[1])))
         raise Exception
 
     # Check if the final function is defined  - - - - - - - - - - - - - - - - -
     #
     if (self.final_funct == None):
-      print 'error:Final function is not defined'
+      logging.exception('Final function is not defined')
       raise Exception
 
-    # A log message for low volume log output (level 1) - - - - - - - - - - - -
+    # A log message - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     #
-    print '1:'
-    print '1:Initialised flexible classifier'
-    print '1:  Name:                    %s' % (str(self.name))
-    print '1:  Data set A:              %s' % (str(self.dataset_a.name))
-    print '1:  Data set B:              %s' % (str(self.dataset_b.name))
-    print '1:  Lower threshold:         %f' % (self.lower_threshold)
-    print '1:  Upper threshold:         %f' % (self.upper_threshold)
-    print '1:  Calculate function list: %s' % (str(self.calculate))
-    print '1:  Final function:          %s' % (str(self.final_funct))
+    logging.info('Initialised flexible classifier')
+    logging.info('  Name:                    %s' % (str(self.name)))
+    logging.info('  Data set A:              %s' % (str(self.dataset_a.name)))
+    logging.info('  Data set B:              %s' % (str(self.dataset_b.name)))
+    logging.info('  Lower threshold:         %f' % (self.lower_threshold))
+    logging.info('  Upper threshold:         %f' % (self.upper_threshold))
+    logging.info('  Calculate function list: %s' % (str(self.calculate)))
+    logging.info('  Final function:          %s' % (str(self.final_funct)))
 
   # ---------------------------------------------------------------------------
 
@@ -442,25 +467,25 @@ class FlexibleClassifier(Classifier):
     """
 
     if (not isinstance(vector, list)):
-      print 'error:Weight vector is not a list: %s' % (str(vector))
+      logging.exception('Weight vector is not a list: %s' % (str(vector)))
       raise Exception
 
     if (vector[0] != self.dataset_a.name):
-      print 'error:Wrong data set A name in weight vector '+ \
-            '(should be: %s): %s' % (str(self.dataset_a.name), str(vector[0]))
+      logging.exception('Wrong data set A name in weight vector (should '+ \
+            'be: %s): %s' % (str(self.dataset_a.name), str(vector[0])))
 
     if (vector[2] != self.dataset_b.name):
-      print 'error:Wrong data set B name in weight vector '+ \
-            '(should be: %s): %s' % (str(self.dataset_b.name), str(vector[0]))
+      logging.exception('Wrong data set B name in weight vector (should '+ \
+            'be: %s): %s' % (str(self.dataset_b.name), str(vector[0])))
 
     if (not isinstance(vector[1], int)) or (vector[1] < 0):
-      print 'error:Record identifier A is not a valid number: %s' % \
-            (str(vector[1]))
+      logging.exception('Record identifier A is not a valid number: %s' % \
+            (str(vector[1])))
       raise Exception
 
     if (not isinstance(vector[3], int)) or (vector[3] < 0):
-      print 'error:Record identifier B is not a valid number: %s' % \
-            (str(vector[3]))
+      logging.exception('Record identifier B is not a valid number: %s' % \
+            (str(vector[3])))
       raise Exception
 
     rec_num_a = vector[1]
@@ -530,7 +555,7 @@ class FlexibleClassifier(Classifier):
       self.non_link_count += 1
       link_status = 'non-link'
 
-    print '3:    Weight vector %s' % (str(vector))
-    print '3:      Final weight: %f (%s)' % (final, link_status)
+    logging.debug('    Weight vector %s' % (str(vector)))
+    logging.debug('      Final weight: %f (%s)' % (final, link_status))
 
 # =============================================================================

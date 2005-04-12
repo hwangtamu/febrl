@@ -1,25 +1,45 @@
 # =============================================================================
-# lap.py - Routines for linear assignment procedures
-#
-# Freely extensible biomedical record linkage (Febrl) Version 0.2.2
-# See http://datamining.anu.edu.au/projects/linkage.html
-#
-# =============================================================================
 # AUSTRALIAN NATIONAL UNIVERSITY OPEN SOURCE LICENSE (ANUOS LICENSE)
-# VERSION 1.1
-#
-# The contents of this file are subject to the ANUOS License Version 1.1 (the
-# "License"); you may not use this file except in compliance with the License.
-# Software distributed under the License is distributed on an "AS IS" basis,
-# WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License for
-# the specific language governing rights and limitations under the License.
-# The Original Software is "lap.py".
-# The Initial Developers of the Original Software are Dr Peter Christen
-# (Department of Computer Science, Australian National University) and Dr Tim
-# Churches (Centre for Epidemiology and Research, New South Wales Department
-# of Health). Copyright (C) 2002, 2003 the Australian National University and
+# VERSION 1.2
+# 
+# The contents of this file are subject to the ANUOS License Version 1.2
+# (the "License"); you may not use this file except in compliance with
+# the License. You may obtain a copy of the License at:
+# 
+#   http://datamining.anu.edu.au/linkage.html
+# 
+# Software distributed under the License is distributed on an "AS IS"
+# basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See
+# the License for the specific language governing rights and limitations
+# under the License.
+# 
+# The Original Software is: "lap.py"
+# 
+# The Initial Developer of the Original Software is:
+#   Dr Peter Christen (Department of Computer Science, Australian National
+#                      University)
+# 
+# Copyright (C) 2002 - 2005 the Australian National University and
 # others. All Rights Reserved.
+# 
 # Contributors:
+# 
+# Alternatively, the contents of this file may be used under the terms
+# of the GNU General Public License Version 2 or later (the "GPL"), in
+# which case the provisions of the GPL are applicable instead of those
+# above. The GPL is available at the following URL: http://www.gnu.org/
+# If you wish to allow use of your version of this file only under the
+# terms of the GPL, and not to allow others to use your version of this
+# file under the terms of the ANUOS License, indicate your decision by
+# deleting the provisions above and replace them with the notice and
+# other provisions required by the GPL. If you do not delete the
+# provisions above, a recipient may use your version of this file under
+# the terms of any one of the ANUOS License or the GPL.
+# =============================================================================
+#
+# Freely extensible biomedical record linkage (Febrl) - Version 0.3
+#
+# See: http://datamining.anu.edu.au/linkage.html
 #
 # =============================================================================
 
@@ -61,8 +81,9 @@ MAX_ROW_ELEMENTS = 10  # Following an idea by William Winkler (US Census
 # =============================================================================
 # Imports go here
 
-import time
+import logging
 import os  # For testing only
+import time
 
 import output
 import parallel
@@ -92,16 +113,16 @@ def do_lap(lap_method, results_dict, process_type, threshold):
   """
 
   if (lap_method not in ['auction']):
-    print 'error:Illegal method for lap method: %s' % (str(lap_method))
+    logging.exception('Illegal method for lap method: %s' % (str(lap_method)))
     raise Exception
 
   if (process_type not in ['deduplication', 'linkage']):
-    print 'error:Illegal value for attribute "process_type": %s' %\
-          (str(process_type))
+    logging.exception('Illegal value for attribute "process_type": %s' %\
+                      (str(process_type)))
     raise Exception
 
   if (results_dict == {}):
-    print 'error:Empty results dictionary'
+    logging.exception('Empty results dictionary')
     raise Exception
 
   lap_start_time = time.time()  # Start timer
@@ -120,16 +141,19 @@ def do_lap(lap_method, results_dict, process_type, threshold):
   #
   if (threshold != None):
     if (not (isinstance(threshold, int) or isinstance(threshold, float))):
-      print 'error:Threshold is not a number: %s' % (str(threshold))
+      logging.exception('Threshold is not a number: %s' % (str(threshold)))
       raise Exception
 
-  print '1:  Start linear assignment procedure using method: %s' % (lap_method)
-  print '1:    Original length of results dictionary: %i' % (len(results_dict))
+  logging.info('  Start linear assignment procedure using method: %s' % \
+               (lap_method))
+  logging.info('    Original length of results dictionary: %i' % \
+               (len(results_dict)))
 
   # Step 1: Filter out record pairs with weight lower than the threshold  - - -
   #
   if (threshold != None):
-    print '1:    Remove record pairs with weight less than: %f' % (threshold)
+    logging.info('    Remove record pairs with weight less than: %f' % \
+                 (threshold))
   else:
     threshold = -999999999999.999  # Make it a very very small number
 
@@ -152,8 +176,8 @@ def do_lap(lap_method, results_dict, process_type, threshold):
   results_len = len(work_dict)  # Save results length (after filtering)
 
   if (threshold > -999999999999.999):
-    print '1:    Length of working dictionary after filtering: %i' % \
-          (results_len)
+    logging.info('    Length of working dictionary after filtering: %i' % \
+                 (results_len))
 
   # Step 2: Remove all matches (record pairs) which are unique  - - - - - - - -
   #         (i.e. which don't have matches with other records)
@@ -197,18 +221,18 @@ def do_lap(lap_method, results_dict, process_type, threshold):
         if (DO_TESTS == True):
           if (process_type == 'deduplication'):
             if (row_num in used_rec_nums):
-              print 'warning:Record number %i already used for deduplication' \
-                    % (row_num)
+              logging.warn('Record number %i already used for deduplication' \
+                           % (row_num))
             if (col_num in used_rec_nums):
-              print 'warning:record number %i already used for deduplication' \
-                    % (col_num)
+              logging.warn('record number %i already used for deduplication' \
+                           % (col_num))
           else:
             if (row_num in used_rec_nums_a):
-              print 'warning:Record number A %i already used for linkage' % \
-                    (row_num)
+              logging.warn('Record number A %i already used for linkage' % \
+                           (row_num))
             if (col_num in used_rec_nums_b):
-              print 'warning:record number B %i already used for linkage' % \
-                    (col_num)
+              logging.warn('record number B %i already used for linkage' % \
+                           (col_num))
 
         #################### END TEST CODE ##################################
 
@@ -222,12 +246,11 @@ def do_lap(lap_method, results_dict, process_type, threshold):
           used_rec_nums_a[row_num] = True
           used_rec_nums_b[col_num] = True
 
-  print '1:    Found and extracted %i unique record ' % (len(lap_results)) + \
-        'pairs in results dictionary'
+  logging.info('    Found and extracted %i unique record ' % \
+               (len(lap_results)) + 'pairs in results dictionary')
 
   for rec_pair in lap_results:
-    print '3:      %s' % (str(rec_pair))
-  print '3:'
+    logging.debug('      %s' % (str(rec_pair)))
 
   lap_pair_extract_time = time.time() - lap_start_time
 
@@ -261,13 +284,13 @@ def do_lap(lap_method, results_dict, process_type, threshold):
       test_dict = {}
       for (rec_a, rec_b) in lap_results:
         if (test_dict.has_key(rec_a)):
-          print 'warning:Record %s is already in the test dictionary' % \
-                (str(rec_a))
+          logging.warn('Record %s is already in the test dictionary' % \
+                       (str(rec_a)))
         else:
           test_dict[rec_a] = 1
         if (test_dict.has_key(rec_b)):
-          print 'warning:Record %s is already in the test dictionary' % \
-                (str(rec_b))
+          logging.warn('Record %s is already in the test dictionary' % \
+                       (str(rec_b)))
         else:
           test_dict[rec_b] = 1
 
@@ -276,13 +299,13 @@ def do_lap(lap_method, results_dict, process_type, threshold):
       test_dict_b = {}
       for (rec_a, rec_b) in lap_results:
         if (test_dict_a.has_key(rec_a)):
-          print 'warning:Record %s is already in test dictionary A' % \
-                (str(rec_a))
+          logging.warn('Record %s is already in test dictionary A' % \
+                       (str(rec_a)))
         else:
           test_dict_a[rec_a] = 1
         if (test_dict_b.has_key(rec_b)):
-          print 'warning:Record %s is already in test dictionary B' % \
-                (str(rec_b))
+          logging.warn('Record %s is already in test dictionary B' % \
+                       (str(rec_b)))
         else:
           test_dict_b[rec_b] = 1
 
@@ -291,16 +314,16 @@ def do_lap(lap_method, results_dict, process_type, threshold):
   if (len(work_dict) == 0):  # All record pairs are processed - - - - - - - - -
     return lap_results
 
-  print '1:    Remaining number of records in working dictionary: %i' % \
-        (len(work_dict)) + ' (down from: %i)' % (results_len)
+  logging.info('    Remaining number of records in working dictionary: %i' % \
+               (len(work_dict)) + ' (down from: %i)' % (results_len))
 
   # Step 3: Find connected sub-sets in the results dictionary - - - - - - - - -
   #         (using depth-first search)
   #
   visited =  {}  # Dictionary which will contain all so far visited rows
-  sub_sets = {}  # Dictionary which will contain the sub-sets extracted 
+  sub_sets = {}  # Dictionary which will contain the sub-sets extracted
 
-  print '1:    Find connected sub-graphs in results dictionary'
+  logging.info('    Find connected sub-graphs in results dictionary')
 
   lap_subset_start_time = time.time()
 
@@ -330,13 +353,13 @@ def do_lap(lap_method, results_dict, process_type, threshold):
 
       visited[row_num] = row_num  # Mark visited as 'seeding' row
       num_visited += 1
-      print '2:      Create sub-set with seeding record %i' % (row_num)
+      logging.debug('      Create sub-set with seeding record %i' % (row_num))
 
       process_queue = [row_num]  # Start a new queue of rows to process
       row_sub_set = {row_num:1}  # Row numbers connected to this row
 
       while (process_queue != []): # Process rows until all connected rows done
-        print '3:        Process queue: %s' % (str(process_queue))
+        logging.debug('        Process queue: %s' % (str(process_queue)))
 
         next_row = process_queue.pop(0)  # Get and remove first row to process
         row_col_numbers = work_dict[next_row].keys()  # Get columns in this row
@@ -346,8 +369,8 @@ def do_lap(lap_method, results_dict, process_type, threshold):
         if (process_type == 'deduplication'):
           row_col_numbers.append(next_row)
 
-        print '3:          Row %i with column numbers: %s' % \
-              (next_row, str(row_col_numbers))
+        logging.debug('          Row %i with column numbers: %s' % \
+                      (next_row, str(row_col_numbers)))
 
         # Get the row numbers from all column numbers
         #
@@ -362,28 +385,28 @@ def do_lap(lap_method, results_dict, process_type, threshold):
             (col_num not in row_num_list):
             row_num_list.append(col_num)
 
-          print '3:          Column: %i with row numbers: %s' % \
-                (col_num, str(row_num_list))
+          logging.debug('          Column: %i with row numbers: %s' % \
+                        (col_num, str(row_num_list)))
 
           for row_num2 in row_num_list:
             row_sub_set[row_num2] = 1
             if (not visited.has_key(row_num2)):  # Check if it's a new row
               process_queue.append(row_num2)
-              print '3:          Appended row number %i to process queue' % \
-                    (row_num2)
+              logging.debug('          Appended row number %i to process' % \
+                            (row_num2) + ' queue')
 
               visited[row_num2] = row_num  # Mark row as visited by seeding row
               num_visited += 1
-              print '3:          Row %i connected to row %i' % \
-                    (row_num2, row_num)
+              logging.debug('          Row %i connected to row %i' % \
+                            (row_num2, row_num))
 
       sub_sets[row_num] = row_sub_set.keys()  # Only store keys
 
       if (len(row_sub_set) > max_sub_set_length):
         max_sub_set_length = len(row_sub_set)
 
-      print '3:        Sub-set contains records: %s' % \
-            (str(row_sub_set.keys()))
+      logging.debug('        Sub-set contains records: %s' % \
+                    (str(row_sub_set.keys())))
 
     row_num_done += 1
 
@@ -401,10 +424,10 @@ def do_lap(lap_method, results_dict, process_type, threshold):
       used_time_string =       output.time_string(used_time)
       todo_time_string =       output.time_string(todo_time)
 
-      print '1:      Processed %.1f%% of records in %s (%i/%i records ' % \
-            (perc_done, used_time_string, num_visited, work_dict_len) + \
-            'visited)'
-      print '1:        Estimated %s until finished' % (todo_time_string)
+      logging.info('      Processed %.1f%% of records in %s (%i/%i records ' \
+                   % (perc_done, used_time_string, num_visited, \
+                   work_dict_len) + 'visited)')
+      logging.info('        Estimated %s until finished' % (todo_time_string))
 
   del col_work_dict  # Delete the column oriented work dictionary
 
@@ -413,9 +436,9 @@ def do_lap(lap_method, results_dict, process_type, threshold):
   lap_subset_total_time = time.time() - lap_subset_start_time
   lap_subset_total_time_string = output.time_string(lap_subset_total_time)
 
-  print '1:    Extracted %i sub-sets in %s' % \
-        (num_sub_sets, lap_subset_total_time_string)
-  print '1:      Longest sub-set contains %i rows' % (max_sub_set_length)
+  logging.info('    Extracted %i sub-sets in %s' % \
+        (num_sub_sets, lap_subset_total_time_string))
+  logging.info('      Longest sub-set contains %i rows' % (max_sub_set_length))
 
   #################### START TEST CODE ########################################
   # Test if all the sub-sets are mutually exclusive, and if the seed rows are
@@ -425,15 +448,15 @@ def do_lap(lap_method, results_dict, process_type, threshold):
     for seed_row in sub_sets:
       row_list = sub_sets[seed_row]
       if (seed_row not in row_list):
-        print 'warning:Seed row %s not in sub-set row list: %s' % \
-              (str(seed_rec), str(row_list))
+        logging.warn('Seed row %s not in sub-set row list: %s' % \
+                     (str(seed_rec), str(row_list)))
       for rec_num in row_list:
         for seed_row2 in sub_sets:
           row_list2 = sub_sets[seed_row2]
           if (seed_row != seed_row2):  # Don't test itself
             if (rec_num in row_list2):
-              print 'warning:Record %s in more than one sub-set: %s, %s' % \
-                    (str(rec_num), str(row_list), str(row_list2))
+              logging.warn('Record %s in more than one sub-set: %s, %s' % \
+                           (str(rec_num), str(row_list), str(row_list2)))
 
   #################### END TEST CODE ##########################################
 
@@ -474,10 +497,9 @@ def do_lap(lap_method, results_dict, process_type, threshold):
       row_list = sub_sets[seed_row]
       row_list.sort()
 
-      print '1:'
-      print '1:    Sub-set %i of %i with seed row %i contains %i rows' % \
-            (sub_set_cnt, num_sub_sets, seed_row, len(row_list))
-      print '3:      Sub-set rows:  %s' % (str(row_list))
+      logging.info('    Sub-set %i of %i with seed row %i contains %i rows' % \
+                   (sub_set_cnt, num_sub_sets, seed_row, len(row_list)))
+      logging.debug('      Sub-set rows:  %s' % (str(row_list)))
 
       if (len(row_list) == 1):  # Special case: One row only  - - - - - - - - -
         max_weight = -99999.9
@@ -496,8 +518,8 @@ def do_lap(lap_method, results_dict, process_type, threshold):
         #
         tmp_assign_dict = {max_col:row_list[0]}  # Make record pair dictionary
 
-        print '2:      Special case sub-set with one row only, ' + \
-              'assignment pair: (%i,%i)' % (row_list[0], max_col)
+        logging.debug('      Special case sub-set with one row only, ' + \
+                      'assignment pair: (%i,%i)' % (row_list[0], max_col))
 
       else:  # General case with more than one row  - - - - - - - - - - - - - -
 
@@ -523,8 +545,8 @@ def do_lap(lap_method, results_dict, process_type, threshold):
             if (weight > max_weight):
               max_weight = weight
 
-        print '3:      Minimal and maximal weight: %.3f / %.3f' % \
-              (min_weight, max_weight)
+        logging.debug('      Minimal and maximal weight: %.3f / %.3f' % \
+                      (min_weight, max_weight))
 
         row_numbers = work_dict.keys()
         col_numbers = col_numbers.keys()
@@ -536,10 +558,11 @@ def do_lap(lap_method, results_dict, process_type, threshold):
         row_col_numbers = row_col_numbers.keys()
         row_col_numbers.sort()
 
-        #print '1:      Row numbers:    %s' % (str(row_numbers))
-        #print '1:      Column numbers: %s' % (str(col_numbers))
-        #print '1:      Row/colum numbers: %s' % (str(row_col_numbers))
-        #print '1:      Number of unique weights: %i' % (len(weight_dict))
+        #logging.info('      Row numbers:    %s' % (str(row_numbers)))
+        #logging.info('      Column numbers: %s' % (str(col_numbers)))
+        #logging.info('      Row/colum numbers: %s' % (str(row_col_numbers)))
+        #logging.info('      Number of unique weights: %i' % \
+        #             (len(weight_dict)))
 
         # Deal with the special case that there is only one column number - - -
         #
@@ -565,8 +588,8 @@ def do_lap(lap_method, results_dict, process_type, threshold):
           #
           tmp_assign_dict = {col_num:max_row}  # Make record pair dictionary
 
-          print '2:      Special case sub-set with one column only, ' + \
-                'assignment pair: (%i,%i)' % (max_row, col_num)
+          logging.debug('      Special case sub-set with one column only, ' + \
+                        'assignment pair: (%i,%i)' % (max_row, col_num))
 
         else:  # General case with more than one row and column - - - - - - - -
 
@@ -630,10 +653,6 @@ def do_lap(lap_method, results_dict, process_type, threshold):
               diag_weight = row_cost_dict[row_num]  # Keep diagonal element
               row_cost_dict = {row_num:diag_weight}
 
-              ##print '   '
-              ##print '****** row_elem_list: %s' % (str(row_elem_list))
-              ##print '   '
-
               for (weight, col_num) in row_elem_list[-MAX_ROW_ELEMENTS:]:
                 row_cost_dict[col_num] = weight
 
@@ -655,18 +674,19 @@ def do_lap(lap_method, results_dict, process_type, threshold):
           # Check if number of rows and columns are equal - - - - - - - - - - -
           #
           if (len(row_numbers) != len(col_numbers)):
-            print 'error:Different number of rows (%i) and columns (%i)' \
-                  % (len(row_numbers), len(col_numbers))
+            logging.exception('Different number of rows (%i) and columns (%i)'\
+                              % (len(row_numbers), len(col_numbers)))
             raise Exception
 
-          print '1:      Cost dictionary with %i rows/columns given to ' % \
-                (len(row_numbers)) + 'assignment method %s:' % (lap_method)
-          print '2:        Row numbers:    %s' % (str(row_numbers))
-          print '2:        Column numbers: %s' % (str(row_numbers))
-          print '2:        Minimal weight: %3f' % (min_weight)
-          print '2:        Maximal weight: %3f' % (max_weight)
-          print '3:        Cost dictionary: %s' % (str(cost_dict))
-          print '3:        Process type:    %s' % (process_type)
+          logging.info('      Cost dictionary with %i rows/columns given to ' \
+                       % (len(row_numbers)) + 'assignment method %s:' % \
+                       (lap_method))
+          logging.debug('        Row numbers:    %s' % (str(row_numbers)))
+          logging.debug('        Column numbers: %s' % (str(row_numbers)))
+          logging.debug('        Minimal weight: %3f' % (min_weight))
+          logging.debug('        Maximal weight: %3f' % (max_weight))
+          logging.debug('        Cost dictionary: %s' % (str(cost_dict)))
+          logging.debug('        Process type:    %s' % (process_type))
 
           #################### START PARALLEL TEST CODE #######################
 
@@ -695,7 +715,7 @@ def do_lap(lap_method, results_dict, process_type, threshold):
             tmp_assign_dict = auction(cost_dict, min_weight, max_weight, \
                                   row_numbers, col_numbers)
           else:
-             print 'error:LAP method %s not implemented' % (lap_method)
+             logging.exception('LAP method %s not implemented' % (lap_method))
              raise Exception
 
       # If run in parallel, send temporary assignment dictionary process 0  - -
@@ -704,8 +724,8 @@ def do_lap(lap_method, results_dict, process_type, threshold):
         tmp_time = time.time()
         parallel.send(tmp_assign_dict, 0)
         lap_comm_time += (time.time() - tmp_time)
-        print '1:      Sent assignment dictionary with %i entries to process' \
-              % (len(tmp_assign_dict)) + ' 0'
+        logging.info('      Sent assignment dictionary with %i entries to' % \
+                     (len(tmp_assign_dict)) + 'process 0')
 
     # Only process 0 inserts temporary assignment dictionary into results - - -
     #
@@ -719,9 +739,9 @@ def do_lap(lap_method, results_dict, process_type, threshold):
         tmp_time = time.time()
         tmp_assign_dict = parallel.receive(p)
         lap_comm_time += (time.time() - tmp_time)
-        print '1:    Received subset %i of %i assignment dictionary with ' % \
-              (sub_set_cnt, num_sub_sets) + '%i entries from process %i' % \
-              (len(tmp_assign_dict), p)
+        logging.info('    Received subset %i of %i assignment dictionary ' % \
+                     (sub_set_cnt, num_sub_sets) + 'with %i entries from ' + \
+                     'process %i' % (len(tmp_assign_dict), p))
 
       # Post-process the assignment dictionary  - - - - - - - - - - - - - - - -
       #
@@ -806,11 +826,11 @@ def do_lap(lap_method, results_dict, process_type, threshold):
             lap_results[rec_pair] = True
             num_assigned_pairs += 1
           else:
-            print 'warning:Record pair (%i,%i) already in LAP results' \
-                  % (rec_num_a, rec_num_b)
+            logging.warn('Record pair (%i,%i) already in LAP results' \
+                         % (rec_num_a, rec_num_b))
 
-      print '2:      Inserted %i (out of %i) record pairs into LAP ' % \
-            (num_assigned_pairs, len(tmp_assign_dict)) + 'results'
+      logging.debug('      Inserted %i (out of %i) record pairs into LAP ' % \
+                    (num_assigned_pairs, len(tmp_assign_dict)) + 'results')
 
     sub_set_cnt += 1
 
@@ -826,14 +846,16 @@ def do_lap(lap_method, results_dict, process_type, threshold):
         todo_time_string =    output.time_string(todo_time)
         sub_set_time_string = output.time_string(sub_set_time)
 
-        print '1:      Processed %.1f%% (%i/%i) of sub-sets in %s' % \
-                (perc_done, sub_set_cnt, num_sub_sets, used_time_string) + \
-                ' (%s per sub-set)' % (sub_set_time_string)
-        print '1:        Estimated %s until finished' % (todo_time_string)
+        logging.info('      Processed %.1f%% (%i/%i) of sub-sets in %s' % \
+                     (perc_done, sub_set_cnt, num_sub_sets, \
+                     used_time_string) + ' (%s per sub-set)' % \
+                     (sub_set_time_string))
+        logging.info('        Estimated %s until finished' % \
+                     (todo_time_string))
 
-  print '1:  Total number of assignments: %i' % (len(lap_results))
-  print '1:    Number of rows in original results dictionary: %i' % \
-        (len(results_dict))
+  logging.info('  Total number of assignments: %i' % (len(lap_results)))
+  logging.info('    Number of rows in original results dictionary: %i' % \
+               (len(results_dict)))
 
   #################### START TEST CODE ########################################
   # Test if a record only appears once in the lap results dictionary
@@ -843,13 +865,13 @@ def do_lap(lap_method, results_dict, process_type, threshold):
       test_dict = {}
       for (rec_a, rec_b) in lap_results:
         if (test_dict.has_key(rec_a)):
-          print 'warning:Record %i is already in the test dictionary' % \
-                (rec_a)+' rec_pair: (%i,%i)' % (rec_a, rec_b)
+          logging.warn('Record %i is already in the test dictionary' % \
+                       (rec_a)+' rec_pair: (%i,%i)' % (rec_a, rec_b))
         else:
           test_dict[rec_a] = True
         if (test_dict.has_key(rec_b)):
-          print 'warning:Record %i is already in the test dictionary' % \
-                (rec_b)+' rec_pair: (%i,%i)' % (rec_a, rec_b)
+          logging.warn('Record %i is already in the test dictionary' % \
+                       (rec_b)+' rec_pair: (%i,%i)' % (rec_a, rec_b))
         else:
           test_dict[rec_b] = 1
 
@@ -858,13 +880,13 @@ def do_lap(lap_method, results_dict, process_type, threshold):
       test_dict_b = {}
       for (rec_a, rec_b) in lap_results:
         if (test_dict_a.has_key(rec_a)):
-          print 'warning:Record %s is already in test dictionary A' % \
-                (str(rec_a))
+          logging.warn('Record %s is already in test dictionary A' % \
+                       (str(rec_a)))
         else:
           test_dict_a[rec_a] = 1
         if (test_dict_b.has_key(rec_b)):
-          print 'warning:Record %s is already in test dictionary B' % \
-                (str(rec_b))
+          logging.warn('Record %s is already in test dictionary B' % \
+                       (str(rec_b)))
         else:
           test_dict_b[rec_b] = 1
 
@@ -881,20 +903,18 @@ def do_lap(lap_method, results_dict, process_type, threshold):
     lap_comm_time_string =         output.time_string(lap_comm_time)
   lap_total_time_string =        output.time_string(lap_total_time)
 
-  print '1:'
-  print '1:  Finished linear record pair assignment procedure'
-  print '1:    Time for extracting unique record pairs: %s' % \
-        (lap_pair_extract_time_string)
-  print '1:    Time for creating record sub-sets:       %s' % \
-        (lap_subset_total_time_string)
-  print '1:    Time for linear assignment algorithm:    %s' % \
-        (lap_lap_time_string)
+  logging.info('  Finished linear record pair assignment procedure')
+  logging.info('    Time for extracting unique record pairs: %s' % \
+               (lap_pair_extract_time_string))
+  logging.info('    Time for creating record sub-sets:       %s' % \
+               (lap_subset_total_time_string))
+  logging.info('    Time for linear assignment algorithm:    %s' % \
+               (lap_lap_time_string))
   if (parallel.size() > 1):
-    print '1:    Time for communication:                  %s' % \
-          (lap_comm_time_string)
-  print '1:    Total time for linear assignment:        %s' % \
-        (lap_total_time_string)
-  print '1:'
+    logging.info('    Time for communication:                  %s' % \
+                 (lap_comm_time_string))
+  logging.info('    Total time for linear assignment:        %s' % \
+               (lap_total_time_string))
 
   return lap_results
 
@@ -903,7 +923,7 @@ def do_lap(lap_method, results_dict, process_type, threshold):
 def auction(cost_dict, min_cost, max_cost, row_numbers, col_numbers):
   """Linear sum assignment procedure based on symetric auction algorithm.
 
-     Re-implementation of a FORTRAN code, taken from: 
+     Re-implementation of a FORTRAN code, taken from:
 
      http://web.mit.edu/afs/athena.mit.edu/user/d/i/dimitrib/www/auction.txt
 
@@ -948,13 +968,14 @@ def auction(cost_dict, min_cost, max_cost, row_numbers, col_numbers):
   num_cols = len(col_numbers)
 
   if (num_rows != num_cols):
-    print 'error:Asymmetric problem given to symmetric "auction" algorithm'
+    logging.exception('Asymmetric problem given to symmetric "auction" ' + \
+                      'algorithm')
     raise Exception
 
   # Set parameters for auction algorithm  - - - - - - - - - - - - - - - - - - -
   #
   if (max_cost > int(i_large / (num_rows + 1))):
-    print 'error:Cost range too large to work with integer epsilon'
+    logging.exception('Cost range too large to work with integer epsilon')
     raise Exception
 
   max_cost *= (num_rows + 1)
@@ -1005,7 +1026,7 @@ def auction(cost_dict, min_cost, max_cost, row_numbers, col_numbers):
       thresh = 0
     incr = max(start_incr, eps)  # Increment must not be larger than epsilon
 
-    print '2:      Start of a scaling phase with epsilon: %f' % (eps)
+    logging.debug('      Start of a scaling phase with epsilon: %f' % (eps))
 
     do_cycle = True  # Set flag so a first cycle is performed
     cycle_count = 0
@@ -1072,10 +1093,11 @@ def auction(cost_dict, min_cost, max_cost, row_numbers, col_numbers):
 
       cycle_count += 1
       if ((cycle_count % 10000) == 0):
-        print '1:        Finished %i cycles, %i out of %i rows un-assigned' % \
-              (cycle_count, no_new_list, num_rows)
+        logging.info('        Finished %i cycles, %i out of %i rows ' % \
+                     (cycle_count, no_new_list, num_rows) + 'un-assigned')
         if (no_new_list > 0):
-          print '1:          Un-assigned rows: %s' % (str(list[:no_new_list]))
+          logging.info('          Un-assigned rows: %s' % \
+                       (str(list[:no_new_list])))
 
       # Collect statistics
       #
@@ -1112,7 +1134,7 @@ def auction(cost_dict, min_cost, max_cost, row_numbers, col_numbers):
         eps = 1
       thresh = int(thresh / factor)
 
-      print '1:        End of a scaling phase, new epsilon: %3f' % (eps)
+      logging.info('        End of a scaling phase, new epsilon: %3f' % (eps))
 
       t_min = min(pcol.values()+[i_large])
 

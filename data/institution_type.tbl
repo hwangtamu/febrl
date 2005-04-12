@@ -3,28 +3,7 @@
 #
 # Source: - NSW Health Department pattern and classification files
 #
-# Last update: 30/08/2002, Peter Christen
-#
-# =============================================================================
-# Freely extensible biomedical record linkage (Febrl) Version 0.2.2
-# See http://datamining.anu.edu.au/projects/linkage.html
-#
-# AUSTRALIAN NATIONAL UNIVERSITY OPEN SOURCE LICENSE (ANUOS LICENSE)
-# VERSION 1.1
-#
-# The contents of this file are subject to the ANUOS License Version 1.1 (the
-# "License"); you may not use this file except in compliance with the License.
-# Software distributed under the License is distributed on an "AS IS" basis,
-# WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License for
-# the specific language governing rights and limitations under the License.
-# The Original Software is "institution_type.tbl".
-# The Initial Developers of the Original Software are Dr Peter Christen
-# (Department of Computer Science, Australian National University) and Dr Tim
-# Churches (Centre for Epidemiology and Research, New South Wales Department
-# of Health). Copyright (C) 2002, 2003 the Australian National University and
-# others. All Rights Reserved.
-# Contributors:
-#
+# Last update: 1/11/2002, Peter Christen
 # =============================================================================
 
 tag=<IT>  # Tag for institution words
@@ -37,9 +16,9 @@ tag=<IT>  # Tag for institution words
            barracks : barrack, barack, baracks
              bhouse : bh, board house, boarding house
            brothers : 
-       caravan park : cara, carvn, cvan, cvp, caravan park, c park, c van,
+       caravan park : cara, carvn, cvan, cvp, caravn park, c park, c van,
                       car park, caravan resort, van park, caratel, caravan par,
-                      carav
+                      carav, carav park, carvn park, cara park, cvan park
              centre : center, centr, cntr, ctr
              circus : crcs
             college : 
@@ -66,7 +45,7 @@ ex services complex :
               jetty : jtty, jty
             limited : ltd
 little sisters the poor : 
-              lodge : ldg, ldge, lodg
+              lodge : ldge, lodg
                mall : mll
        masonic home : masonic homes
             mission : 
@@ -74,7 +53,7 @@ little sisters the poor :
               motel : mot, motl, mtel
             nursing : 
      nursing centre : nursing center
-       nursing home : nh, nhome, nrs, nrsg, nsg, nurs,
+       nursing home : nh, nhome, nrs, nrsg, nsg, nurs, nrsng hm,
                       n h, nrs home, n home, nursing hom, nursing ho, nursing h
         nurses home : nurses, nurses home, nurse home
         proprietary : pty
@@ -87,7 +66,7 @@ little sisters the poor :
                       shopping center, shopping centre, shopping town
           sanctuary : sanct, sanctury, sancurary, santuary
             sisters : 
-              tower : twr, towers, twrs
+              tower : twr
          university : uni, univ, unvrsty
               units : 
             village : vil, vge, vill, villag, villg, vlg, vlge, vllg,

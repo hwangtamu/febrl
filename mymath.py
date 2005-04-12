@@ -1,25 +1,45 @@
 # =============================================================================
-# mymath.py - Various mathematical routines.
-#
-# Freely extensible biomedical record linkage (Febrl) Version 0.2.2
-# See http://datamining.anu.edu.au/projects/linkage.html
-#
-# =============================================================================
 # AUSTRALIAN NATIONAL UNIVERSITY OPEN SOURCE LICENSE (ANUOS LICENSE)
-# VERSION 1.1
-#
-# The contents of this file are subject to the ANUOS License Version 1.1 (the
-# "License"); you may not use this file except in compliance with the License.
-# Software distributed under the License is distributed on an "AS IS" basis,
-# WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License for
-# the specific language governing rights and limitations under the License.
-# The Original Software is "mymath.py".
-# The Initial Developers of the Original Software are Dr Peter Christen
-# (Department of Computer Science, Australian National University) and Dr Tim
-# Churches (Centre for Epidemiology and Research, New South Wales Department
-# of Health). Copyright (C) 2002, 2003 the Australian National University and
+# VERSION 1.2
+# 
+# The contents of this file are subject to the ANUOS License Version 1.2
+# (the "License"); you may not use this file except in compliance with
+# the License. You may obtain a copy of the License at:
+# 
+#   http://datamining.anu.edu.au/linkage.html
+# 
+# Software distributed under the License is distributed on an "AS IS"
+# basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See
+# the License for the specific language governing rights and limitations
+# under the License.
+# 
+# The Original Software is: "mymath.py"
+# 
+# The Initial Developer of the Original Software is:
+#   Dr Peter Christen (Department of Computer Science, Australian National
+#                      University)
+# 
+# Copyright (C) 2002 - 2005 the Australian National University and
 # others. All Rights Reserved.
+# 
 # Contributors:
+# 
+# Alternatively, the contents of this file may be used under the terms
+# of the GNU General Public License Version 2 or later (the "GPL"), in
+# which case the provisions of the GPL are applicable instead of those
+# above. The GPL is available at the following URL: http://www.gnu.org/
+# If you wish to allow use of your version of this file only under the
+# terms of the GPL, and not to allow others to use your version of this
+# file under the terms of the ANUOS License, indicate your decision by
+# deleting the provisions above and replace them with the notice and
+# other provisions required by the GPL. If you do not delete the
+# provisions above, a recipient may use your version of this file under
+# the terms of any one of the ANUOS License or the GPL.
+# =============================================================================
+#
+# Freely extensible biomedical record linkage (Febrl) - Version 0.3
+#
+# See: http://datamining.anu.edu.au/linkage.html
 #
 # =============================================================================
 
@@ -31,6 +51,7 @@
 # =============================================================================
 # Imports go here
 
+import logging
 import math
 
 # =============================================================================
@@ -43,7 +64,7 @@ def mean(x):
     return float(x[0])
 
   elif (len(x) == 0):  # Empty list
-    print 'warning:Empty list given: %s' % (str(x))
+    logging.info('Empty list given: %s' % (str(x)))
     return None
 
   else:  # Calculate average
@@ -65,7 +86,7 @@ def stddev(x):
     return 0.0
 
   elif (len(x) == 0):  # Empty list
-    print 'warning:Empty list given: %s' % (str(x))
+    logging.info('Empty list given: %s' % (str(x)))
     return None
 
   else:
@@ -77,7 +98,7 @@ def stddev(x):
 
     sum = 0.0
     for i in x:
-      sum = sum + (i - avrg) * (i - avrg) 
+      sum = sum + (i - avrg) * (i - avrg)
 
     res = math.sqrt(sum / float(len(x)))
 
@@ -99,7 +120,7 @@ def log2(x):
     number.
   """
 
-  return math.log(x) / 0.69314718055994529  # = math.log(2.0)    
+  return math.log(x) / 0.69314718055994529  # = math.log(2.0)
 
 # =============================================================================
 
@@ -121,7 +142,9 @@ def perm_tag_sequence(in_tag_seq):
   """
 
   if (not isinstance(in_tag_seq, list)):
-    print 'error:Input tag sequence is not a list: %s' % (str(in_tag_seq))
+    logging.exception('Input tag sequence is not a list: %s' % \
+                      (str(in_tag_seq)))
+    raise Exception
 
   list_len = len(in_tag_seq)
   out_tag_seq = [[]]  # List of output tag sequences, start with one empty list
@@ -145,10 +168,10 @@ def perm_tag_sequence(in_tag_seq):
 
   # A log message for high volume log output (level 3) - - - - - - - - - - - -
   #
-  print '3:  Input tag sequence: %s' % (str(in_tag_seq))
-  print '3:  Output permutations:'
+  logging.debug('Input tag sequence: %s' % (str(in_tag_seq)))
+  logging.debug('Output permutations:')
   for p in out_tag_seq:
-    print '3:    %s' % (str(p))
+    logging.debug('    %s' % (str(p)))
 
   return out_tag_seq
 
