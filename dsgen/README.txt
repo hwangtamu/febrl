@@ -1,10 +1,10 @@
 README for Febrl data set generator      Peter Christen, January 2005
 -----------------------------------
 
-Copyright 2002 - 2005 Australian National University and others.
+Copyright 2002 - 2007 Australian National University and others.
 All Rights reserved.
 
-See the file 'ANUOS-1.2.txt' or the manual for the terms under which
+See the file 'ANUOS-1.3.txt' or the manual for the terms under which
 the computer program code and associated documentation and data files
 in the Febrl package are licensed.
 

@@ -1,8 +1,8 @@
 # =============================================================================
 # AUSTRALIAN NATIONAL UNIVERSITY OPEN SOURCE LICENSE (ANUOS LICENSE)
-# VERSION 1.2
+# VERSION 1.3
 # 
-# The contents of this file are subject to the ANUOS License Version 1.2
+# The contents of this file are subject to the ANUOS License Version 1.3
 # (the "License"); you may not use this file except in compliance with
 # the License. You may obtain a copy of the License at:
 # 
@@ -19,7 +19,7 @@
 #   Dr Peter Christen (Department of Computer Science, Australian National
 #                      University)
 # 
-# Copyright (C) 2002 - 2005 the Australian National University and
+# Copyright (C) 2002 - 2007 the Australian National University and
 # others. All Rights Reserved.
 # 
 # Contributors:
@@ -37,19 +37,19 @@
 # the terms of any one of the ANUOS License or the GPL.
 # =============================================================================
 #
-# Freely extensible biomedical record linkage (Febrl) - Version 0.3
+# Freely extensible biomedical record linkage (Febrl) - Version 0.4
 #
 # See: http://datamining.anu.edu.au/linkage.html
 #
 # =============================================================================
 
-"""Module phonenum.py - Routines for parsing and standardizing US, Australian
+"""Module phonenum.py - Routines for parsing and standardising US, Australian
                         and international phone numbers.
 
    Original developer: PV 11/07/2003.
 
    Extended and improved for Australian phone numbers by Peter Christen,
-   01/2005.
+   01/2005 - 09/2007.
 
    This module provides one method 'str_to_phonenum' to parse a phone number
    (given as a string) into a list with elements:
@@ -197,8 +197,8 @@ australia_area_codes = {'02':'Central east region',
 
 # Define a character replace table for data strings - - - - - - - - - - - -
 #
-string_replace = ["'./,+:-_\\()", \
-                  "           "]
+string_replace = ["'./,+:-_\\()[]<>{}", \
+                  "                 "]
 
 # Characters in the first list are replaced by the corresponding character in
 # the second list
@@ -342,7 +342,7 @@ def str_to_phonenum(phonenum_str, default_country='australia'):
   # Replace triple and double spaces with one space only
   #
   while '  ' in buffer_str:
-    buffer_str = buffer_str.replace('  ',' ')
+    buffer_str = buffer_str.replace('  ', ' ')
 
   # Now check the cleaned phonenum string to make sure it has some content- - -
   #
@@ -537,10 +537,15 @@ if (__name__ == '__main__'):
                    '0111 ++61 (2) 6125 0101',
                    '0111 61 02 6125 0101',
                    '61 (2) 6125 0101',
+                   '07 61316116',
+                   '07 6131 6116',
+                   '(07) 6131 6116',
+                   '(07) 61316116',
+                   '09 6131 6116',
+                   '09 61316116',
                    '']
   print
   for pn in phone_numbers:
     res = str_to_phonenum(pn)
     print pn, res
     print
-

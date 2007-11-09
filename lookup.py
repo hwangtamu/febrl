@@ -1,8 +1,8 @@
 # =============================================================================
 # AUSTRALIAN NATIONAL UNIVERSITY OPEN SOURCE LICENSE (ANUOS LICENSE)
-# VERSION 1.2
+# VERSION 1.3
 # 
-# The contents of this file are subject to the ANUOS License Version 1.2
+# The contents of this file are subject to the ANUOS License Version 1.3
 # (the "License"); you may not use this file except in compliance with
 # the License. You may obtain a copy of the License at:
 # 
@@ -15,13 +15,11 @@
 # 
 # The Original Software is: "lookup.py"
 # 
-# The Initial Developers of the Original Software are:
-#   Dr Tim Churches (Centre for Epidemiology and Research, New South Wales
-#                    Department of Health)
+# The Initial Developer of the Original Software is:
 #   Dr Peter Christen (Department of Computer Science, Australian National
 #                      University)
 # 
-# Copyright (C) 2002 - 2005 the Australian National University and
+# Copyright (C) 2002 - 2007 the Australian National University and
 # others. All Rights Reserved.
 # 
 # Contributors:
@@ -39,7 +37,7 @@
 # the terms of any one of the ANUOS License or the GPL.
 # =============================================================================
 #
-# Freely extensible biomedical record linkage (Febrl) - Version 0.3
+# Freely extensible biomedical record linkage (Febrl) - Version 0.4
 #
 # See: http://datamining.anu.edu.au/linkage.html
 #
@@ -51,11 +49,11 @@
 """
 
 # =============================================================================
-# Imports go here
+# Import necessary modules (Python standard modules first, then Febrl modules)
 
 import logging
-import string
-import types
+
+import auxiliary
 
 # =============================================================================
 
@@ -70,7 +68,6 @@ class LookupTable(dict):
     """
 
     dict.__init__(self)  # Initialise dictionary base type
-    self.name =         ''
     self.description =  ''
     self.created =      ''
     self.modified =     ''
@@ -79,15 +76,17 @@ class LookupTable(dict):
     self.length =       None  # Number of entries in the look-up table
 
     for (keyword, value) in kwargs.items():
-      if (keyword == 'default'):
-        self.default = value
-      elif (keyword == 'name'):
-        self.name = value
-      elif (keyword == 'description'):
+
+      if (keyword.startswith('desc')):
+        auxiliary.check_is_string('description', value)
         self.description = value
-      elif (keyword == 'created'):
+
+      elif (keyword.startswith('defau')):
+        self.default = value
+
+      elif (keyword.startswith('creat')):
         self.created = value
-      elif (keyword == 'modified'):
+      elif (keyword.startswith('modif')):
         self.modified = value
 
       else:
@@ -131,7 +130,7 @@ class LookupTable(dict):
 # =============================================================================
 
 class TagLookupTable(LookupTable):
-  """class TagLookupTable - Look-up tables for word corrections and tags.
+  """A look-up table class for look-up tables with word corrections and tags.
   """
 
   # ---------------------------------------------------------------------------
@@ -144,14 +143,14 @@ class TagLookupTable(LookupTable):
 
     # A log message - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     #
-    logging.info('Initialised tag look-up table "%s"' %(str(self.name)))
+    logging.info('Initialised tag look-up table "%s"' %(self.description))
     logging.info('  With default: "%s"' % (str(self.default)))
 
   # ---------------------------------------------------------------------------
 
   def load(self, file_names):
-    """Load one or more files with word corrections and tags into the
-       look-up table.
+    """Load one or more files with word corrections and tags into the look-up
+       table.
 
        See Febrl manual for details on the file format.
     """
@@ -161,10 +160,12 @@ class TagLookupTable(LookupTable):
     if (isinstance(file_names, str)):
       file_names = [file_names]  # Make a list out of a single file name
 
-    if (not isinstance(file_names, list)):
-      logging.exception('Argument "file_names" is of wrong type, must be ' + \
-                        'either string or list')
-      raise Exception
+    auxiliary.check_is_list('file_names', file_names)
+
+    i = 0
+    for file_name in file_names:
+      auxiliary.check_is_string('file_name[%d]' % (i), file_name[i])
+      i += 1
 
     self.file_names = file_names
     self.clear()  # Remove all items from the look-up table
@@ -174,18 +175,17 @@ class TagLookupTable(LookupTable):
     #
     for fn in self.file_names:
 
-      # Open file and read all lines into a list
-      #
-      try:
+      try:  # Open file and read all lines into a list
         f = open(fn,'r')
       except:
-        logging.exception('Can not read from file "%s"' % (fn))
+        logging.exception('Cannot read from file "%s"' % (fn))
         raise IOError
 
       file_data = f.readlines()  # Read complete file
       f.close()
 
       tag = ''  # Start with no tag
+      key = ''  # Start with an empty key
 
       # Now process all lines - - - - - - - - - - - - - - - - - - - - - - - - -
       #
@@ -205,79 +205,90 @@ class TagLookupTable(LookupTable):
                                 (fn))
               raise Exception
 
-            ll = l.split(':')  # Separate key from values
+            line_list = l.split(':')  # Separate key from values
 
-            if (len(ll) == 2):  # Line contains a key - - - - - - - - - - - - -
-              k = ll[0].strip().lower()  # Get key, make lower and strip spaces
-
-              k_list = k.split(' ')  # Make a list of key words
-              if (len(k_list) > self.max_key_length):
-                self.max_key_length = len(k_list) # Update maximal key length
-
-              val = string.join(k_list,'_')
-              key = tuple(k_list)
-              this_tag = tag
-
-              if (k != ''):  # If key is non-empty insert it into dictionary
-                if (self.__contains__(key)):
-                  test_item = self.__getitem__(key)
-                  test_val = test_item[0]  # Value without tag
-                  test_tag = test_item[1]
-
-                  if (val != test_val):
-                    logging.warn(' Key "%s" already in dictionary' % \
-                          (str(val)) + ' with different value (old value ' + \
-                          'will be over written)')
-
-                  if (test_tag.find(this_tag) < 0):  # This tag is new
-                    this_tag = test_tag+'/'+this_tag
-
-                this_val = (val, this_tag)
-                self.__setitem__(key,this_val)  # Insert key itself
-
-              v = ll[1].lower() # Get values in a string
-
-            elif (len(ll) == 1):  # Line contains only values - - - - - - - - -
-              v = ll[0].lower() # Get values in a string
-
-            else:
-              logging.exception('Illegal file format in file: ' + \
-                                '"%s" in line: %s' % (fn, l))
+            if (len(line_list) > 2):
+              logging.exception('Illegal format in file "%s" in line: %s' % \
+                                (fn, l))
               raise Exception
 
-            vv = v.split(',')  # Split values into a list
+            if (len(line_list) == 2):  # Line contains a key - - - - - - - - -
 
-            for v in vv:  # Loop over all values  - - - - - - - - - - - - - - -
-              vs = v.strip()
-              if (vs != ''):  # Only append non-empty values
-                k_list = vs.split(' ')  # Make a list of key words
-                if (len(k_list) >  self.max_key_length):
-                  self.max_key_length = len(k_list) # Update maximal key length
+              key = line_list[0].strip().lower() # Get and clean key
 
-                key = tuple(k_list)
+              key_list = key.split(' ')  # Make a list of key words
+              if (len(key_list) > self.max_key_length):
+                self.max_key_length = len(key_list) # Update maximal key length
+
+              # Insert key itself into lookup table
+              #
+              dict_val = '_'.join(key_list)
+              dict_key = tuple(key_list)
+              this_tag = tag
+
+              if (self.__contains__(dict_key)):  # Already in lookup table
+                test_item = self.__getitem__(dict_key)
+                test_val = test_item[0]  # Value without tag
+                test_tag = test_item[1]
+
+                if (dict_val != test_val):
+                  logging.warn('Key "%s" already in dictionary with ' % \
+                          (str(dict_val)) + 'different value (old value ' + \
+                          'will be over written with "%s")' % (str(test_val)))
+
+                if (test_tag.find(this_tag) < 0):  # This tag is new
+                  this_tag = test_tag+'/'+this_tag  # Tag for this entry
+                else:
+                  this_tag = test_tag
+
+              this_val = (dict_val, this_tag)
+              self.__setitem__(dict_key,this_val)  # Insert key itself
+
+              vals = line_list[1].lower() # Get values in this line in a string
+
+            elif (len(line_list) == 1):  # Line contains only values - - - - -
+
+              vals = line_list[0].lower() # Get values in this line in a string
+
+            # Porcess all values right of ':' in this line
+
+            val_list = vals.split(',')  # Split values into a list
+
+            for val in val_list:  # Loop over all values  - - - - - - - - - - -
+
+              val_strip = val.strip()
+
+              if (val_strip != ''):  # Only append non-empty values
+                key_list = val_strip.split(' ')  # Make a list of key words
+                if (len(key_list) >  self.max_key_length):
+                  self.max_key_length = len(key_list) # Update maximal key len
+
+                dict_key = tuple(key_list)
                 this_tag = tag
 
-                if (self.__contains__(key)):
-                  test_item = self.__getitem__(key)
+                if (self.__contains__(dict_key)):
+                  test_item = self.__getitem__(dict_key)
                   test_val = test_item[0]  # Value without tag
                   test_tag = test_item[1]
 
-                  if (val != test_val):
-                    logging.warn('Key "%s" already in dictionary' % \
-                          (str(val)) + ' with different value (old value ' + \
-                          'will be over written)')
+                  if (dict_val != test_val):
+                    logging.warn('Key "%s" already in dictionary with ' % \
+                          (str(dict_val)) + 'different value (old value ' + \
+                          'will be over written with "%s")' % (str(test_val)))
 
                   if (test_tag.find(this_tag) < 0):  # This tag is new
-                    this_tag = test_tag+'/'+this_tag
+                    this_tag = test_tag+'/'+this_tag  # Tag for this entry
+                  else:
+                    this_tag = test_tag
 
-                this_val = (val, this_tag)
-                self.__setitem__(key,this_val)
+                this_val = (dict_val, this_tag)
+                self.__setitem__(dict_key,this_val)
 
     self.length = self.__len__()  # Get number of elements in the look-up table
 
     # A log message - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     #
-    logging.info('Loaded tag look-up table "%s"' % (str(self.name)))
+    logging.info('Loaded tag look-up table "%s"' % (self.description))
     logging.info('  From files:         %s' % (str(self.file_names)))
     logging.info('  Number of entries:  %i' % (self.length))
     logging.info('  Maximal key length: %i' % (self.max_key_length))
@@ -285,7 +296,7 @@ class TagLookupTable(LookupTable):
 # =============================================================================
 
 class FrequencyLookupTable(LookupTable):
-  """class FrequencyLookupTable - Look-up tables for words and frequencies.
+  """A look-up table class for look-up tables with words and frequencies.
   """
 
   # ---------------------------------------------------------------------------
@@ -299,7 +310,8 @@ class FrequencyLookupTable(LookupTable):
 
     # A log message - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     #
-    logging.info('Initialised frequency look-up table "%s"' % (str(self.name)))
+    logging.info('Initialised frequency look-up table "%s"' % \
+                 (self.description))
     logging.info('  With default: %s' % (str(self.default)))
 
   # ---------------------------------------------------------------------------
@@ -307,6 +319,7 @@ class FrequencyLookupTable(LookupTable):
   def load(self, file_names):
     """Load one or more files with words and their frequency counts into the
        look-up table.
+
        See Febrl manual for details on the file format.
     """
 
@@ -315,10 +328,12 @@ class FrequencyLookupTable(LookupTable):
     if (isinstance(file_names, str)):
       file_names = [file_names]  # Make a list out of a single file name
 
-    if (not isinstance(file_names, list)):
-      logging.exception('Argument "file_names" is of wrong type, must be ' + \
-                        'either string or list')
-      raise Exception
+    auxiliary.check_is_list('file_names', file_names)
+
+    i = 0
+    for file_name in file_names:
+      auxiliary.check_is_string('file_name[%d]' % (i), file_name[i])
+      i += 1
 
     self.file_names = file_names
     self.clear()  # Remove all items from the look-up table
@@ -328,12 +343,10 @@ class FrequencyLookupTable(LookupTable):
     #
     for fn in self.file_names:
 
-      # Open file and read all lines into a list
-      #
-      try:
+      try:  # Open file and read all lines into a list
         f = open(fn,'r')
       except:
-        logging.exception('Can not read from file "%s"' % (fn))
+        logging.exception('Cannot read from file "%s"' % (fn))
         raise IOError
 
       file_data = f.readlines()  # Read complete file
@@ -374,7 +387,8 @@ class FrequencyLookupTable(LookupTable):
 
     # A log message - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     #
-    logging.info('Loaded frequency look-up table "%s"' % (str(self.name)))
+    logging.info('Loaded frequency look-up table "%s"' % \
+                 (self.description))
     logging.info('  From files:        %s' % (str(self.file_names)))
     logging.info('  Number of entries: %i' % (self.length))
     logging.info('  Sum of all value:  %i' % (self.sum))
@@ -382,7 +396,7 @@ class FrequencyLookupTable(LookupTable):
 # =============================================================================
 
 class GeocodeLookupTable(LookupTable):
-  """class GeocodeLookupTable - Look-up tables for entries and their location.
+  """A look-up table class for look-up tables with entires and their locations.
 
      For each entry in the look-up table, its longitude and latitude are given.
      The file format is three columns comma separated text file (CSV).
@@ -401,14 +415,16 @@ class GeocodeLookupTable(LookupTable):
 
     # A log message - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     #
-    logging.info('Initialised geocode look-up table "%s"' % (str(self.name)))
+    logging.info('Initialised geocode look-up table "%s"' % \
+                 (self.description))
     logging.info('  With default: %s' % (str(self.default)))
 
   # ---------------------------------------------------------------------------
 
   def load(self, file_names):
     """Load one or more files with entries and their localities into the
-       look-up table.
+       table.
+
        See Febrl manual for details on the file format.
     """
 
@@ -417,10 +433,12 @@ class GeocodeLookupTable(LookupTable):
     if (isinstance(file_names, str)):
       file_names = [file_names]  # Make a list out of a single file name
 
-    if (not isinstance(file_names, list)):
-      logging.exception('Argument "file_names" is of wrong type, must be ' + \
-                        'either string or list')
-      raise Exception
+    auxiliary.check_is_list('file_names', file_names)
+
+    i = 0
+    for file_name in file_names:
+      auxiliary.check_is_string('file_name[%d]' % (i), file_name[i])
+      i += 1
 
     self.file_names = file_names
     self.clear()  # Remove all items from the look-up table
@@ -429,12 +447,10 @@ class GeocodeLookupTable(LookupTable):
     #
     for fn in self.file_names:
 
-      # Open file and read all lines into a list
-      #
-      try:
+      try:  # Open file and read all lines into a list
         f = open(fn,'r')
       except:
-        logging.exception('Can not read from file "%s"' % (fn))
+        logging.exception('Cannot read from file "%s"' % (fn))
         raise IOError
 
       file_data = f.readlines()  # Read complete file
@@ -456,34 +472,34 @@ class GeocodeLookupTable(LookupTable):
             raise Exception
 
           key = ll[0].strip().lower()  # Make sure it's lower case
-          lon = ll[1].strip()
-          lat = ll[2].strip()
+          long = ll[1].strip()
+          lati = ll[2].strip()
 
           # Try to convert into numerical (float) values
           #
           try:
-            lon = float(lon)
+            long = float(long)
           except:
             logging.exception('Longitude: "%s" is not a number in line: "%s"' \
-                              % (str(lon), l))
+                              % (str(long), l))
             raise Exception
           try:
-            lat = float(lat)
+            lati = float(lati)
           except:
             logging.exception('Lattitude: "%s" is not a number in line: "%s"' \
-                              % (str(lat), l))
+                              % (str(lati), l))
             raise Exception
 
           # And check their values
           #
-          if (lon < -180.0) or (lon > 180.0):
-            logging.exception('Illegal value for longitude: '+str(lon))
+          if (long < -180.0) or (long > 180.0):
+            logging.exception('Illegal value for longitude: '+str(long))
             raise Exception
-          if (lat < -90.0) or (lat > 90.0):
-            logging.exception('Illegal value for latitude: '+str(lat))
+          if (lati < -90.0) or (lati > 90.0):
+            logging.exception('Illegal value for latitude: '+str(lati))
             raise Exception
 
-          val = [lon,lat]  # Value for dictionary
+          val = [long,lati]  # Value for dictionary
 
           if (self.__contains__(key)) and (self.__getitem__(key) != val):
             logging.exception('Key "%s" already in look-up table with ' % \
@@ -496,162 +512,15 @@ class GeocodeLookupTable(LookupTable):
 
     # A log message - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     #
-    logging.info('Loaded geocode look-up table "%s"' % (str(self.name)))
-    logging.info('  From files:        %s' % (str(self.file_names)))
-    logging.info('  Number of entries: %i' % (self.length))
-
-# =============================================================================
-
-class NeighbourLookupTable(LookupTable):
-  """class NeighbourLookupTable - Look-up tables for neighbouring regions
-     (e.g. for suburbs and postcodes) to be used within a geocoding system.
-
-     For each entry in the look-up table, a list of neighbouring regions is
-     given.
-     The file format is one entry per line, where the key is separated by a ':'
-     from a list of neighbours (comma separated list enclosed by '[' and ']'),
-     and the values (i.e. the neighbour region names) must be enclosed with
-     single or double quotes.
-
-     For example, a neighbouring region entry for postcodes might look like
-     this:
-
-     2602: ['2601', '2609', '2612', '2617', '2911', '2912']
-
-     For each entry, the key is the name of a region, and the values are it's
-     neighbouring regions.
-  """
-
-  # ---------------------------------------------------------------------------
-
-  def __init__(self, **kwargs):
-
-    LookupTable.__init__(self, **kwargs)  # Initialise base class
-
-    self.default = []
-
-    # A log message - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-    #
-    logging.info('Initialised neighbour region look-up table "%s"' % \
-          (str(self.name)))
-    logging.info('  With default: %s' % (str(self.default)))
-
-  # ---------------------------------------------------------------------------
-
-  def load(self, file_names):
-    """Load one or more files with regions and their neighbouring regions into
-       the look-up table.
-       See Febrl manual for details on the file format.
-    """
-
-    # Check input argument type - - - - - - - - - - - - - - - - - - - - - - - -
-    #
-    if (isinstance(file_names, str)):
-      file_names = [file_names]  # Make a list out of a single file name
-
-    if (not isinstance(file_names, list)):
-      logging.exception('Argument "file_names" is of wrong type, must be ' + \
-                        'either string or list')
-      raise Exception
-
-    self.file_names = file_names
-    self.clear()  # Remove all items from the look-up table
-
-    # Loop over file names - - - - - - - - - - - - - - - - - - - - - - - - - -
-    #
-    for fn in self.file_names:
-
-      # Open file and read all lines into a list
-      #
-      try:
-        f = open(fn,'r')
-      except:
-        logging.exception('Can not read from file "%s"' % (fn))
-        raise IOError
-
-      file_data = f.readlines()  # Read complete file
-      f.close()
-
-      # Now process all lines - - - - - - - - - - - - - - - - - - - - - - - - -
-      #
-      for line in file_data:
-        l = line.strip()
-        if (len(l) > 0) and (l[0] != '#'):  # Not empty line and not comment
-
-          ll = l.split(':')  # Get key and neighbour lists from a line
-
-          # Check for two parts (key and neigbour list)
-          #
-          if (len(ll) != 2):
-            logging.exception('Illegal file format (not a key and a list) in' \
-                              + 'file "%s" in line: %s' % (fn, l))
-            raise Exception
-
-          region_key = ll[0].strip().lower()  # Make sure it's lower case
-          region_list = ll[1].strip().lower()
-
-          region_key = region_key.replace(' ', '_')
-
-          if ((region_list[0] != '[') or (region_list[-1] != ']')):
-            logging.exception('Illegal format of region neighbours (not a ' + \
-                              'list) in file "%s" in line %d: %s' % \
-                              (fd, l, str(ll[1])))
-            raise Exception
-
-          region_list = region_list[1:-1]  # Remove square brackets
-
-          region_neighbours = []
-
-          # Only process if not empty (i.e. if there are neighbours)
-          #
-          if (region_list != ''):
-
-            region_list = region_list.split(',')  # make it a list of regions
-
-            region_neighbours = []
-
-            for r in region_list:
-
-              r = r.strip()
-
-              # Check for proper quotes
-              #
-              if ((r[0] not in ["'",'"']) or (r[-1] not in ["'",'"'])):
-                logging.exception('Region neighbour entry not properly ' + \
-                                  'quoted in file "%s" in line %d: %s' % \
-                                  (fd, l, r))
-                raise Exception
-
-              r = r[1:-1]  # Remove quotes
-
-              r = r.replace(' ', '_')
-
-              region_neighbours.append(r)  # And add to list of neighbours
-
-            region_neighbours.sort()
-
-          if (self.__contains__(region_key)) and \
-             (self.__getitem__(region_key) != region_neighbours):
-            logging.exception('Region key "%s" already in look-up table with' \
-                              ' %s different region neighbour list' % \
-                              (str(key)))
-            raise Exception
-
-          self.__setitem__(region_key, region_neighbours)
-
-    self.length = self.__len__()  # Get number of elements in the look-up table
-
-    # A log message - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-    #
-    logging.info('Loaded neighbour region look-up table "%s"' % \
-                 (str(self.name)))
+    logging.info('Loaded geocode look-up table "%s"' % (self.description))
     logging.info('  From files:        %s' % (str(self.file_names)))
     logging.info('  Number of entries: %i' % (self.length))
 
 # =============================================================================
 
 class CorrectionList(list):
-  """class CorrectionList - Based on type list
+  """A class for correction lists (containing original and replacement
+     strings).
   """
 
   # ---------------------------------------------------------------------------
@@ -661,7 +530,6 @@ class CorrectionList(list):
     """
 
     list.__init__(self)  # Initialise list base type
-    self.name =         ''
     self.description =  ''
     self.created =      ''
     self.modified =     ''
@@ -669,13 +537,14 @@ class CorrectionList(list):
     self.length =       None  # Number of entries in the correction list
 
     for (keyword, value) in kwargs.items():
-      if (keyword == 'name'):
-        self.name = value
-      elif (keyword == 'description'):
+
+      if (keyword.startswith('desc')):
+        auxiliary.check_is_string('description', value)
         self.description = value
-      elif (keyword == 'created'):
+
+      elif (keyword.startswith('creat')):
         self.created = value
-      elif (keyword == 'modified'):
+      elif (keyword.startswith('modif')):
         self.modified = value
 
       else:
@@ -685,21 +554,19 @@ class CorrectionList(list):
 
     # A log message - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     #
-    logging.info('Initialised correction list "%s"' % (str(self.name)))
+    logging.info('Initialised correction list "%s"' % (self.description))
 
   # ---------------------------------------------------------------------------
 
   def load(self, file_name):
     """Load one correction list file into a sorted (decreasing length) list.
+
        See Febrl manual for details on the file format.
     """
 
     # Check input argument type and open file - - - - - - - - - - - - - - - - -
     #
-    if (not isinstance(file_name, str)):
-      logging.exception('Argument "file_name" is of wrong type, must be a ' + \
-                        'string')
-      raise Exception
+    auxiliary.check_is_string('file_name', file_name)
 
     self.file_name = file_name
 
@@ -708,12 +575,10 @@ class CorrectionList(list):
     while (self.__len__() > 0):
       self.pop()
 
-    # Open file and read all lines into a list
-    #
-    try:
-      f = open(self.file_name,'r')
+    try:  # Open file and read all lines into a list
+      f = open(self.file_name, 'r')
     except:
-      logging.exception('Can not read from file "%s"' % (str(self.file_name)))
+      logging.exception('Cannot read from file "%s"' % (str(self.file_name)))
       raise IOError
 
     file_data = f.readlines()  # Read complete file
@@ -763,7 +628,7 @@ class CorrectionList(list):
           if (org != ''):  # Only process non-empty values
             if (not ((org[0] == '"') and (org[-1] == '"') or \
                      (org[0] == "'") and (org[-1] == "'"))):
-              logging.excpetion('Original string is not properly quoted: '+ \
+              logging.exception('Original string is not properly quoted: '+ \
                     '"%s" in file: "%s"' % (org, str(self.file_name)))
               raise Exception
 
@@ -785,7 +650,7 @@ class CorrectionList(list):
 
     # A log message - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     #
-    logging.info('Loaded correction list "%s"' % (str(self.name)))
+    logging.info('Loaded correction list "%s"' % (self.description))
     logging.info('  From file:         %s' % (str(self.file_name)))
     logging.info('  Number of entries: %i' % (self.length))
 

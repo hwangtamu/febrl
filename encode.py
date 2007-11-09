@@ -1,8 +1,8 @@
 # =============================================================================
 # AUSTRALIAN NATIONAL UNIVERSITY OPEN SOURCE LICENSE (ANUOS LICENSE)
-# VERSION 1.2
+# VERSION 1.3
 # 
-# The contents of this file are subject to the ANUOS License Version 1.2
+# The contents of this file are subject to the ANUOS License Version 1.3
 # (the "License"); you may not use this file except in compliance with
 # the License. You may obtain a copy of the License at:
 # 
@@ -15,13 +15,11 @@
 # 
 # The Original Software is: "encode.py"
 # 
-# The Initial Developers of the Original Software are:
-#   Dr Tim Churches (Centre for Epidemiology and Research, New South Wales
-#                    Department of Health)
+# The Initial Developer of the Original Software is:
 #   Dr Peter Christen (Department of Computer Science, Australian National
 #                      University)
 # 
-# Copyright (C) 2002 - 2005 the Australian National University and
+# Copyright (C) 2002 - 2007 the Australian National University and
 # others. All Rights Reserved.
 # 
 # Contributors:
@@ -39,32 +37,37 @@
 # the terms of any one of the ANUOS License or the GPL.
 # =============================================================================
 #
-# Freely extensible biomedical record linkage (Febrl) - Version 0.3
+# Freely extensible biomedical record linkage (Febrl) - Version 0.4
 #
 # See: http://datamining.anu.edu.au/linkage.html
 #
 # =============================================================================
 
-"""Module encode.py - Routines for Soundex, Phonex, NYSIIS and Double-Metaphone
-                      string encodings.
+"""Module encode.py - Various phonetic name encoding methods.
 
-   Provides routines for different string encodings (as well as for encodings
-   of reversed names).
+Encoding methods provided:
 
-   ROUTINES
-     soundex      Soundex
-     mod_soundex  Modified Soundex
-     phonex       Phonex
-     nysiis       NYSIIS
-     dmetaphone   Double-Metaphone
+  soundex        Soundex
+  mod_soundex    Modified Soundex
+  phonex         Phonex
+  nysiis         NYSIIS
+  dmetaphone     Double-Metaphone
+  phonix         Phonix
+  fuzzysoundex   Fuzzy Soundex based on q-gram substitutions and letter
+                 encodings
+  get_substring  Simple function which extracts and returns a sub-string
 
-   See doc strings of individual routines for detailed documentation.
+See doc strings of individual routines for detailed documentation.
 
-   Note that all encoding routines assume the input string only contains
-   letters and whitespaces, , but not digits or other ASCII characters.
+There is also a routine called 'phonixtransform' which only performs the
+Phonix string transformation without the final numerical encoding. This can
+be useful for approximate string comparison functions.
 
-   If called from command line, a test routine is run which prints example
-   encodings for various strings.
+Note that all encoding routines assume the input string only contains letters
+and whitespaces, but not digits or other ASCII characters.
+
+If called from the command line, a test routine is run which prints example
+encodings for various strings.
 """
 
 # =============================================================================
@@ -72,28 +75,91 @@
 
 import logging
 import string
+import time
 
 # =============================================================================
 
 def do_encode(encode_method, in_str):
   """A 'chooser' functions which performs the selected string encoding method.
+
+  For each encoding method, two calling versions are provided. One limiting the
+  length of the code to 4 characters (and possibly pads shorter codes with a
+  fill character, for example '0' for soundex), the other returning an
+  unlimited length code.
+
+  Possible values for 'encode_method' are:
+
+    soundex          Unlimited length Soundex encoding
+    soundex4         Soundex limited/padded to length 4
+    mod_soundex      Modified unlimited length Soundex encoding
+    mod_soundex4     Modified Soundex limited/padded to length 4
+    phonex           Unlimited length Phonex encoding
+    phonex4          Phonex limited/padded to length 4
+    phonix           Unlimited length Phonix encoding
+    phonix4          Phonix limited/padded to length 4
+    phonixtransform  Only perform Phonix string transformation without
+                     numerical encoding
+    nysiis           Unlimited length NYSIIS encoding
+    nysiis4          NYSIIS limited/padded to length 4
+    dmetaphone       Unlimited length Double-Metaphone encoding
+    dmetaphone4      Double-Metaphone limited/padded to length 4
+    fuzzysoundex     Fuzzy Soundex
+    fuzzysoundex4    Fuzzy Soundex limited/padded to length 4
+
+  This functions returns the phonetic code as well as the time needed to
+  generate it (as floating-point value in seconds).
   """
 
-  if (encode_method == 'soundex'):
-    encode_score = soundex(in_str)
-  elif (encode_method == 'mod_soundex'):
-    encode_score = mod_soundex(in_str)
-  elif (encode_method == 'phonex'):
-    encode_score = phonex(in_str)
-  elif (encode_method == 'nysiis'):
-    encode_score = nysiis(in_str)
-  elif (encode_method == 'dmetaphone'):
-    encode_score = dmetaphone(in_str)
+  if (encode_method[-1] == '4'):
+    maxlen = 4
+  else:
+    maxlen = -1
+
+  if (encode_method.startswith('soundex')):
+    start_time = time.time()
+    phonetic_code = soundex(in_str, maxlen)
+    time_used = time.time() - start_time
+
+  elif (encode_method.startswith('mod_soundex')):
+    start_time = time.time()
+    phonetic_code = mod_soundex(in_str, maxlen)
+    time_used = time.time() - start_time
+
+  elif (encode_method.startswith('phonex')):
+    start_time = time.time()
+    phonetic_code = phonex(in_str, maxlen)
+    time_used = time.time() - start_time
+
+  elif (encode_method.startswith('phonixtransform')):
+    start_time = time.time()
+    phonetic_code = phonixtransform(in_str)
+    time_used = time.time() - start_time
+
+  elif (encode_method.startswith('phonix')):
+    start_time = time.time()
+    phonetic_code = phonix(in_str, maxlen)
+    time_used = time.time() - start_time
+
+  elif (encode_method.startswith('nysiis')):
+    start_time = time.time()
+    phonetic_code = nysiis(in_str, maxlen)
+    time_used = time.time() - start_time
+
+  elif (encode_method.startswith('dmetaphone')):
+    start_time = time.time()
+    phonetic_code = dmetaphone(in_str, maxlen)
+    time_used = time.time() - start_time
+
+  elif (encode_method.startswith('fuzzysoundex')):
+    start_time = time.time()
+    phonetic_code = fuzzysoundex(in_str, maxlen)
+    time_used = time.time() - start_time
+
   else:
     logging.exception('Illegal string encoding method: %s' % (encode_method))
     raise Exception
 
-  return encode_score
+  return phonetic_code, time_used
 
 # =============================================================================
 
@@ -107,12 +173,21 @@ def soundex(s, maxlen=4):
     s        A string containing a name.
     maxlen   Maximal length of the returned code. If a code is longer than
              'maxlen' it is truncated. Default value is 4.
+             If 'maxlen' is negative the soundex code will not be padded with
+             '0' to 'maxlen' characters.
 
   DESCRIPTION:
     For more information on Soundex see:
     - http://www.bluepoof.com/Soundex/info.html
     - http://www.nist.gov/dads/HTML/soundex.html
   """
+
+  if (not s):
+    if (maxlen > 0):
+      return maxlen*'0'  # Or 'z000' for compatibility with other
+                         # implementations
+    else:
+      return '0'
 
   # Translation table and characters that will not be used for soundex  - - - -
   #
@@ -121,14 +196,12 @@ def soundex(s, maxlen=4):
   # deletechars='aeiouhwy '
   deletechars = ' '
 
-  if (not s):
-    return maxlen*'0'  # Or 'z000' for compatibility with other implementations
-
   s2 = string.translate(s[1:],transtable,deletechars)
 
   s3 = s[0]  # Keep first character of original string
 
   # Only add numbers if they are not the same as the previous number
+  #
   for i in s2:
     if (i != s3[-1]):
       s3 = s3+i
@@ -140,11 +213,16 @@ def soundex(s, maxlen=4):
   #
   s4 = s4+maxlen*'0'
 
+  if (maxlen > 0):
+    resstr = s4[:maxlen]  # Return first maxlen characters
+  else:
+    resstr = s4
+
   # A log message - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   #
-  logging.debug('Soundex encoding for string: "%s": %s' % (s, s4[:maxlen]))
+  logging.debug('Soundex encoding for string: "%s": %s' % (s, resstr))
 
-  return s4[:maxlen]  # Return first maxlen characters
+  return resstr
 
 # =============================================================================
 
@@ -158,6 +236,8 @@ def mod_soundex(s, maxlen=4):
     s        A string containing a name.
     maxlen   Maximal length of the returned code. If a code is longer than
              'maxlen' it is truncated. Default value is 4.
+             If 'maxlen' is negative the soundex code will not be padded with
+             '0' to 'maxlen' characters.
 
   DESCRIPTION:
     For more information on the modified Soundex see:
@@ -171,7 +251,11 @@ def mod_soundex(s, maxlen=4):
   deletechars='aeiouhwy '
 
   if (not s):
-    return maxlen*'0'  # Or 'z000' for compatibility with other implementations
+    if (maxlen > 0):
+      return maxlen*'0'  # Or 'z000' for compatibility with other
+                         # implementations
+    else:
+      return '0'
 
   s2 = string.translate(s[1:],transtable, deletechars)
 
@@ -186,11 +270,16 @@ def mod_soundex(s, maxlen=4):
   #
   s4 = s3+maxlen*'0'
 
+  if (maxlen > 0):
+    resstr = s4[:maxlen]  # Return first maxlen characters
+  else:
+    resstr = s4
+
   # A log message - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   #
-  logging.debug('Mod Soundex encoding for string: "%s": %s' % (s, s4[:maxlen]))
+  logging.debug('Mod Soundex encoding for string: "%s": %s' % (s, resstr))
 
-  return s4[:maxlen]
+  return resstr
 
 # =============================================================================
 
@@ -204,6 +293,8 @@ def phonex(s, maxlen=4):
     s        A string containing a name.
     maxlen   Maximal length of the returned code. If a code is longer than
              'maxlen' it is truncated. Default value is 4.
+             If 'maxlen' is negative the soundex code will not be padded with
+             '0' to 'maxlen' characters.
 
   DESCRIPTION:
     Based on the algorithm as described in:
@@ -219,7 +310,11 @@ def phonex(s, maxlen=4):
   """
 
   if (not s):
-    return maxlen*'0'  # Or 'z000' for compatibility with other implementations
+    if (maxlen > 0):
+      return maxlen*'0'  # Or 'z000' for compatibility with other
+                         # implementations
+    else:
+      return '0'
 
   # Preprocess input string - - - - - - - - - - - - - - - - - - - - - - - - - -
   #
@@ -227,20 +322,28 @@ def phonex(s, maxlen=4):
     s = s[:-1]
 
   if (not s):
-    return maxlen*'0'
+    if (maxlen > 0):
+      return maxlen*'0'  # Or 'z000' for compatibility with other
+                         # implementations
+    else:
+      return '0'
 
-  if (s[:2] == 'kn'):  # Remove 'k' from beginning if followed by 'n'
+  if (s[:2] == 'kn'):    # Remove 'k' from beginning if followed by 'n'
     s = s[1:]
   elif (s[:2] == 'ph'):  # Replace 'ph' at beginning with 'f'
     s = 'f'+s[2:]
   elif (s[:2] == 'wr'):  # Remove 'w' from beginning if followed by 'r'
     s = s[1:]
 
-  if (s[0] == 'h'):  # Remove 'h' from beginning
+  if (s[0] == 'h'):      # Remove 'h' from beginning
     s = s[1:]
 
   if (not s):
-    return maxlen*'0'
+    if (maxlen > 0):
+      return maxlen*'0'  # Or 'z000' for compatibility with other
+                         # implementations
+    else:
+      return '0'
 
   # Make phonetic equivalence of first character
   #
@@ -259,7 +362,6 @@ def phonex(s, maxlen=4):
 
   # Modified soundex coding - - - - - - - - - - - - - - - - - - - - - - - - - -
   #
-
   s_len = len(s)
   code = ''  # Phonex code
   i = 0
@@ -308,11 +410,295 @@ def phonex(s, maxlen=4):
   #
   code += maxlen*'0'
 
+  if (maxlen > 0):
+    resstr = code[:maxlen]  # Return first maxlen characters
+  else:
+    resstr = code
+
   # A log message - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   #
-  logging.debug('Phonex encoding for string: "%s": %s' % (s, code[:maxlen]))
+  logging.debug('Phonex encoding for string: "%s": %s' % (s, resstr))
 
-  return code[:maxlen]  # Return first maxlen characters
+  return resstr
+
+# =============================================================================
+
+def phonix(s, maxlen=4):
+  """Compute the phonix code for a string.
+
+  USAGE:
+    code = phonix(s, maxlen):
+
+  ARGUMENTS:
+    s        A string containing a name.
+    maxlen   Maximal length of the returned code. If a code is longer than
+             'maxlen' it is truncated. Default value is 4.
+             If 'maxlen' is negative the soundex code will not be padded with
+             '0' to 'maxlen' characters.
+
+  DESCRIPTION:
+    Based on the Phonix implementation from Ulrich Pfeifer's WAIS, see:
+
+      http://search.cpan.org/src/ULPFR/WAIT-1.800/
+
+    For more information on Phonix see:
+    "PHONIX: The algorithm", Program: automated library and information
+    systems, 24(4),363-366, 1990, by T. Gadd
+  """
+
+  if (not s):
+    if (maxlen > 0):
+      return 'a'+(maxlen-1)*'0'
+    else:
+      return ''
+
+  # First apply Phonix transformation
+  #
+  phonixstr = phonixtransform(s)
+
+  if (phonixstr == ''):
+    if (maxlen > 0):
+      return 'a'+(maxlen-1)*'0'
+    else:
+      return ''
+
+  # Translation table and characters that will not be used for Phonix
+  #
+  transtable = string.maketrans('abcdefghijklmnopqrstuvwxyz', \
+                                '01230720022455012683070808')
+
+  # deletechars='aeiouhwy '
+  deletechars = ' '
+
+  s2 = string.translate(phonixstr[1:],transtable,deletechars)
+
+  # If first character is a vowel or 'y' replace it with 'V' otherwise keep it
+  # (assume all other characters are lowercase)
+  #
+  if (phonixstr[0] in 'aeiouy'):
+    s3 = 'V'  # Different from lowercase 'v'
+  else:
+    s3 = phonixstr[0]
+
+  # Only add numbers if they are not the same as the previous number
+  #
+  for i in s2:
+    if (i != s3[-1]):
+      s3 = s3+i
+
+  # Remove all '0'
+  s4 = s3.replace('0', '')
+
+  # Fill up with '0' to maxlen length
+  #
+  s4 = s4+maxlen*'0'
+
+  if (maxlen > 0):
+    resstr = s4[:maxlen]  # Return first maxlen characters
+  else:
+    resstr = s4
+
+  # A log message - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  #
+  logging.debug('Phonix encoding for string: "%s": %s' % (s, resstr))
+
+  return resstr
+
+# =============================================================================
+
+def phonixtransform(s):
+  """Do Phonix transformation for a string.
+
+  USAGE:
+    phonixstr = phonixtransform(s, maxlen):
+
+  ARGUMENTS:
+    s  A string containing a name.
+
+  DESCRIPTION:
+    This function only does the Phonix transformation of the given input string
+    without the final numerical encoding.
+
+    Based on the Phonix implementation from Ulrich Pfeifer's WAIS, see:
+
+      http://search.cpan.org/src/ULPFR/WAIT-1.800/
+
+    For more information on Phonix see:
+    "PHONIX: The algorithm", Program: automated library and information
+    systems, 24(4),363-366, 1990, by T. Gadd
+  """
+
+  if (s == ''):
+    return s
+
+  # Function which replaces a pattern in a string - - - - - - - - - - - - - - -
+  # - where can be one of: 'ALL','START','END','MIDDLE'
+  # - Pre-condition (default None) can be 'V' for vowel or 'C' for consonant
+  # - Post-condition (default None) can be 'V' for vowel or 'C' for consonant
+  #
+  def phonix_replace(s, where, orgpat, newpat, precond, postcond):
+
+    vowels = 'aeiouy'
+
+    tmpstr = s
+
+    start_search = 0  # Position from where to start the search
+    pat_len =   len(orgpat)
+
+    while (orgpat in tmpstr[start_search:]):  # As long as pattern is in string
+
+      pat_start = tmpstr.find(orgpat,start_search)
+      str_len =   len(tmpstr)
+
+      # Check conditions of previous and following character
+      #
+      OKpre = False   # Previous character condition
+      OKpost = False  # Following character condition
+
+      if (precond == None):
+        OKpre = True
+      elif (pat_start > 0):
+        if (((precond == 'V') and (tmpstr[pat_start-1] in vowels)) or \
+            ((precond == 'C') and (tmpstr[pat_start-1] not in vowels))):
+          OKpre = True
+
+      if (postcond == None):
+        OKpost = True
+      else:
+        pat_end = pat_start+pat_len
+        if (pat_end < str_len):
+          if (((postcond == 'V') and (tmpstr[pat_end] in vowels)) or \
+              ((postcond == 'C') and (tmpstr[pat_end] not in vowels))):
+            OKpost = True
+
+      # Replace pattern if conditions and position OK
+      #
+      if ((OKpre == True) and (OKpost == True)) and \
+         (((where == 'START') and (pat_start == 0)) or \
+          ((where == 'MIDDLE') and (pat_start > 0) and \
+                                   (pat_start+pat_len < str_len)) or \
+          ((where == 'END') and (pat_start+pat_len == str_len)) or \
+          (where == 'ALL')):
+        tmpstr = tmpstr[:pat_start]+newpat+tmpstr[pat_start+pat_len:]
+
+        start_search = pat_start
+      else:
+        #start_search += 1
+        start_search = pat_start+1
+
+    return tmpstr
+
+  # Replacement table according to Gadd's definition - - - - - - - - - - - - -
+  #
+  replace_table = [('ALL',    'dg',    'g'),
+                   ('ALL',    'co',    'ko'),
+                   ('ALL',    'ca',    'ka'),
+                   ('ALL',    'cu',    'ku'),
+                   ('ALL',    'cy',    'si'),
+                   ('ALL',    'ci',    'si'),
+                   ('ALL',    'ce',    'se'),
+                   ('START',  'cl',    'kl',    None, 'V'),
+                   ('ALL',    'ck',    'k'),
+                   ('END',    'gc',    'k'),
+                   ('END',    'jc',    'k'),
+                   ('START',  'chr',   'kr',    None, 'V'),
+                   ('START',  'cr',    'kr',    None, 'V'),
+                   ('START',  'wr',    'r'),
+                   ('ALL',    'nc',    'nk'),
+                   ('ALL',    'ct',    'kt'),
+                   ('ALL',    'ph',    'f'),
+                   ('ALL',    'aa',    'ar'),
+                   ('ALL',    'sch',   'sh'),
+                   ('ALL',    'btl',   'tl'),
+                   ('ALL',    'ght',   't'),
+                   ('ALL',    'augh',  'arf'),
+                   ('MIDDLE', 'lj',    'ld',    'V',  'V'),
+                   ('ALL',    'lough', 'low'),
+                   ('START',  'q',     'kw'),
+                   ('START',  'kn',    'n'),
+                   ('END',    'gn',    'n'),
+                   ('ALL',    'ghn',   'n'),
+                   ('END',    'gne',   'n'),
+                   ('ALL',    'ghne',  'ne'),
+                   ('END',    'gnes',  'ns'),
+                   ('START',  'gn',    'n'),
+                   ('MIDDLE', 'gn',    'n',     None, 'C'),
+                   ('END',    'gn',    'n'),                # None, 'C'
+                   ('START',  'ps',    's'),
+                   ('START',  'pt',    't'),
+                   ('START',  'cz',    'c'),
+                   ('MIDDLE', 'wz',    'z',     'V',  None),
+                   ('MIDDLE', 'cz',    'ch'),
+                   ('ALL',    'lz',    'lsh'),
+                   ('ALL',    'rz',    'rsh'),
+                   ('MIDDLE', 'z',     's',     None, 'V'),
+                   ('ALL',    'zz',    'ts'),
+                   ('MIDDLE', 'z',     'ts',    'C',  None),
+                   ('ALL',    'hroug', 'rew'),
+                   ('ALL',    'ough',  'of'),
+                   ('MIDDLE', 'q',     'kw',    'V',  'V'),
+                   ('MIDDLE', 'j',     'y',     'V',  'V'),
+                   ('START',  'yj',    'y',     None, 'V'),
+                   ('START',  'gh',    'g'),
+  #                ('END',    'e',     'gh',    'V', None), # Wrong in Pfeifer
+                   ('END',    'gh',    'e',     'V', None), # From Zobel code
+                   ('START',  'cy',    's'),
+                   ('ALL',    'nx',    'nks'),
+                   ('START',  'pf',    'f'),
+                   ('END',    'dt',    't'),
+                   ('END',    'tl',    'til'),
+                   ('END',    'dl',    'dil'),
+                   ('ALL',    'yth',   'ith'),
+                   ('START',  'tj',    'ch',    None, 'V'),
+                   ('START',  'tsj',   'ch',    None, 'V'),
+                   ('START',  'ts',    't',     None, 'V'),
+                   ('ALL',    'tch',   'ch'),  # Wrong funct call in Pfeifer
+                   ('MIDDLE', 'wsk',   'vskie', 'V',  None),
+                   ('END',    'wsk',   'vskie', 'V',  None),
+                   ('START',  'mn',    'n',     None, 'V'),
+                   ('START',  'pn',    'n',     None, 'V'),
+                   ('MIDDLE', 'stl',   'sl',    'V',  None),
+                   ('END',    'stl',   'sl',    'V',  None),
+                   ('END',    'tnt',   'ent'),
+                   ('END',    'eaux',  'oh'),
+                   ('ALL',    'exci',  'ecs'),
+                   ('ALL',    'x',     'ecs'),
+                   ('END',    'ned',   'nd'),
+                   ('ALL',    'jr',    'dr'),
+                   ('END',    'ee',    'ea'),
+                   ('ALL',    'zs',    's'),
+                   ('MIDDLE', 'r',     'ah',    'V',  'C'),
+                   ('END',    'r',     'ah',    'V',  None),  # 'V', 'C'
+                   ('MIDDLE', 'hr',    'ah',    'V',  'C'),
+                   ('END',    'hr',    'ah',    'V',  None),  # 'V', 'C'
+                   ('END',    'hr',    'ah',    'V',  None),
+                   ('END',    're',    'ar'),
+                   ('END',    'r',     'ah',    'V',  None),
+                   ('ALL',    'lle',   'le'),
+                   ('END',    'le',    'ile',   'C',  None),
+                   ('END',    'les',   'iles',  'C',  None),
+                   ('END',    'e',     ''),
+                   ('END',    'es',    's'),
+                   ('END',    'ss',    'as',    'V',  None),
+                   ('END',    'mb',    'm',     'V',  None),
+                   ('ALL',    'mpts',  'mps'),
+                   ('ALL',    'mps',   'ms'),
+                   ('ALL',    'mpt',   'mt')]
+
+  workstr = s
+
+  for rtpl in replace_table:  # Check all transformations in the table
+
+    if (len(rtpl) == 3):
+      rtpl += (None,None)
+
+    workstr = phonix_replace(workstr,rtpl[0],rtpl[1],rtpl[2],rtpl[3],rtpl[4])
+
+  # A log message - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  #
+  logging.debug('Phonix transformation: "%s" into "%s"' % (s, workstr))
+
+  return workstr
 
 # =============================================================================
 
@@ -326,6 +712,8 @@ def nysiis(s, maxlen=4):
     s        A string containing a name.
     maxlen   Maximal length of the returned code. If a code is longer than
              'maxlen' it is truncated. Default value is 4.
+             If 'maxlen' is negative the soundex code will not be padded with
+             '0' to 'maxlen' characters.
 
   DESCRIPTION:
     For more information on NYSIIS see:
@@ -427,11 +815,14 @@ def nysiis(s, maxlen=4):
   if (first in 'aeiou'):
     resstr = first+resstr[1:]
 
+  if (maxlen > 0):
+    resstr = resstr[:maxlen]  # Return first maxlen characters
+
   # A log message - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   #
-  logging.debug('NYSIIS encoding for string: "%s": %s' % (s, resstr[:maxlen]))
+  logging.debug('NYSIIS encoding for string: "%s": %s' % (s, resstr))
 
-  return resstr[:maxlen]
+  return resstr
 
 # =============================================================================
 
@@ -502,7 +893,12 @@ def dmetaphone(s, maxlen=4):
     secondary_len = secondary_len+1
     current = current+1
 
-  while (primary_len < maxlen) or (secondary_len < maxlen):
+  if (maxlen < 1):  # Calculate maximum length to check
+    check_maxlen = length
+  else:
+    check_maxlen = maxlen
+
+  while (primary_len < check_maxlen) or (secondary_len < check_maxlen):
     if (current >= length):
       break
 
@@ -1259,21 +1655,179 @@ def dmetaphone(s, maxlen=4):
     # If both codes are the same set the second's length to 0 so it's not used
     secondary_len = 0
 
+# else:
+#   print 'Two D-metaphone codes for "%s": "%s" / "%s"' % (s,primary,secondary)
+
   # if (secondary_len > 0):
   #   return [primary[:maxlen], secondary[:maxlen]]
   # else:
   #   return [primary[:maxlen]]
 
+  if (maxlen > 0):
+    resstr = primary[:maxlen]  # Only return primary encoding
+  else:
+    resstr = primary
+
   # A log message - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   #
   logging.debug('Double Metaphone encoding for string: "%s": prim: %s, ' % \
-                (s, primary[:maxlen]) + 'sec: %s' % (secondary[:maxlen]))
+                (s, primary) + '(sec: %s)' % (secondary))
 
-  return primary[:maxlen]  # Only return primary encoding
+  return resstr
 
 # =============================================================================
 
-#
+def fuzzysoundex(s, maxlen=4):
+  """Compute the fuzzy soundex code for a string.
+
+  USAGE:
+    code = fuzzysoundex(s, maxlen):
+
+  ARGUMENTS:
+    s        A string containing a name.
+    maxlen   Maximal length of the returned code. If a code is longer than
+             'maxlen' it is truncated. Default value is 4.
+             If 'maxlen' is negative the soundex code will not be padded with
+             '0' to 'maxlen' characters.
+
+  DESCRIPTION:
+    Based on ideas described in:
+
+      "Improving Precision and Recall for Soundex Retrieval"
+      by David Holmes and M. Catherine McCabe, 2002.
+
+    This method does q-gram basedsubstitution of sub-strings before encoding
+    the input string.
+  """
+
+  if (not s):
+    if (maxlen > 0):
+      return maxlen*'0'  # Or 'z000' for compatibility with other
+                         # implementations
+    else:
+      return '0'
+
+  # Translation table and characters that will not be used for soundex  - - - -
+  #
+  transtable = string.maketrans('abcdefghijklmnopqrstuvwxyz', \
+                                '01930170077455017693010709')
+  # Soundex:                    '01230120022455012623010202')
+  # Differences:                   *   *  **     * *    * *
+
+  qgram_prefix_sub_dict = {'cs':'ss', 'cz':'ss', 'ts':'ss', 'tz':'ss',
+                           'gn':'nn', 'hr':'rr', 'wr':'rr', 'hw':'ww',
+                           'kn':'nn', 'ng':'nn'}
+
+  qgram_sub_dict = {'chl':'kl',  'chr':'kr',  'mac':'mk', 'nst':'nss',
+                    'sch':'sss', 'tio':'sio', 'tia':'sio', 'tch':'chh',
+                    'ca':'ka', 'cc':'kk', 'ck':'kk', 'ce':'se', 'cl':'kl',
+                    'cr':'kr', 'ci':'si', 'co':'ko', 'cu':'ku', 'cy':'sy',
+                    'dg':'gg', 'gh':'hh', 'mc':'mk', 'pf':'ff', 'ph':'ff'}
+
+  qgram_suffix_sub_dict = {'ch':'kk', 'nt':'tt', 'rt':'rr', 'rdt':'rr'}
+
+  for subs in qgram_sub_dict:
+    assert subs not in qgram_prefix_sub_dict
+    assert subs not in qgram_suffix_sub_dict
+    qgram_prefix_sub_dict[subs] = qgram_sub_dict[subs]
+    qgram_suffix_sub_dict[subs] = qgram_sub_dict[subs]
+
+  tmp_str = s  # Work on a copy of input string
+  qgram_list = []
+
+  # First process prefixes only
+  #
+  prefix3 = tmp_str[:3]  # First three characters
+  prefix2 = tmp_str[:2]  # First two characters
+
+  if (prefix3 in qgram_prefix_sub_dict):
+    qgram_list.append(qgram_prefix_sub_dict[prefix3])
+    tmp_str = tmp_str[3:]  # Removed processed prefix
+
+  elif (prefix2 in qgram_prefix_sub_dict):
+    qgram_list.append(qgram_prefix_sub_dict[prefix2])
+    tmp_str = tmp_str[2:]  # Removed processed prefix
+
+  # Next process suffixes only
+  #
+  suffix3 = tmp_str[-3:]  # Last three characters
+  suffix2 = tmp_str[-2:]  # Last two characters
+
+  if (suffix3 in qgram_suffix_sub_dict):
+    suffix_qgram = qgram_suffix_sub_dict[suffix3]
+    tmp_str = tmp_str[:-3]  # Removed processed suffix
+  elif (suffix2 in qgram_suffix_sub_dict):
+    suffix_qgram = qgram_suffix_sub_dict[suffix2]
+    tmp_str = tmp_str[2:]  # Removed processed suffix
+  else:
+    suffix_qgram = []
+
+  # Now process rest of string
+  #
+  while (tmp_str != ''):
+    found_qgram = False
+
+    if (len(tmp_str) >= 3):
+      tmp_trigram = tmp_str[:3]
+      if (tmp_trigram in qgram_sub_dict):
+        qgram_list.append(qgram_sub_dict[tmp_trigram])
+        tmp_str = tmp_str[3:]
+        found_qgram = True
+
+    if (found_qgram == False) and (len(tmp_str) >= 2):
+      tmp_bigram = s[:2]
+      if (tmp_bigram in qgram_sub_dict):
+        qgram_list.append(qgram_sub_dict[tmp_bigram])
+        tmp_str = tmp_str[2:]
+        found_qgram = True
+
+    if (found_qgram == False):
+      qgram_list.append(tmp_str[0])
+      tmp_str = tmp_str[1:]
+
+  qgram_list += suffix_qgram
+
+  s2 = ''.join(qgram_list)
+
+  s3 = string.translate(s2[1:],transtable, ' ')  # Delete spaces
+
+  s4 = s2[0]
+
+  # Only add numbers if they are not the same as the previous number
+  for c in s3:
+    if (c != s4[-1]):
+      s4 += c
+
+  # Remove all '0'
+  s5 = s4.replace('0', '')
+
+  # Fill up with '0' to maxlen length
+  #
+  s5 = s5 + maxlen*'0'
+
+  if (maxlen > 0):
+    resstr = s5[:maxlen]  # Return first maxlen characters
+  else:
+    resstr = s5
+
+  # A log message - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  #
+  logging.debug('Fuxxy Soundex encoding for string: "%s": %s' % (s, resstr))
+
+  return resstr
+
+# =============================================================================
+
+def get_substring(str, start_index, end_index):
+  """Simple function to extract and return a substring from the given input
+     string.
+  """
+
+  assert start_index <= end_index
+
+  return str[start_index:end_index]
+
+# =============================================================================
 # Do some tests if called from command line
 #
 
@@ -1285,45 +1839,52 @@ if (__name__ == '__main__'):
 
   print 'Original names:'
   print '            Name     Phonex   Soundex  ModSoundex      NYSIIS  ',
-  print '  D-Metaphone'
+  print '  D-Metaphone   FuzzySoundex   Phonix'
   print '---------------------------------------------------------------'+ \
-        '--------------'
+        '--------------------------------------'
 
   namelist = ['peter','christen','ole','nielsen','markus','hegland',\
               'stephen','steve','roberts','tim','churches','xiong',\
               'ng','miller','millar','foccachio','van de hooch', \
               'xiao ching','asawakun','prapasri','von der felde','vest',
               'west','oioi','ohio','oihcca', 'nielsen', 'kim', 'lim', \
-              'computer','record','linkage','probabilistic']
+              'computer','record','linkage','probabilistic','gail', 'gayle',
+              'christine','christina','kristina','steffi']
 
   for n in namelist:
-    soundex_my     = soundex(n)
-    soundex_mod_my = mod_soundex(n)
-    phonex_my     = phonex(n)
-    nysiis_my     = nysiis(n)
-    dmeta_my      = dmetaphone(n)
+    soundex_my =      soundex(n)
+    soundex_mod_my =  mod_soundex(n)
+    phonex_my =       phonex(n)
+    nysiis_my =       nysiis(n)
+    dmeta_my =        dmetaphone(n)
+    fuzzysoundex_my = fuzzysoundex(n)
+    phonix_my =       phonix(n)
 
-    print '%16s %10s %9s %11s %11s %15s'% \
-          (n, phonex_my, soundex_my, soundex_mod_my, nysiis_my, dmeta_my)
+    print '%16s %10s %9s %11s %11s %15s %14s %8s' % (n, phonex_my, \
+          soundex_my, soundex_mod_my, nysiis_my, dmeta_my, fuzzysoundex_my, \
+          phonix_my)
 
   print
   print 'Reversed names:'
   print '            Name     Phonex   Soundex  ModSoundex      NYSIIS  ',
-  print '  D-Metaphone'
+  print '  D-Metaphone   FuzzySoundex   Phonix'
   print '---------------------------------------------------------------'+ \
-        '--------------'
+        '--------------------------------------'
 
   for n in namelist:
     rn = list(n)
     rn.reverse()
     rn = ''.join(rn)
-    soundex_my     = soundex(rn)
-    soundex_mod_my = mod_soundex(rn)
-    phonex_my     = phonex(rn)
-    nysiis_my     = nysiis(rn)
-    dmeta_my      = dmetaphone(rn)
+    soundex_my =      soundex(rn)
+    soundex_mod_my =  mod_soundex(rn)
+    phonex_my =       phonex(rn)
+    nysiis_my =       nysiis(rn)
+    dmeta_my =        dmetaphone(rn)
+    fuzzysoundex_my = fuzzysoundex(rn)
+    phonix_my =       phonix(rn)
 
-    print '%16s %10s %9s %11s %11s %15s'% \
-          (rn, phonex_my, soundex_my, soundex_mod_my, nysiis_my, dmeta_my)
+    print '%16s %10s %9s %11s %11s %15s %14s %8s' % (n, phonex_my, \
+          soundex_my, soundex_mod_my, nysiis_my, dmeta_my, fuzzysoundex_my, \
+          phonix_my)
 
 # =============================================================================

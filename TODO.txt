@@ -1,0 +1,88 @@
+Febrl 0.4 - TODO list
+---------------------
+Last update: Peter Christen, 1/11/2007
+
+
+General Febrl modules:
+----------------------
+
+- dataset.py:
+  - SQL data set classes and their tests in datasetTest.py
+
+- comparisonTest.py:
+  - more test on caching
+  - proper timing analysis of comparison functions (incl. caching)
+    using large data sets
+
+- measurements.py
+  - check improve pairs completeness - is rec_id funct needed?
+  - implement measurementsTest.py
+
+- indexing.py
+  - add test in indexingTest.py writing of weight vector file
+
+- output.py:
+  - add more output options (merged linked data sets?)
+  - implement outputTest.py
+
+- classification.py
+  - add log_funct to classification for progress reporting
+
+  - various clustering quality measures
+    then k-means with k=2,3... keep best K
+  - improve decision tree classifier, e.g. C4.5 in C? Similar to SVM
+  - hierarchical agglomerative clustering, add [1,1,1,1]
+    weight vector (all matches) and [0,0,0,0] non-matches -> 2 known
+    clusters, then find next closest etc. -> down to 2 clusters.
+   - have classifiers all with a vector_weight argument which gives different
+    weights to fields in vectors, if None -> all weight 1.0
+
+- mymath.py:
+  - finalise Mahalanobis distance
+  - update mymathTest.py
+
+- standardise.py
+  - complete names and address testing routines in standardiseTest.py
+
+- stringcmp.py
+  - improve compression comparison
+    -> module compression with different algorithms
+    -> re-read Cohen string comp. paper
+
+- lap.py
+  - fix LAP module, then test
+  - updated to python 2.5, integrate into Febrl-0.4
+
+======================================================================
+
+GUI:
+----
+
+- Load and parse a Febrl project file
+
+- possibility to show/edit the generated code??
+
+- implement data set generator as extra tool as separate window
+
+- implement HMM training in GUI as extra tool
+
+Data page:
+
+Explore page:
+
+Indexing page:
+- scrolling down automatically in index definition window
+
+Comparison page:
+- comparisons: fields re-set (clear) when change, improve upon this
+- add frequency based weight calculation (i.e. load freq. files)
+
+Classify:
+
+Output/Run:
+
+Evaluate:
+- add interactive threshold setting
+
+Review:
+- implement Review page

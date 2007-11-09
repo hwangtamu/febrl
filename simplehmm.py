@@ -1,8 +1,8 @@
 # =============================================================================
 # AUSTRALIAN NATIONAL UNIVERSITY OPEN SOURCE LICENSE (ANUOS LICENSE)
-# VERSION 1.2
+# VERSION 1.3
 # 
-# The contents of this file are subject to the ANUOS License Version 1.2
+# The contents of this file are subject to the ANUOS License Version 1.3
 # (the "License"); you may not use this file except in compliance with
 # the License. You may obtain a copy of the License at:
 # 
@@ -15,13 +15,11 @@
 # 
 # The Original Software is: "simplehmm.py"
 # 
-# The Initial Developers of the Original Software are:
-#   Dr Tim Churches (Centre for Epidemiology and Research, New South Wales
-#                    Department of Health)
+# The Initial Developer of the Original Software is:
 #   Dr Peter Christen (Department of Computer Science, Australian National
 #                      University)
 # 
-# Copyright (C) 2002 - 2005 the Australian National University and
+# Copyright (C) 2002 - 2007 the Australian National University and
 # others. All Rights Reserved.
 # 
 # Contributors:
@@ -39,7 +37,7 @@
 # the terms of any one of the ANUOS License or the GPL.
 # =============================================================================
 #
-# Freely extensible biomedical record linkage (Febrl) - Version 0.3
+# Freely extensible biomedical record linkage (Febrl) - Version 0.4
 #
 # See: http://datamining.anu.edu.au/linkage.html
 #
@@ -72,45 +70,44 @@
 """
 
 # =============================================================================
-# Imports go here
+# Import necessary modules (Python standard modules first, then Febrl modules)
 
 import logging
 import os
-import string
 import time
 
 # =============================================================================
 
 class hmm:
-  """Routines for simple HMM functionality
+  """Routines for simple HMM functionality.
   """
 
-  def __init__(self, name, state_list, obser_list, \
-               inita_prob=None, trans_prob=None, obser_prob=None):
+  def __init__(self, description, state_list, obser_list,  inita_prob=None,
+               trans_prob=None, obser_prob=None):
     """Initialise a new Hidden Markov Model.
 
     USAGE:
-      myhmm = hmm(name, states, observ)
+      myhmm = hmm(description, states, observ)
 
     ARGUMENTS:
-      name        A name for the HMM
-      state_list  List of states of the HMM
-      obser_list  List of observations
-      inita_prob  Initial state probabilities (default: None)
-      trans_prob  Transition probabilities (default: None)
-      obser_prob  Observation probabilities (default: None)
+      description  A description for the HMM
+      state_list   List of states of the HMM
+      obser_list   List of observations
+      inita_prob   Initial state probabilities (default: None)
+      trans_prob   Transition probabilities (default: None)
+      obser_prob   Observation probabilities (default: None)
 
     DESCRIPTION:
-      This routine initialises a new HMM data structure using the given
-      state and observation list.
+      This routine initialises a new HMM data structure using the given state
+      and observation list.
 
       Optional arguments are initial state probabilities, transition
       probabilities and observation probabilities. If they are not given
       (default) they are set to zero.
     """
 
-    if (not isinstance(name, str)):
-      logging.exception('Argument "name" is not a string')
+    if (not isinstance(description, str)):
+      logging.exception('Argument "description" is not a string')
       raise Exception
 
     if (not isinstance(state_list, list)):
@@ -120,7 +117,8 @@ class hmm:
       logging.exception('Argument "obser_list" is not a list')
       raise Exception
 
-    self.name = name
+    self.description = description
+
     self.N = len(state_list)
     self.M = len(obser_list)
     self.S = state_list
@@ -198,7 +196,8 @@ class hmm:
 
     # A log message - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     #
-    logging.info('Initialised HMM with')
+    logging.info('Initialised HMM:')
+    logging.info('  Description:  %s' % (self.description))
     logging.info('  States:       %s' % (str(state_list)))
     logging.info('  Observations: %s' % (str(obser_list)))
 
@@ -573,16 +572,22 @@ class hmm:
   def save_hmm(self, file_name):
     """Save the HMM into a text file.
 
-    USAGE:
-      myhmm.save_hmm(file_name)
+       USAGE:
+         myhmm.save_hmm(file_name)
 
-    ARGUMENTS:
-      file_name  The name of the text file into which the HMM is written
+       ARGUMENTS:
+         file_name  The name of the text file into which the HMM is written
 
-    DESCRIPTION:
-      Writes comments into the text file in Python style, i.e. lines beginning
-      with a hash character '#'.
+       DESCRIPTION:
+         Writes comments into the text file in Python style, i.e. lines
+         beginning with a hash character '#'.
+
+         If the file name does not end with "hmm" and does not contain a "."
+         then ".hmm" will be appended to the file name.
     """
+
+    if ((not file_name.endswith('hmm')) and ('.' not in file_name)):
+      file_name = file_name+'.hmm'
 
     # Open file for writing - - - - - - - - - - - - - - - - - - - - - - - - - -
     #
@@ -594,7 +599,7 @@ class hmm:
 
     # Write header  - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     #
-    f.write("# Hidden Markov Model written by 'simplehmm.py - Version 0.1'"+ \
+    f.write("# Hidden Markov Model written by 'simplehmm.py'"+ \
             os.linesep)
     f.write("#"+os.linesep)
     f.write("# Created "+time.ctime(time.time())+os.linesep)
@@ -603,36 +608,37 @@ class hmm:
     f.write('#'+'-'*70+os.linesep)
     f.write(os.linesep)
 
-    # Write HMM name  - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    # Write HMM description - - - - - - - - - - - - - - - - - - - - - - - - - -
     #
-    f.write("# HMM name"+os.linesep)
-    f.write(self.name+os.linesep)
+    f.write("# HMM description"+os.linesep)
+    f.write("#"+os.linesep)
+    f.write(self.description+os.linesep)
     f.write(os.linesep)
 
     # Write HMM states  - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     #
     f.write("# HMM states"+os.linesep)
     f.write("#"+os.linesep)
-    state_string = string.join(self.S, ', ')
-    f.write(state_string+os.linesep)
+    state_str = ', '.join(self.S)
+    f.write(state_str+os.linesep)
     f.write(os.linesep)
 
     # Write HMM observations  - - - - - - - - - - - - - - - - - - - - - - - - -
     #
     f.write("# HMM observations"+os.linesep)
     f.write("#"+os.linesep)
-    obser_string = string.join(self.O, ', ')
-    f.write(obser_string+os.linesep)
+    obser_str = ', '.join(self.O)
+    f.write(obser_str+os.linesep)
     f.write(os.linesep)
 
     # Write HMM initial probabilities - - - - - - - - - - - - - - - - - - - - -
     #
     f.write("# HMM initial probabilities"+os.linesep)
     f.write("#"+os.linesep)
-    inital_prob_string = ''
+    inital_prob_str = ''
     for i in range(self.N):
-      inital_prob_string += '%f' %(self.pi[i])+', '
-    f.write(inital_prob_string[:-2]+os.linesep)  # Strip of trailing ', '
+      inital_prob_str += '%f' %(self.pi[i])+', '
+    f.write(inital_prob_str[:-2]+os.linesep)  # Strip of trailing ', '
     f.write(os.linesep)
 
     # Write HMM transition probabilities  - - - - - - - - - - - - - - - - - - -
@@ -640,10 +646,10 @@ class hmm:
     f.write("# HMM transition probabilities (from state row-wise)"+os.linesep)
     f.write("#"+os.linesep)
     for i in range(self.N):
-      trans_prob_string = ''
+      trans_prob_str = ''
       for j in range(self.N):
-        trans_prob_string +=  '%f' %(self.A[i][j])+', '
-      f.write(trans_prob_string[:-2]+os.linesep) # Strip of trailing ', '
+        trans_prob_str +=  '%f' %(self.A[i][j])+', '
+      f.write(trans_prob_str[:-2]+os.linesep) # Strip of trailing ', '
     f.write(os.linesep)
 
     # Write HMM observation probabilities - - - - - - - - - - - - - - - - - - -
@@ -651,10 +657,10 @@ class hmm:
     f.write("# HMM observation probabilities (state row-wise)"+os.linesep)
     f.write("#"+os.linesep)
     for i in range(self.N):
-      obser_prob_string = ''
+      obser_prob_str = ''
       for j in range(self.M):
-        obser_prob_string +=  '%f' %(self.B[i][j])+', '
-      f.write(obser_prob_string[:-2]+os.linesep) # Strip of trailing ', '
+        obser_prob_str +=  '%f' %(self.B[i][j])+', '
+      f.write(obser_prob_str[:-2]+os.linesep) # Strip of trailing ', '
     f.write(os.linesep)
 
     f.close()
@@ -698,10 +704,9 @@ class hmm:
     while (line[0] == '#') or (line.strip() == ''):
       line = f.readline()
 
-    # Read HMM name - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    # Read HMM description - - - - - - - - - - - - - - - - - - - - - - - - - -
     #
-    line = line.strip()  # Remove line separators
-    self.name = line
+    self.description = line.strip()  # Remove line separators
 
     # Skip over empty line(s) and comments for states
     #
@@ -822,18 +827,21 @@ class hmm:
       None
 
     DESCRIPTION:
-      prints a HMM with all its parameters. Only probabilities with values
+      Prints a HMM with all its parameters. Only probabilities with values
       larger than 0.0 are printed.
-
-      A message of logging level 1 (low output) is produced and printed/logged.
     """
 
     msg = []  # Compose a message
 
+    state_list = self.S[:]  # Make a copy
+    state_list.sort()
+    obser_list = self.O[:]  # Make a copy
+    obser_list.sort()
+
     msg.append('Hidden Markov Model')
-    msg.append('  Name::       '+str(self.name))
-    msg.append('  States:      '+str(self.S))
-    msg.append('  Observations:'+str(self.O))
+    msg.append('  Description:  %s' % (str(self.description)))
+    msg.append('  States:       %s' % (str(state_list)))
+    msg.append('  Observations: %s' % (str(obser_list)))
 
     msg.append('')
     msg.append('  Inital state probabilities:')

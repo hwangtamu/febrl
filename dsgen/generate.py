@@ -1,8 +1,8 @@
 # =============================================================================
 # AUSTRALIAN NATIONAL UNIVERSITY OPEN SOURCE LICENSE (ANUOS LICENSE)
-# VERSION 1.2
+# VERSION 1.3
 # 
-# The contents of this file are subject to the ANUOS License Version 1.2
+# The contents of this file are subject to the ANUOS License Version 1.3
 # (the "License"); you may not use this file except in compliance with
 # the License. You may obtain a copy of the License at:
 # 
@@ -19,7 +19,7 @@
 #   Dr Peter Christen (Department of Computer Science, Australian National
 #                      University)
 # 
-# Copyright (C) 2002 - 2005 the Australian National University and
+# Copyright (C) 2002 - 2007 the Australian National University and
 # others. All Rights Reserved.
 # 
 # Contributors:
@@ -37,7 +37,7 @@
 # the terms of any one of the ANUOS License or the GPL.
 # =============================================================================
 #
-# Freely extensible biomedical record linkage (Febrl) - Version 0.3
+# Freely extensible biomedical record linkage (Febrl) - Version 0.4
 #
 # See: http://datamining.anu.edu.au/linkage.html
 #
@@ -55,7 +55,8 @@
      output_file                  Name of the output file (currently this is a
                                   CSV file).
      num_originals                Number of original records to be created.
-     num_duplicates               Number of duplicate records to be created.
+     num_duplicates               Number of duplicate records to be created
+                                  (maximum number is 9).
      max_duplicate_per_record     The maximal number of duplicates that can be
                                   created for one original record.
      max_modification_per_field   The maximum number of modifications per field
@@ -248,7 +249,8 @@ VERBOSE_OUTPUT = True
 givenname_dict = {'name':'given_name',
                   'type':'freq',
             'char_range':'alpha',
-             'freq_file':'data'+os.sep+'givenname-freq.csv',
+#             'freq_file':'data'+os.sep+'givenname-freq.csv',
+             'freq_file':'data-org'+os.sep+'givenname.csv',
            'select_prob':0.10,
          'misspell_file':'data'+os.sep+'givenname-misspell.tbl',
          'misspell_prob':0.30,
@@ -266,7 +268,8 @@ givenname_dict = {'name':'given_name',
 surname_dict = {'name':'surname',
                 'type':'freq',
           'char_range':'alpha',
-           'freq_file':'data'+os.sep+'surname-freq.csv',
+#           'freq_file':'data'+os.sep+'surname-freq.csv',
+           'freq_file':'data-org'+os.sep+'surname.csv',
          'select_prob':0.15,
        'misspell_file':'data'+os.sep+'surname-misspell.tbl',
        'misspell_prob':0.30,
@@ -284,7 +287,8 @@ surname_dict = {'name':'surname',
 streetnumber_dict = {'name':'street_number',
                      'type':'freq',
                'char_range':'digit',
-                'freq_file':'data'+os.sep+'streetnumber-freq.csv',
+#                'freq_file':'data'+os.sep+'streetnumber-freq.csv',
+                'freq_file':'data-org'+os.sep+'streetnumber.csv',
               'select_prob':0.10,
                  'ins_prob':0.10,
                  'del_prob':0.15,
@@ -300,7 +304,8 @@ streetnumber_dict = {'name':'street_number',
 address1_dict = {'name':'address_1',
                  'type':'freq',
            'char_range':'alpha',
-            'freq_file':'data'+os.sep+'address1-freq.csv',
+#            'freq_file':'data'+os.sep+'address1-freq.csv',
+            'freq_file':'data-org'+os.sep+'address1.csv',
           'select_prob':0.10,
              'ins_prob':0.10,
              'del_prob':0.15,
@@ -319,7 +324,8 @@ address1_dict = {'name':'address_1',
 address2_dict = {'name':'address_2',
                  'type':'freq',
            'char_range':'alpha',
-            'freq_file':'data'+os.sep+'address2-freq.csv',
+#            'freq_file':'data'+os.sep+'address2-freq.csv',
+            'freq_file':'data-org'+os.sep+'address2.csv',
           'select_prob':0.10,
              'ins_prob':0.04,
              'del_prob':0.04,
@@ -335,7 +341,8 @@ address2_dict = {'name':'address_2',
 suburb_dict = {'name':'suburb',
                'type':'freq',
          'char_range':'alpha',
-          'freq_file':'data'+os.sep+'suburb-freq.csv',
+#          'freq_file':'data'+os.sep+'suburb-freq.csv',
+          'freq_file':'data-org'+os.sep+'suburb.csv',
         'select_prob':0.10,
       'misspell_file':'data'+os.sep+'suburb-misspell.tbl',
       'misspell_prob':0.40,
@@ -353,7 +360,8 @@ suburb_dict = {'name':'suburb',
 postcode_dict = {'name':'postcode',
                  'type':'freq',
            'char_range':'digit',
-            'freq_file':'data'+os.sep+'postcode-freq.csv',
+#            'freq_file':'data'+os.sep+'postcode-freq.csv',
+            'freq_file':'data-org'+os.sep+'postcode.csv',
           'select_prob':0.05,
              'ins_prob':0.00,
              'del_prob':0.00,
@@ -369,7 +377,8 @@ postcode_dict = {'name':'postcode',
 state_dict = {'name':'state',
               'type':'freq',
         'char_range':'alpha',
-         'freq_file':'data'+os.sep+'state-freq.csv',
+#         'freq_file':'data'+os.sep+'state-freq.csv',
+         'freq_file':'data-org'+os.sep+'state.csv',
        'select_prob':0.05,
           'ins_prob':0.10,
           'del_prob':0.10,
@@ -986,8 +995,9 @@ if (num_dup_records < 0):
   print 'Error: Number of duplicate records must be zero or positive'
   sys.exit()
 
-if (max_num_dups <= 0):
-  print 'Error: Maximal number of duplicates per record must be positive'
+if (max_num_dups <= 0) or (max_num_dups > 9):
+  print 'Error: Maximal number of duplicates per record must be positive ' + \
+        'and less than 10'
   sys.exit()
 
 if (max_num_field_modifi <= 0):
