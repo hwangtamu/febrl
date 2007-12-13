@@ -39,7 +39,7 @@
 # the terms of any one of the ANUOS License or the GPL.
 # =============================================================================
 #
-# Freely extensible biomedical record linkage (Febrl) - Version 0.4
+# Freely extensible biomedical record linkage (Febrl) - Version 0.4.01
 #
 # See: http://datamining.anu.edu.au/linkage.html
 #
@@ -156,6 +156,8 @@ class MainFebrlWindow:
     self.license_dialog_name =     'febrl_license_dialog'
     self.new_project_dialog_name = 'febrl_new_project_dialog'
     self.save_file_dialog_name =   'febrl_save_file_dialog'
+
+#    self.current_folder = None  # Currently selected folder
 
     # Current page and page names in main notebook
     #
@@ -315,7 +317,7 @@ class MainFebrlWindow:
                                     'header_data':None, 'file_name':None,
                                     'file_data':None,   'miss_val':[''],
                                     'delimiter':',',    'field_names':None,
-                                    'rec_id_field':'__rec_id__'}
+                                    'rec_id_field':'__rec_id'}
     default_vals = self.data_set_default_values
 
     # The dictionaries (one per data set) which hold the actual values
@@ -849,6 +851,9 @@ class MainFebrlWindow:
                                    self.save_file_dialog_name)
       saveFileDialog = saveFileTree.get_widget(self.save_file_dialog_name)
 
+#      if (self.current_folder != None):
+#        saveFileDialog.set_current_folder(self.current_folder)
+
       # Create a file filter (Python files only)
       #
       file_filter = gtk.FileFilter()  # Add a file filter for python files only
@@ -859,6 +864,10 @@ class MainFebrlWindow:
       saveFileDialog.show()
       save_file_response = saveFileDialog.run()
       self.save_dialog_file_name = saveFileDialog.get_filename()
+
+#      self.current_folder = saveFileDialog.get_current_folder()
+#      print 'current folder:', self.current_folder
+
       saveFileDialog.destroy()
 
       # Only process if 'OK' was clicked, not 'Cancel' - - - - - - - - - - - -
@@ -1154,6 +1163,9 @@ class MainFebrlWindow:
 #        if (file_name != None):  # Set to previously selected file name
 #          file_chooser_widget.set_filename(file_name)
 
+#        if (self.current_folder != None):
+#          file_chooser_widget.set_current_folder(self.current_folder)
+
         for filter in file_chooser_widget.list_filters():  # Remove old filters
           file_chooser_widget.remove_filter(filter)
 
@@ -1252,7 +1264,19 @@ class MainFebrlWindow:
                                      '_file_chooser_button' + widget_name[-2:])
         file_chooser_widget.unselect_all()
 
+      # Make all pages invisible except Data and Log - - - - - - - - - - - - -
+      #
+      for page_name in ['Explore', 'Standardise','Index', 'Compare',
+                        'Classify', 'Run', 'Evaluate', 'Review']:
+        self.main_notebook_page_active_dict[page_name] = False
+
       self.modified['data'] = True  # Data set type has changed
+
+      self.index_def = [] # Delete all previous index definitions
+      self.index_num = 0
+
+      self.field_comp_list = []  # Delete previous field comparison functions
+
       self.setWindowTitle()
 
       self.displayCurrentNotebookPage()  # Re-display current notebook page
@@ -1370,6 +1394,9 @@ class MainFebrlWindow:
 
     if (file_name != None):  # Do nothing if no file name is returned
 
+      self.current_folder = widget.get_current_folder()
+      print 'current folder:', self.current_folder
+
       data_set_type_name = widget_name[:3].upper()  # First three characters
 
       # Save new file name and set header data to defaults
@@ -1484,8 +1511,10 @@ class MainFebrlWindow:
     # Set the active field name
     #
     rec_id_field_name = self.data_set_info_list[data_set_index]['rec_id_field']
-    if (rec_id_field_name == '__rec_id__'):  # Default, not a data set field
-      rec_id_field_combo_box.set_active(0)
+    if ((rec_id_field_name == self.data_set_default_values['rec_id_field']) or \
+        (rec_id_field_name == self.data_set_default_values['rec_id_field'] + \
+                              data_set_suffix+'__')):
+      rec_id_field_combo_box.set_active(0)  # Default, not a data set field
     else:
       assert rec_id_field_name in field_names  # Check its in field names list
 
@@ -1613,7 +1642,7 @@ class MainFebrlWindow:
     if (field_names != default_field_names):  # Field names have been set
       header_data = field_names  # Use the previously set field names
 
-    else:  # Field names are not so, so generate them
+    else:  # Field names are not set, so generate them
 
       if (header_line == True):  # Get header line from file data
         header_data = file_data[0]
@@ -1657,8 +1686,12 @@ class MainFebrlWindow:
 
     data_store.append(header_data+data_store_extra)
 
-    for i in range(1,len(file_data)): # PC 26/09 self.num_data_rows+1):
-      data_store.append(file_data[i]+[False,400])  # No editing, not bold
+    if (header_line == True):
+      for i in range(1,len(file_data)): # PC 26/09 self.num_data_rows+1):
+        data_store.append(file_data[i]+[False,400])  # No editing, not bold
+    else:  # Add PC 21/11/2007
+      for i in range(0,len(file_data)-1): # First line is already a data record
+        data_store.append(file_data[i]+[False,400])  # No editing, not bold
 
     tree_view_widget.set_headers_visible(False)  # Don't show headers
 
@@ -1830,7 +1863,8 @@ class MainFebrlWindow:
       rec_id_field_index = rec_id_box_widget.get_children()[1].get_active()
 
       if (rec_id_field_index <= 0):  # Set to default value
-        rec_id_str = self.data_set_default_values['rec_id_field']
+        rec_id_str = self.data_set_default_values['rec_id_field'] + \
+                     data_set_suffix+'__'
 
         # Check identifier field name it is not used
         #
@@ -5700,8 +5734,18 @@ class MainFebrlWindow:
         self.messageDialog('All weights must be set to numbers.', 'warn')
         return
 
-      if (float(agree_weight) < float(disagree_weight)):
+      if (float(agree_weight) <= float(disagree_weight)):
+        self.messageDialog('Agreement weights must be larger\nthan' + \
+                           ' disagreement weights.', 'warn')
+        return
+
+      if (float(agree_weight) < float(miss_weight)):
         self.messageDialog('Agreement weights must be equal to\nor larger ' + \
+                           'than missing weights.', 'warn')
+        return
+
+      if (float(miss_weight) < float(disagree_weight)):
+        self.messageDialog('Missing weights must be equal to\nor larger ' + \
                            'than disagreement weights.', 'warn')
         return
 
@@ -6010,12 +6054,19 @@ class MainFebrlWindow:
     for fc in range(num_comp_funct):
       field_comp_dict = field_comp_list[fc]  # Short cut
 
+      field_a_name = field_comp_dict['field_a_name']
+      field_b_name = field_comp_dict['field_b_name']
+
       comp_name = self.field_comp_dict[field_comp_dict['name']]
+
+      descr_str = field_comp_dict['name']+'-'+field_a_name+'-'+field_b_name
 
       febrl_code.append('fc_funct_%d = comparison.%s(agree_weight = %s,' % \
                         (fc+1, comp_name, field_comp_dict['agree_weight']))
 
       indention_space = ' '*(24+len('%s' % (fc))+len(comp_name))
+
+      febrl_code.append(indention_space+'description = "%s",' % (descr_str))
 
       febrl_code.append(indention_space+'disagree_weight = %s,' % \
                         (field_comp_dict['disagree_weight']))
@@ -6153,9 +6204,6 @@ class MainFebrlWindow:
       febrl_code.append(last_febrl_code)
 
       febrl_code.append('')
-
-      field_a_name = field_comp_dict['field_a_name']
-      field_b_name = field_comp_dict['field_b_name']
 
       field_comp_list_str += '(fc_funct_%d, "%s", "%s"),\n' % \
                               (fc+1, field_a_name, field_b_name) + ' '*19
@@ -8150,8 +8198,7 @@ class MainFebrlWindow:
       #
       if (output_dict['m_status_file'][0] == True):
         febrl_code.append('output.SaveMatchStatusFile(class_w_vec_dict, ' + \
-                          'm_set, "%s")' % \
-                          (output_dict['m_status_file'][1]))
+                          'm_set, "%s")' % (output_dict['m_status_file'][1]))
         febrl_code.append('')
 
       # Check if match data set shall be written - - - - - - - - - - - - - - -
@@ -8733,8 +8780,9 @@ class MainFebrlWindow:
       else:
         this_tag_table = {}
 
-      field_sep =       cs_dict['field_separator']
-      word_spill_flag = cs_dict['check_word_spill']
+      if (comp_std_type != 'Date'):
+        field_sep =       cs_dict['field_separator']
+        word_spill_flag = cs_dict['check_word_spill']
 
       # Initialise the component standardisers
       #
@@ -9000,8 +9048,11 @@ class MainFebrlWindow:
         else:
           max_cache_size = int(max_cache_size)
 
+        descr_str = comp_funct_dict['name']+'-'+field_a_name+'-'+field_b_name
+
         if (comp_funct_dict['name'] == 'Str-Exact'):
           cf = comparison.FieldComparatorExactString(do_caching = cache_field,
+              description = descr_str,
               max_cache_size = max_cache_size,
               missing_weight = miss_weight,
               agree_weight = agree_weight,
@@ -9009,6 +9060,7 @@ class MainFebrlWindow:
 
         elif (comp_funct_dict['name'] == 'Str-Contains'):
           cf = comparison.FieldComparatorContainsString(do_cachi = cache_field,
+              description = descr_str,
               max_cache_size = max_cache_size,
               missing_weight = miss_weight,
               agree_weight = agree_weight,
@@ -9016,6 +9068,7 @@ class MainFebrlWindow:
 
         elif (comp_funct_name == 'Str-Truncate'):
           cf = comparison.FieldComparatorTruncateString(do_cachi = cache_field,
+              description = descr_str,
               max_cache_size = max_cache_size,
               missing_weight = miss_weight,
               agree_weight = agree_weight,
@@ -9024,6 +9077,7 @@ class MainFebrlWindow:
 
         elif (comp_funct_name == 'Key-Diff'):
           cf = comparison.FieldComparatorKeyDiff(do_caching = cache_field,
+              description = descr_str,
               max_cache_size = max_cache_size,
               missing_weight = miss_weight,
               agree_weight = agree_weight,
@@ -9032,6 +9086,7 @@ class MainFebrlWindow:
 
         elif (comp_funct_name == 'Num-Perc'):
           cf = comparison.FieldComparatorNumericPerc(do_caching = cache_field,
+              description = descr_str,
               max_cache_size = max_cache_size,
               missing_weight = miss_weight,
               agree_weight = agree_weight,
@@ -9040,6 +9095,7 @@ class MainFebrlWindow:
 
         elif (comp_funct_name == 'Num-Abs'):
           cf = comparison.FieldComparatorNumericAbs(do_caching = cache_field,
+              description = descr_str,
               max_cache_size = max_cache_size,
               missing_weight = miss_weight,
               agree_weight = agree_weight,
@@ -9051,6 +9107,7 @@ class MainFebrlWindow:
           encode_method = self.stringencode_dict[encode_method_name]
 
           cf = comparison.FieldComparatorEncodeString(do_caching = cache_field,
+              description = descr_str,
               max_cache_size = max_cache_size,
               missing_weight = miss_weight,
               agree_weight = agree_weight,
@@ -9063,6 +9120,7 @@ class MainFebrlWindow:
 
         elif (comp_funct_name == 'Date'):
           cf = comparison.FieldComparatorDate(do_caching = cache_field,
+              description = descr_str,
               max_cache_size = max_cache_size,
               missing_weight = miss_weight,
               agree_weight = agree_weight,
@@ -9073,6 +9131,7 @@ class MainFebrlWindow:
 
         elif (comp_funct_name == 'Time'):
           cf = comparison.FieldComparatorTime(do_caching = cache_field,
+              description = descr_str,
               max_cache_size = max_cache_size,
               missing_weight = miss_weight,
               agree_weight = agree_weight,
@@ -9085,6 +9144,7 @@ class MainFebrlWindow:
 
         elif (comp_funct_name == 'Age'):
           cf = comparison.FieldComparatorAge(do_caching = cache_field,
+              description = descr_str,
               max_cache_size = max_cache_size,
               missing_weight = miss_weight,
               agree_weight = agree_weight,
@@ -9095,6 +9155,7 @@ class MainFebrlWindow:
 
         elif (comp_funct_name == 'Jaro'):
           cf = comparison.FieldComparatorJaro(do_caching = cache_field,
+              description = descr_str,
               max_cache_size = max_cache_size,
               missing_weight = miss_weight,
               agree_weight = agree_weight,
@@ -9103,6 +9164,7 @@ class MainFebrlWindow:
 
         elif (comp_funct_name == 'Winkler'):
           cf = comparison.FieldComparatorWinkler(do_caching = cache_field,
+              description = descr_str,
               max_cache_size = max_cache_size,
               missing_weight = miss_weight,
               agree_weight = agree_weight,
@@ -9114,6 +9176,7 @@ class MainFebrlWindow:
 
         elif (comp_funct_name == 'Q-Gram'):
           cf = comparison.FieldComparatorQGram(do_caching = cache_field,
+              description = descr_str,
               max_cache_size = max_cache_size,
               missing_weight = miss_weight,
               agree_weight = agree_weight,
@@ -9125,6 +9188,7 @@ class MainFebrlWindow:
 
         elif (comp_funct_name == 'Pos-Q-Gram'):
           cf = comparison.FieldComparatorPosQGram(do_caching = cache_field,
+              description = descr_str,
               max_cache_size = max_cache_size,
               missing_weight = miss_weight,
               agree_weight = agree_weight,
@@ -9137,6 +9201,7 @@ class MainFebrlWindow:
 
         elif (comp_funct_name == 'S-Gram'):
           cf = comparison.FieldComparatorSGram(do_caching = cache_field,
+              description = descr_str,
               max_cache_size = max_cache_size,
               missing_weight = miss_weight,
               agree_weight = agree_weight,
@@ -9148,6 +9213,7 @@ class MainFebrlWindow:
 
         elif (comp_funct_name == 'Edit-Dist'):
           cf = comparison.FieldComparatorEditDist(do_caching = cache_field,
+              description = descr_str,
               max_cache_size = max_cache_size,
               missing_weight = miss_weight,
               agree_weight = agree_weight,
@@ -9156,6 +9222,7 @@ class MainFebrlWindow:
 
         elif (comp_funct_name == 'Dam-Le-Edit-Dist'):
           cf = comparison.FieldComparatorDaLeDist(do_caching = cache_field,
+              description = descr_str,
               max_cache_size = max_cache_size,
               missing_weight = miss_weight,
               agree_weight = agree_weight,
@@ -9164,6 +9231,7 @@ class MainFebrlWindow:
 
         elif (comp_funct_name == 'Bag-Dist'):
           cf = comparison.FieldComparatorBagDist(do_caching = cache_field,
+              description = descr_str,
               max_cache_size = max_cache_size,
               missing_weight = miss_weight,
               agree_weight = agree_weight,
@@ -9172,6 +9240,7 @@ class MainFebrlWindow:
 
         elif (comp_funct_name == 'Smith-Water-Dist'):
           cf = comparison.FieldComparatorSWDist(do_caching = cache_field,
+              description = descr_str,
               max_cache_size = max_cache_size,
               missing_weight = miss_weight,
               agree_weight = agree_weight,
@@ -9181,6 +9250,7 @@ class MainFebrlWindow:
 
         elif (comp_funct_name == 'Syll-Align-Dist'):
           cf = comparison.FieldComparatorSyllAlDist(do_caching = cache_field,
+              description = descr_str,
               max_cache_size = max_cache_size,
               missing_weight = miss_weight,
               agree_weight = agree_weight,
@@ -9191,6 +9261,7 @@ class MainFebrlWindow:
 
         elif (comp_funct_name == 'Seq-Match'):
           cf = comparison.FieldComparatorSeqMatch(do_caching = cache_field,
+              description = descr_str,
               max_cache_size = max_cache_size,
               missing_weight = miss_weight,
               agree_weight = agree_weight,
@@ -9199,6 +9270,7 @@ class MainFebrlWindow:
 
         elif (comp_funct_name == 'Editex'):
           cf = comparison.FieldComparatorEditex(do_caching = cache_field,
+              description = descr_str,
               max_cache_size = max_cache_size,
               missing_weight = miss_weight,
               agree_weight = agree_weight,
@@ -9207,6 +9279,7 @@ class MainFebrlWindow:
 
         elif (comp_funct_name == 'Long-Common-Seq'):
           cf = comparison.FieldComparatorLCS(do_caching = cache_field,
+              description = descr_str,
               max_cache_size = max_cache_size,
               missing_weight = miss_weight,
               agree_weight = agree_weight,
@@ -9217,6 +9290,7 @@ class MainFebrlWindow:
 
         elif (comp_funct_name == 'Onto-LCS'):
           cf = comparison.FieldComparatorOntoLCS(do_caching = cache_field,
+              description = descr_str,
               max_cache_size = max_cache_size,
               missing_weight = miss_weight,
               agree_weight = agree_weight,
@@ -9234,6 +9308,7 @@ class MainFebrlWindow:
               stop_word_list_clean.append(stop_word)
 
           cf = comparison.FieldComparatorTokenSet(do_caching = cache_field,
+              description = descr_str,
               max_cache_size = max_cache_size,
               missing_weight = miss_weight,
               agree_weight = agree_weight,
@@ -9244,6 +9319,7 @@ class MainFebrlWindow:
 
         elif (comp_funct_name == 'Compression'):
           cf = comparison.FieldComparatorCompress(do_caching = cache_field,
+              description = descr_str,
               max_cache_size = max_cache_size,
               missing_weight = miss_weight,
               agree_weight = agree_weight,
@@ -9989,16 +10065,18 @@ class MainFebrlWindow:
         if (bin_width == 0.0):  # Make sure it is not zero
           bin_width = 0.1  # Set to a default value
 
+        half_bin_width = bin_width / 2.0
+
         for w_sum in class_m_w_list:
-          binned_w = w_sum - (w_sum % bin_width)
+          binned_w = w_sum - (w_sum % bin_width) + half_bin_width
           w_count = w_m_histo_dict.get(binned_w, 0) + 1
           w_m_histo_dict[binned_w] = w_count
         for w_sum in class_nm_w_list:
-          binned_w = w_sum - (w_sum % bin_width)
+          binned_w = w_sum - (w_sum % bin_width) + half_bin_width
           w_count = w_nm_histo_dict.get(binned_w, 0) + 1
           w_nm_histo_dict[binned_w] = w_count
         for w_sum in class_pm_w_list:
-          binned_w = w_sum - (w_sum % bin_width)
+          binned_w = w_sum - (w_sum % bin_width) + half_bin_width
           w_count = w_pm_histo_dict.get(binned_w, 0) + 1
           w_pm_histo_dict[binned_w] = w_count
 
@@ -10041,20 +10119,22 @@ class MainFebrlWindow:
         if (bin_width == 0.0):  # Make sure it is not zero
           bin_width = 0.1  # Set to a default value
 
+        half_bin_width = bin_width / 2.0
+
         for w_sum in class_tp_w_list:
-          binned_w = w_sum - (w_sum % bin_width)
+          binned_w = w_sum - (w_sum % bin_width) + half_bin_width
           w_count = w_tp_histo_dict.get(binned_w, 0) + 1
           w_tp_histo_dict[binned_w] = w_count
         for w_sum in class_fn_w_list:
-          binned_w = w_sum - (w_sum % bin_width)
+          binned_w = w_sum - (w_sum % bin_width) + half_bin_width
           w_count = w_fn_histo_dict.get(binned_w, 0) + 1
           w_fn_histo_dict[binned_w] = w_count
         for w_sum in class_fp_w_list:
-          binned_w = w_sum - (w_sum % bin_width)
+          binned_w = w_sum - (w_sum % bin_width) + half_bin_width
           w_count = w_fp_histo_dict.get(binned_w, 0) + 1
           w_fp_histo_dict[binned_w] = w_count
         for w_sum in class_tn_w_list:
-          binned_w = w_sum - (w_sum % bin_width)
+          binned_w = w_sum - (w_sum % bin_width) + half_bin_width
           w_count = w_tn_histo_dict.get(binned_w, 0) + 1
           w_tn_histo_dict[binned_w] = w_count
 
@@ -10076,6 +10156,8 @@ class MainFebrlWindow:
         self.addToLog('')
 
       self.bar_width = (max_w-min_w) / 30  # For histoplots
+      if (self.bar_width == 0.0):  #  Make sure its not an empty bar
+        self.bar_width = 0.1
 
       evaluation_dict['available'] = True  # Match results now available
 
@@ -10112,6 +10194,9 @@ class MainFebrlWindow:
           if x not in x_vals:
             x_vals.append(x)
         x_vals.sort()
+
+        if (len(x_vals) == 1):  # Only one x value
+          x_vals = [x_vals[0]-1, x_vals[0], x_vals[0]+1]
 
         m_y_vals =  []
         nm_y_vals = []

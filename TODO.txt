@@ -1,7 +1,12 @@
 Febrl 0.4 - TODO list
 ---------------------
-Last update: Peter Christen, 1/11/2007
+Last update: Peter Christen, 19/11/2007
 
+Bug:
+- lost data set header when changing data set type?
+- check indexing write files match status etc for bigMatch index
+
+Add: current folder for file choosers
 
 General Febrl modules:
 ----------------------
@@ -20,6 +25,9 @@ General Febrl modules:
 
 - indexing.py
   - add test in indexingTest.py writing of weight vector file
+  - add posibility to sort multi-word values such that longest word comes 
+    first (idea Winkler book), also integrate into GUI (drop down menu 
+    instead of 'sort' check box)
 
 - output.py:
   - add more output options (merged linked data sets?)
@@ -83,6 +91,9 @@ Output/Run:
 
 Evaluate:
 - add interactive threshold setting
+- possibility to look at record pairs when clicking on a histogram bar
 
 Review:
 - implement Review page
+- pssibility to look at record pairs
+

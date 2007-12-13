@@ -37,7 +37,7 @@
 # the terms of any one of the ANUOS License or the GPL.
 # =============================================================================
 #
-# Freely extensible biomedical record linkage (Febrl) - Version 0.4
+# Freely extensible biomedical record linkage (Febrl) - Version 0.4.01
 #
 # See: http://datamining.anu.edu.au/linkage.html
 #
@@ -1268,9 +1268,11 @@ class FullIndex(Indexing):
     num_rec2 = self.dataset2.num_records
 
     if (num_rec1 < num_rec2):  # Make references to small and large data sets
+      self.ds_swapped = False
       self.small_dataset = self.dataset1
       self.large_dataset = self.dataset2
     else:  # This will also hold for a deduplication
+      self.ds_swapped = True
       self.small_dataset = self.dataset2
       self.large_dataset = self.dataset1
 
@@ -1451,9 +1453,15 @@ class FullIndex(Indexing):
           # Put result into weight vector dictionary
           #
           if (self.weight_vec_file == None):
-            weight_vec_dict[(rec_ident1, rec_ident2)] = w_vec
+            if (self.ds_swapped == True):
+              weight_vec_dict[(rec_ident1, rec_ident2)] = w_vec
+            else:
+              weight_vec_dict[(rec_ident2, rec_ident1)] = w_vec
           else:
-            weight_vec_writer.writerow([rec_ident1, rec_ident2]+w_vec)
+            if (self.ds_swapped == True):
+              weight_vec_writer.writerow([rec_ident1, rec_ident2]+w_vec)
+            else:
+              weight_vec_writer.writerow([rec_ident2, rec_ident1]+w_vec)
 
           comp_done += 1
 

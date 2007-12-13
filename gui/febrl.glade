@@ -287,20 +287,35 @@
                         <property name="column_spacing">5</property>
                         <property name="homogeneous">True</property>
                         <child>
-                          <widget class="GtkRadioButton" id="link_radio_button">
+                          <widget class="GtkRadioButton" id="dedup_radio_button">
                             <property name="visible">True</property>
-                            <property name="tooltip" translatable="yes">Select this option if you want to link two data sets.</property>
-                            <property name="label" translatable="yes">Linkage</property>
+                            <property name="can_focus">True</property>
+                            <property name="tooltip" translatable="yes">Select this option if you want to deduplicate a data set.</property>
+                            <property name="label" translatable="yes">Deduplication</property>
+                            <property name="use_underline">True</property>
+                            <property name="active">True</property>
+                            <property name="draw_indicator">True</property>
+                            <signal name="toggled" handler="project_type_toggle"/>
+                          </widget>
+                          <packing>
+                            <property name="left_attach">1</property>
+                            <property name="right_attach">2</property>
+                            <property name="x_options">GTK_FILL</property>
+                            <property name="y_options"></property>
+                          </packing>
+                        </child>
+                        <child>
+                          <widget class="GtkRadioButton" id="standard_radio_button">
+                            <property name="visible">True</property>
+                            <property name="can_focus">True</property>
+                            <property name="tooltip" translatable="yes">Select this option if you want to standardise a data set.</property>
+                            <property name="label" translatable="yes">Standardisation</property>
                             <property name="use_underline">True</property>
                             <property name="draw_indicator">True</property>
                             <property name="group">dedup_radio_button</property>
                             <signal name="toggled" handler="project_type_toggle"/>
                           </widget>
                           <packing>
-                            <property name="left_attach">1</property>
-                            <property name="right_attach">2</property>
-                            <property name="top_attach">1</property>
-                            <property name="bottom_attach">2</property>
                             <property name="x_options">GTK_FILL</property>
                             <property name="y_options"></property>
                           </packing>
@@ -323,35 +338,20 @@
                           </packing>
                         </child>
                         <child>
-                          <widget class="GtkRadioButton" id="standard_radio_button">
+                          <widget class="GtkRadioButton" id="link_radio_button">
                             <property name="visible">True</property>
-                            <property name="can_focus">True</property>
-                            <property name="tooltip" translatable="yes">Select this option if you want to standardise a data set.</property>
-                            <property name="label" translatable="yes">Standardisation</property>
+                            <property name="tooltip" translatable="yes">Select this option if you want to link two data sets.</property>
+                            <property name="label" translatable="yes">Linkage</property>
                             <property name="use_underline">True</property>
                             <property name="draw_indicator">True</property>
                             <property name="group">dedup_radio_button</property>
                             <signal name="toggled" handler="project_type_toggle"/>
                           </widget>
                           <packing>
-                            <property name="x_options">GTK_FILL</property>
-                            <property name="y_options"></property>
-                          </packing>
-                        </child>
-                        <child>
-                          <widget class="GtkRadioButton" id="dedup_radio_button">
-                            <property name="visible">True</property>
-                            <property name="can_focus">True</property>
-                            <property name="tooltip" translatable="yes">Select this option if you want to deduplicate a data set.</property>
-                            <property name="label" translatable="yes">Deduplication</property>
-                            <property name="use_underline">True</property>
-                            <property name="active">True</property>
-                            <property name="draw_indicator">True</property>
-                            <signal name="toggled" handler="project_type_toggle"/>
-                          </widget>
-                          <packing>
                             <property name="left_attach">1</property>
                             <property name="right_attach">2</property>
+                            <property name="top_attach">1</property>
+                            <property name="bottom_attach">2</property>
                             <property name="x_options">GTK_FILL</property>
                             <property name="y_options"></property>
                           </packing>
@@ -2117,24 +2117,89 @@ TwoStep</property>
                               <placeholder/>
                             </child>
                             <child>
-                              <widget class="GtkCheckButton" id="m_data_set_file_checkbutton">
+                              <widget class="GtkEntry" id="run_bin_width_entry">
                                 <property name="visible">True</property>
                                 <property name="can_focus">True</property>
                                 <property name="events">GDK_POINTER_MOTION_MASK | GDK_POINTER_MOTION_HINT_MASK | GDK_BUTTON_PRESS_MASK | GDK_BUTTON_RELEASE_MASK</property>
-                                <property name="label" translatable="yes">Save match data set(s):</property>
-                                <property name="xalign">1</property>
-                                <property name="draw_indicator">True</property>
-                                <signal name="toggled" handler="save_file_button_toggle"/>
+                                <property name="max_length">5</property>
+                                <property name="width_chars">5</property>
+                                <property name="text" translatable="yes">1</property>
                               </widget>
                               <packing>
-                                <property name="top_attach">3</property>
-                                <property name="bottom_attach">4</property>
+                                <property name="left_attach">3</property>
+                                <property name="right_attach">4</property>
+                                <property name="top_attach">1</property>
+                                <property name="bottom_attach">2</property>
                                 <property name="x_options"></property>
                                 <property name="y_options"></property>
                               </packing>
                             </child>
                             <child>
-                              <widget class="GtkButton" id="save_m_status_file_button">
+                              <widget class="GtkLabel" id="run_bin_width_label">
+                                <property name="visible">True</property>
+                                <property name="events">GDK_POINTER_MOTION_MASK | GDK_POINTER_MOTION_HINT_MASK | GDK_BUTTON_PRESS_MASK | GDK_BUTTON_RELEASE_MASK</property>
+                                <property name="label" translatable="yes">  Bin width:</property>
+                              </widget>
+                              <packing>
+                                <property name="left_attach">2</property>
+                                <property name="right_attach">3</property>
+                                <property name="top_attach">1</property>
+                                <property name="bottom_attach">2</property>
+                                <property name="x_options"></property>
+                                <property name="y_options"></property>
+                              </packing>
+                            </child>
+                            <child>
+                              <widget class="GtkCheckButton" id="histogram_file_checkbutton">
+                                <property name="visible">True</property>
+                                <property name="can_focus">True</property>
+                                <property name="events">GDK_POINTER_MOTION_MASK | GDK_POINTER_MOTION_HINT_MASK | GDK_BUTTON_PRESS_MASK | GDK_BUTTON_RELEASE_MASK</property>
+                                <property name="label" translatable="yes">Save histogram file:</property>
+                                <property name="xalign">1</property>
+                                <property name="draw_indicator">True</property>
+                                <signal name="toggled" handler="save_file_button_toggle"/>
+                              </widget>
+                              <packing>
+                                <property name="top_attach">1</property>
+                                <property name="bottom_attach">2</property>
+                                <property name="x_options"></property>
+                                <property name="y_options"></property>
+                              </packing>
+                            </child>
+                            <child>
+                              <widget class="GtkCheckButton" id="w_vec_file_checkbutton">
+                                <property name="visible">True</property>
+                                <property name="can_focus">True</property>
+                                <property name="events">GDK_POINTER_MOTION_MASK | GDK_POINTER_MOTION_HINT_MASK | GDK_BUTTON_PRESS_MASK | GDK_BUTTON_RELEASE_MASK</property>
+                                <property name="label" translatable="yes">Save weight vector file:</property>
+                                <property name="xalign">1</property>
+                                <property name="draw_indicator">True</property>
+                                <signal name="toggled" handler="save_file_button_toggle"/>
+                              </widget>
+                              <packing>
+                                <property name="x_options"></property>
+                                <property name="y_options"></property>
+                              </packing>
+                            </child>
+                            <child>
+                              <widget class="GtkCheckButton" id="m_status_file_checkbutton">
+                                <property name="visible">True</property>
+                                <property name="can_focus">True</property>
+                                <property name="events">GDK_POINTER_MOTION_MASK | GDK_POINTER_MOTION_HINT_MASK | GDK_BUTTON_PRESS_MASK | GDK_BUTTON_RELEASE_MASK</property>
+                                <property name="label" translatable="yes">Save match status file:</property>
+                                <property name="xalign">1</property>
+                                <property name="draw_indicator">True</property>
+                                <signal name="toggled" handler="save_file_button_toggle"/>
+                              </widget>
+                              <packing>
+                                <property name="top_attach">2</property>
+                                <property name="bottom_attach">3</property>
+                                <property name="x_options"></property>
+                                <property name="y_options"></property>
+                              </packing>
+                            </child>
+                            <child>
+                              <widget class="GtkButton" id="save_w_vec_file_button">
                                 <property name="visible">True</property>
                                 <property name="can_focus">True</property>
                                 <property name="receives_default">True</property>
@@ -2146,8 +2211,6 @@ TwoStep</property>
                               <packing>
                                 <property name="left_attach">1</property>
                                 <property name="right_attach">2</property>
-                                <property name="top_attach">2</property>
-                                <property name="bottom_attach">3</property>
                                 <property name="x_options"></property>
                                 <property name="y_options"></property>
                               </packing>
@@ -2172,7 +2235,7 @@ TwoStep</property>
                               </packing>
                             </child>
                             <child>
-                              <widget class="GtkButton" id="save_w_vec_file_button">
+                              <widget class="GtkButton" id="save_m_status_file_button">
                                 <property name="visible">True</property>
                                 <property name="can_focus">True</property>
                                 <property name="receives_default">True</property>
@@ -2184,21 +2247,6 @@ TwoStep</property>
                               <packing>
                                 <property name="left_attach">1</property>
                                 <property name="right_attach">2</property>
-                                <property name="x_options"></property>
-                                <property name="y_options"></property>
-                              </packing>
-                            </child>
-                            <child>
-                              <widget class="GtkCheckButton" id="m_status_file_checkbutton">
-                                <property name="visible">True</property>
-                                <property name="can_focus">True</property>
-                                <property name="events">GDK_POINTER_MOTION_MASK | GDK_POINTER_MOTION_HINT_MASK | GDK_BUTTON_PRESS_MASK | GDK_BUTTON_RELEASE_MASK</property>
-                                <property name="label" translatable="yes">Save match status file:</property>
-                                <property name="xalign">1</property>
-                                <property name="draw_indicator">True</property>
-                                <signal name="toggled" handler="save_file_button_toggle"/>
-                              </widget>
-                              <packing>
                                 <property name="top_attach">2</property>
                                 <property name="bottom_attach">3</property>
                                 <property name="x_options"></property>
@@ -2206,66 +2254,18 @@ TwoStep</property>
                               </packing>
                             </child>
                             <child>
-                              <widget class="GtkCheckButton" id="w_vec_file_checkbutton">
+                              <widget class="GtkCheckButton" id="m_data_set_file_checkbutton">
                                 <property name="visible">True</property>
                                 <property name="can_focus">True</property>
                                 <property name="events">GDK_POINTER_MOTION_MASK | GDK_POINTER_MOTION_HINT_MASK | GDK_BUTTON_PRESS_MASK | GDK_BUTTON_RELEASE_MASK</property>
-                                <property name="label" translatable="yes">Save weight vector file:</property>
+                                <property name="label" translatable="yes">Save match data set(s):</property>
                                 <property name="xalign">1</property>
                                 <property name="draw_indicator">True</property>
                                 <signal name="toggled" handler="save_file_button_toggle"/>
                               </widget>
                               <packing>
-                                <property name="x_options"></property>
-                                <property name="y_options"></property>
-                              </packing>
-                            </child>
-                            <child>
-                              <widget class="GtkCheckButton" id="histogram_file_checkbutton">
-                                <property name="visible">True</property>
-                                <property name="can_focus">True</property>
-                                <property name="events">GDK_POINTER_MOTION_MASK | GDK_POINTER_MOTION_HINT_MASK | GDK_BUTTON_PRESS_MASK | GDK_BUTTON_RELEASE_MASK</property>
-                                <property name="label" translatable="yes">Save histogram file:</property>
-                                <property name="xalign">1</property>
-                                <property name="draw_indicator">True</property>
-                                <signal name="toggled" handler="save_file_button_toggle"/>
-                              </widget>
-                              <packing>
-                                <property name="top_attach">1</property>
-                                <property name="bottom_attach">2</property>
-                                <property name="x_options"></property>
-                                <property name="y_options"></property>
-                              </packing>
-                            </child>
-                            <child>
-                              <widget class="GtkLabel" id="run_bin_width_label">
-                                <property name="visible">True</property>
-                                <property name="events">GDK_POINTER_MOTION_MASK | GDK_POINTER_MOTION_HINT_MASK | GDK_BUTTON_PRESS_MASK | GDK_BUTTON_RELEASE_MASK</property>
-                                <property name="label" translatable="yes">  Bin width:</property>
-                              </widget>
-                              <packing>
-                                <property name="left_attach">2</property>
-                                <property name="right_attach">3</property>
-                                <property name="top_attach">1</property>
-                                <property name="bottom_attach">2</property>
-                                <property name="x_options"></property>
-                                <property name="y_options"></property>
-                              </packing>
-                            </child>
-                            <child>
-                              <widget class="GtkEntry" id="run_bin_width_entry">
-                                <property name="visible">True</property>
-                                <property name="can_focus">True</property>
-                                <property name="events">GDK_POINTER_MOTION_MASK | GDK_POINTER_MOTION_HINT_MASK | GDK_BUTTON_PRESS_MASK | GDK_BUTTON_RELEASE_MASK</property>
-                                <property name="max_length">5</property>
-                                <property name="width_chars">5</property>
-                                <property name="text" translatable="yes">1</property>
-                              </widget>
-                              <packing>
-                                <property name="left_attach">3</property>
-                                <property name="right_attach">4</property>
-                                <property name="top_attach">1</property>
-                                <property name="bottom_attach">2</property>
+                                <property name="top_attach">3</property>
+                                <property name="bottom_attach">4</property>
                                 <property name="x_options"></property>
                                 <property name="y_options"></property>
                               </packing>
@@ -2284,18 +2284,87 @@ TwoStep</property>
                             <property name="n_rows">2</property>
                             <property name="n_columns">4</property>
                             <child>
-                              <widget class="GtkButton" id="save_data_set_a_file_button">
+                              <widget class="GtkLabel" id="run_data_set_a_label">
                                 <property name="visible">True</property>
-                                <property name="can_focus">True</property>
-                                <property name="receives_default">True</property>
                                 <property name="events">GDK_POINTER_MOTION_MASK | GDK_POINTER_MOTION_HINT_MASK | GDK_BUTTON_PRESS_MASK | GDK_BUTTON_RELEASE_MASK</property>
-                                <property name="label" translatable="yes">(None)</property>
-                                <property name="xalign">0</property>
-                                <signal name="clicked" handler="clicked_file_name_button"/>
+                                <property name="xalign">1</property>
+                                <property name="label" translatable="yes">     First data set:</property>
                               </widget>
                               <packing>
-                                <property name="left_attach">1</property>
-                                <property name="right_attach">2</property>
+                                <property name="x_options"></property>
+                                <property name="y_options"></property>
+                              </packing>
+                            </child>
+                            <child>
+                              <widget class="GtkLabel" id="run_data_set_b_label">
+                                <property name="visible">True</property>
+                                <property name="events">GDK_POINTER_MOTION_MASK | GDK_POINTER_MOTION_HINT_MASK | GDK_BUTTON_PRESS_MASK | GDK_BUTTON_RELEASE_MASK</property>
+                                <property name="xalign">1</property>
+                                <property name="label" translatable="yes">     Second data set:</property>
+                              </widget>
+                              <packing>
+                                <property name="top_attach">1</property>
+                                <property name="bottom_attach">2</property>
+                                <property name="x_options"></property>
+                                <property name="y_options"></property>
+                              </packing>
+                            </child>
+                            <child>
+                              <widget class="GtkLabel" id="data_set_a_field_label">
+                                <property name="visible">True</property>
+                                <property name="events">GDK_POINTER_MOTION_MASK | GDK_POINTER_MOTION_HINT_MASK | GDK_BUTTON_PRESS_MASK | GDK_BUTTON_RELEASE_MASK</property>
+                                <property name="label" translatable="yes">  Match identifier field name:</property>
+                              </widget>
+                              <packing>
+                                <property name="left_attach">2</property>
+                                <property name="right_attach">3</property>
+                                <property name="x_options"></property>
+                                <property name="y_options"></property>
+                              </packing>
+                            </child>
+                            <child>
+                              <widget class="GtkLabel" id="data_set_b_field_label">
+                                <property name="visible">True</property>
+                                <property name="events">GDK_POINTER_MOTION_MASK | GDK_POINTER_MOTION_HINT_MASK | GDK_BUTTON_PRESS_MASK | GDK_BUTTON_RELEASE_MASK</property>
+                                <property name="label" translatable="yes">  Match identifier field name:</property>
+                              </widget>
+                              <packing>
+                                <property name="left_attach">2</property>
+                                <property name="right_attach">3</property>
+                                <property name="top_attach">1</property>
+                                <property name="bottom_attach">2</property>
+                                <property name="x_options"></property>
+                                <property name="y_options"></property>
+                              </packing>
+                            </child>
+                            <child>
+                              <widget class="GtkEntry" id="run_data_set_a_field_entry">
+                                <property name="visible">True</property>
+                                <property name="can_focus">True</property>
+                                <property name="events">GDK_POINTER_MOTION_MASK | GDK_POINTER_MOTION_HINT_MASK | GDK_BUTTON_PRESS_MASK | GDK_BUTTON_RELEASE_MASK</property>
+                                <property name="width_chars">20</property>
+                                <property name="text" translatable="yes">match_id</property>
+                              </widget>
+                              <packing>
+                                <property name="left_attach">3</property>
+                                <property name="right_attach">4</property>
+                                <property name="x_options"></property>
+                                <property name="y_options"></property>
+                              </packing>
+                            </child>
+                            <child>
+                              <widget class="GtkEntry" id="run_data_set_b_field_entry">
+                                <property name="visible">True</property>
+                                <property name="can_focus">True</property>
+                                <property name="events">GDK_POINTER_MOTION_MASK | GDK_POINTER_MOTION_HINT_MASK | GDK_BUTTON_PRESS_MASK | GDK_BUTTON_RELEASE_MASK</property>
+                                <property name="width_chars">20</property>
+                                <property name="text" translatable="yes">match_id</property>
+                              </widget>
+                              <packing>
+                                <property name="left_attach">3</property>
+                                <property name="right_attach">4</property>
+                                <property name="top_attach">1</property>
+                                <property name="bottom_attach">2</property>
                                 <property name="x_options"></property>
                                 <property name="y_options"></property>
                               </packing>
@@ -2320,87 +2389,18 @@ TwoStep</property>
                               </packing>
                             </child>
                             <child>
-                              <widget class="GtkEntry" id="run_data_set_b_field_entry">
+                              <widget class="GtkButton" id="save_data_set_a_file_button">
                                 <property name="visible">True</property>
                                 <property name="can_focus">True</property>
+                                <property name="receives_default">True</property>
                                 <property name="events">GDK_POINTER_MOTION_MASK | GDK_POINTER_MOTION_HINT_MASK | GDK_BUTTON_PRESS_MASK | GDK_BUTTON_RELEASE_MASK</property>
-                                <property name="width_chars">20</property>
-                                <property name="text" translatable="yes">match_id</property>
+                                <property name="label" translatable="yes">(None)</property>
+                                <property name="xalign">0</property>
+                                <signal name="clicked" handler="clicked_file_name_button"/>
                               </widget>
                               <packing>
-                                <property name="left_attach">3</property>
-                                <property name="right_attach">4</property>
-                                <property name="top_attach">1</property>
-                                <property name="bottom_attach">2</property>
-                                <property name="x_options"></property>
-                                <property name="y_options"></property>
-                              </packing>
-                            </child>
-                            <child>
-                              <widget class="GtkEntry" id="run_data_set_a_field_entry">
-                                <property name="visible">True</property>
-                                <property name="can_focus">True</property>
-                                <property name="events">GDK_POINTER_MOTION_MASK | GDK_POINTER_MOTION_HINT_MASK | GDK_BUTTON_PRESS_MASK | GDK_BUTTON_RELEASE_MASK</property>
-                                <property name="width_chars">20</property>
-                                <property name="text" translatable="yes">match_id</property>
-                              </widget>
-                              <packing>
-                                <property name="left_attach">3</property>
-                                <property name="right_attach">4</property>
-                                <property name="x_options"></property>
-                                <property name="y_options"></property>
-                              </packing>
-                            </child>
-                            <child>
-                              <widget class="GtkLabel" id="data_set_b_field_label">
-                                <property name="visible">True</property>
-                                <property name="events">GDK_POINTER_MOTION_MASK | GDK_POINTER_MOTION_HINT_MASK | GDK_BUTTON_PRESS_MASK | GDK_BUTTON_RELEASE_MASK</property>
-                                <property name="label" translatable="yes">  Match identifier field name:</property>
-                              </widget>
-                              <packing>
-                                <property name="left_attach">2</property>
-                                <property name="right_attach">3</property>
-                                <property name="top_attach">1</property>
-                                <property name="bottom_attach">2</property>
-                                <property name="x_options"></property>
-                                <property name="y_options"></property>
-                              </packing>
-                            </child>
-                            <child>
-                              <widget class="GtkLabel" id="data_set_a_field_label">
-                                <property name="visible">True</property>
-                                <property name="events">GDK_POINTER_MOTION_MASK | GDK_POINTER_MOTION_HINT_MASK | GDK_BUTTON_PRESS_MASK | GDK_BUTTON_RELEASE_MASK</property>
-                                <property name="label" translatable="yes">  Match identifier field name:</property>
-                              </widget>
-                              <packing>
-                                <property name="left_attach">2</property>
-                                <property name="right_attach">3</property>
-                                <property name="x_options"></property>
-                                <property name="y_options"></property>
-                              </packing>
-                            </child>
-                            <child>
-                              <widget class="GtkLabel" id="run_data_set_b_label">
-                                <property name="visible">True</property>
-                                <property name="events">GDK_POINTER_MOTION_MASK | GDK_POINTER_MOTION_HINT_MASK | GDK_BUTTON_PRESS_MASK | GDK_BUTTON_RELEASE_MASK</property>
-                                <property name="xalign">1</property>
-                                <property name="label" translatable="yes">     Second data set:</property>
-                              </widget>
-                              <packing>
-                                <property name="top_attach">1</property>
-                                <property name="bottom_attach">2</property>
-                                <property name="x_options"></property>
-                                <property name="y_options"></property>
-                              </packing>
-                            </child>
-                            <child>
-                              <widget class="GtkLabel" id="run_data_set_a_label">
-                                <property name="visible">True</property>
-                                <property name="events">GDK_POINTER_MOTION_MASK | GDK_POINTER_MOTION_HINT_MASK | GDK_BUTTON_PRESS_MASK | GDK_BUTTON_RELEASE_MASK</property>
-                                <property name="xalign">1</property>
-                                <property name="label" translatable="yes">     First data set:</property>
-                              </widget>
-                              <packing>
+                                <property name="left_attach">1</property>
+                                <property name="right_attach">2</property>
                                 <property name="x_options"></property>
                                 <property name="y_options"></property>
                               </packing>
@@ -3200,7 +3200,7 @@ TwoStep</property>
     <property name="icon">febrl.png</property>
     <property name="type_hint">GDK_WINDOW_TYPE_HINT_NORMAL</property>
     <property name="name">Febrl</property>
-    <property name="version">0.4</property>
+    <property name="version">0.4.01</property>
     <property name="copyright" translatable="yes">Copyright (C) 2002 - 2007 The Australian National University and others.
 All Rights reserved.
 </property>

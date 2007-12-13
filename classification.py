@@ -37,7 +37,7 @@
 # the terms of any one of the ANUOS License or the GPL.
 # =============================================================================
 #
-# Freely extensible biomedical record linkage (Febrl) - Version 0.4
+# Freely extensible biomedical record linkage (Febrl) - Version 0.4.01
 #
 # See: http://datamining.anu.edu.au/linkage.html
 #
@@ -2594,6 +2594,16 @@ class TwoStep(Classifier):
                               has to be a function that calculates a distance
                               measure between two vectors (see the Febrl
                               mymath.py module for such functions).
+                            - ('kmeans-nn', dist_measure)
+                              This classifier combines k-means clustering with
+                              nearest-neighbour based classification by
+                              performing several iterations of a k-means
+                              centroid followed by a nearest-neighbour based
+                              classification of so far not classified weight
+                              weight vectors. The parameter dist_measure
+                              has to be a function that calculates a distance
+                              measure between two vectors (see the Febrl
+                              mymath.py module for such functions).
                             - ('svm', kernel_type, C)
                               A SVM will be trained using the match and
                               non-match and non-match training example sets.
@@ -2653,9 +2663,10 @@ class TwoStep(Classifier):
           logging.exception('Value of "s2_classifier" is not a tuple with ' + \
                               'at least two elements:: %s' % (str(value)))
           raise Exception
-        if (value[0] not in ['kmeans', 'svm']):
+        if (value[0] not in ['kmeans', 'kmeans-nn', 'svm']):
           logging.exception('Value of "s2_classifier[0]" is not one of ' + \
-                              '"kmeans" or "svm": %s' % (str(value[0])))
+                            '"kmeans", "kmeans-nn", or "svm": %s' % \
+                            (str(value[0])))
           raise Exception
         self.s2_classifier = value
 
@@ -2724,10 +2735,10 @@ class TwoStep(Classifier):
     # Make sure a classifier is defined correctly - - - - - - - - - - - - - - -
     #
     auxiliary.check_is_tuple('s2_classifier', self.s2_classifier)
-    if (self.s2_classifier[0] == 'kmeans'):
+    if (self.s2_classifier[0] in ['kmeans', 'kmeans-nn']):
       if (len(self.s2_classifier) != 2):
-        logging.exception('Step 2 classifer "kmeans" reguires one ' + \
-                          'parameter (distance measure): %s' % \
+        logging.exception('Step 2 classifers "kmeans" and "kmeans-nn" ' + \
+                          'reguires one parameter (distance measure): %s' % \
                           (str(self.s2_classifier)))
         raise exception
       auxiliary.check_is_function_or_method('dist_measure',
@@ -3123,7 +3134,9 @@ class TwoStep(Classifier):
 
       logging.info('Trained SVM with %d training examples' % (len(train_data)))
 
-    elif (self.s2_classifier[0] == 'kmeans'):  # One step of k-means clustering
+    # One step of k-means clustering - - - - - - - - - - - - - - - - - - - - - -
+    #
+    elif (self.s2_classifier[0] == 'kmeans'):
 
       m_centroid =  [0.0]*v_dim
       nm_centroid = [0.0]*v_dim
@@ -3159,6 +3172,13 @@ class TwoStep(Classifier):
                    (auxiliary.str_vector(nm_centroid)))
       logging.info('Match centroid:     %s' % \
                    (auxiliary.str_vector(m_centroid)))
+
+    # Combined k-means clustering with nearest-neighbours - - - - - - - - - - -
+    #
+    elif (self.s2_classifier[0] == 'kmeans-nn'):
+
+      pass
+###### TODO PC 15/11/2007
 
     else:
       logging.exception('Illegal step classifier method: %s' % \

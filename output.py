@@ -37,7 +37,7 @@
 # the terms of any one of the ANUOS License or the GPL.
 # =============================================================================
 #
-# Freely extensible biomedical record linkage (Febrl) - Version 0.4
+# Freely extensible biomedical record linkage (Febrl) - Version 0.4.01
 #
 # See: http://datamining.anu.edu.au/linkage.html
 #
@@ -290,8 +290,10 @@ def SaveMatchStatusFile(w_vec_dict, match_set, file_name):
     mid_count_str = '%s' % (mid_count)
     this_mid = 'mid%s' % (mid_count_str.zfill(num_digit))
 
-    f.write('%s,%s,%f,%s' % (rec_id_tuple[0], rec_id_tuple[1], w_sum,
-                             this_mid) + os.linesep)
+    rec_id1 = rec_id_tuple[0]
+    rec_id2 = rec_id_tuple[1]
+
+    f.write('%s,%s,%f,%s' % (rec_id1, rec_id2, w_sum, this_mid) + os.linesep)
 
     mid_count += 1
 
@@ -381,7 +383,7 @@ def SaveMatchDataSet(match_set, dataset1, id_field1, new_dataset_name1,
   # First need to generate field list from input data set
   #
   if (dataset1.dataset_type == 'CSV'):
-    new_dataset1_field_list = dataset1.field_list
+    new_dataset1_field_list = dataset1.field_list[:]  # Make a copy of list
     last_col_index = new_dataset1_field_list[-1][1]+1
 
   elif (dataset1.dataset_type == 'COL'):
@@ -427,7 +429,7 @@ def SaveMatchDataSet(match_set, dataset1, id_field1, new_dataset_name1,
   #
   for (rec_id, rec_list) in dataset1.readall():
     if (add_rec_ident == True):  # Add record identifier
-       rec_list.append(rec_id)
+      rec_list.append(rec_id)
 
     mid_list = match_id_dict1.get(rec_id, [])
     mid_str = ';'.join(mid_list)
@@ -439,7 +441,7 @@ def SaveMatchDataSet(match_set, dataset1, id_field1, new_dataset_name1,
   if (do_link == True):  # Second data set for linkage only - - - - - - - - - -
 
     if (dataset2.dataset_type == 'CSV'):
-      new_dataset2_field_list = dataset2.field_list
+      new_dataset2_field_list = dataset2.field_list[:]  # Make a copy of list
       last_col_index = new_dataset2_field_list[-1][1]+1
 
     elif (dataset2.dataset_type == 'COL'):
@@ -484,8 +486,9 @@ def SaveMatchDataSet(match_set, dataset1, id_field1, new_dataset_name1,
     # Read all records, add match identifiers and write into new data set
     #
     for (rec_id, rec_list) in dataset2.readall():
+
       if (add_rec_ident == True):  # Add record identifier
-         rec_list.append(rec_id)
+        rec_list.append(rec_id)
 
       mid_list = match_id_dict2.get(rec_id, [])
       mid_str = ';'.join(mid_list)
