@@ -37,7 +37,7 @@
 # the terms of any one of the ANUOS License or the GPL.
 # =============================================================================
 #
-# Freely extensible biomedical record linkage (Febrl) - Version 0.4.01
+# Freely extensible biomedical record linkage (Febrl) - Version 0.4.02
 #
 # See: http://datamining.anu.edu.au/linkage.html
 #
@@ -67,7 +67,7 @@ def distL1(vec1, vec2):
        http://en.wikipedia.org/wiki/Distance
   """
 
-  assert len(vec1) == len(vec2)
+#  assert len(vec1) == len(vec2)
 
   vec_len = len(vec1)
 
@@ -88,7 +88,7 @@ def distL2(vec1, vec2):
        http://en.wikipedia.org/wiki/Distance
   """
 
-  assert len(vec1) == len(vec2)
+#  assert len(vec1) == len(vec2)
 
   vec_len = len(vec1)
 
@@ -110,7 +110,7 @@ def distLInf(vec1, vec2):
        http://en.wikipedia.org/wiki/Distance
   """
 
-  assert len(vec1) == len(vec2)
+#  assert len(vec1) == len(vec2)
 
   vec_len = len(vec1)
 
@@ -123,6 +123,74 @@ def distLInf(vec1, vec2):
   return Linf_dist
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+def distCanberra(vec1, vec2):
+  """Canberra distance measure.
+
+     See also:
+     http://people.revoledu.com/kardi/tutorial/Similarity/CanberraDistance.html
+  """
+
+#  assert len(vec1) == len(vec2)
+
+  vec_len = len(vec1)
+
+  cbr_dist = 0.0
+
+  for i in range(vec_len):
+    x = abs(float(vec1[i]) - float(vec2[i]))
+    y = abs(float(vec1[i])) + abs(float(vec2[i]))
+    if (y > 0.0):
+      cbr_dist += x/y
+
+  return cbr_dist
+
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+def distCosine(vec1, vec2):
+  """Cosine distance measure.
+
+     Note: This function assumes that all vector elelemts are non-negative.
+
+     See also:
+       http://en.wikipedia.org/wiki/Vector_space_model
+  """
+
+#  assert len(vec1) == len(vec2)
+
+  vec_len = len(vec1)
+
+  vec1sum =  0.0
+  vec2sum =  0.0
+  vec12sum = 0.0
+
+  for i in range(vec_len):
+    vec1sum +=  vec1[i]*vec1[i]
+    vec2sum +=  vec2[i]*vec2[i]
+    vec12sum += vec1[i]*vec2[i]
+
+  if (vec1sum*vec2sum  == 0.0):
+    cos_dist = 1.0  # At least one vector is all zeros
+
+  else:
+    vec1sum = math.sqrt(vec1sum)
+    vec2sum = math.sqrt(vec2sum)
+
+    cos_sim = vec12sum / (vec1sum * vec2sum)
+
+    # Due to rounding errors the similarity can be slightly larger than 1.0
+    #
+    cos_sim = min(cos_sim, 1.0)
+
+    assert (cos_sim >= 0.0) and (cos_sim <= 1.0), (cos_sim, vec1, vec2)
+
+    cos_dist = 1.0 - cos_sim
+
+  return cos_dist
+
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+## TODO, PC Jan 2008 ***********
 
 def distMahalanobis(vec1, vec2):
   """Mahalanobis distance measure.
@@ -137,32 +205,8 @@ def distMahalanobis(vec1, vec2):
 
   mal_dist = 0.0
 
-### TODO
-
   return mal_dist
 
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
-def distCanberra(vec1, vec2):
-  """Canberra distance measure.
-
-     See also:
-     http://people.revoledu.com/kardi/tutorial/Similarity/CanberraDistance.html
-  """
-
-  assert len(vec1) == len(vec2)
-
-  vec_len = len(vec1)
-
-  cbr_dist = 0.0
-
-  for i in range(vec_len):
-    x = abs(float(vec1[i]) - float(vec2[i]))
-    y = abs(float(vec1[i])) + abs(float(vec2[i]))
-    if (y > 0.0):
-      cbr_dist += x/y
-
-  return cbr_dist
 
 # =============================================================================
 

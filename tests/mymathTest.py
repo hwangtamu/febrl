@@ -37,7 +37,7 @@
 # the terms of any one of the ANUOS License or the GPL.
 # =============================================================================
 #
-# Freely extensible biomedical record linkage (Febrl) - Version 0.4.01
+# Freely extensible biomedical record linkage (Febrl) - Version 0.4.02
 #
 # See: http://datamining.anu.edu.au/linkage.html
 #
@@ -205,41 +205,49 @@ class TestCase(unittest.TestCase):
       l2_dist =  mymath.distL2(v1,v2)
       li_dist =  mymath.distLInf(v1,v2)
       cbr_dist = mymath.distCanberra(v1,v2)
+      cos_dist = mymath.distCosine(v1,v2)
 
       assert isinstance(l1_dist, float)
       assert isinstance(l2_dist, float)
       assert isinstance(li_dist, float)
       assert isinstance(cbr_dist, float)
+      assert isinstance(cos_dist, float)
 
       assert l1_dist >=  0
       assert l2_dist >=  0
       assert li_dist >=  0
       assert cbr_dist >= 0
+      assert cos_dist >= 0
 
       l1_dist2 =  mymath.distL1(v2,v1)
       l2_dist2 =  mymath.distL2(v2,v1)
       li_dist2 =  mymath.distLInf(v2,v1)
       cbr_dist2 = mymath.distCanberra(v2,v1)
+      cos_dist2 = mymath.distCosine(v2,v1)
 
       assert l1_dist == l1_dist2
       assert l2_dist == l2_dist2
       assert li_dist == li_dist2
       assert cbr_dist == cbr_dist2
+      assert cos_dist == cos_dist2
 
       l1_dist = mymath.distL1(v1,v1)
       l2_dist = mymath.distL2(v2,v2)
       li_dist = mymath.distLInf(v1,v1)
       cbr_dist = mymath.distCanberra(v1,v1)
+      cos_dist = mymath.distCosine(v1,v1)
 
       assert isinstance(l1_dist, float)
       assert isinstance(l2_dist, float)
       assert isinstance(li_dist, float)
       assert isinstance(cbr_dist, float)
+      assert isinstance(cos_dist, float)
 
       assert l1_dist ==  0
       assert l2_dist ==  0
       assert li_dist ==  0
       assert cbr_dist == 0
+      assert cos_dist == 0
 
   def testRandom(self):  # - - - - - - - - - - - - - - - - - - - - - - - - -
     """Test random distributions routine"""

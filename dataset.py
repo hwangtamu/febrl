@@ -37,7 +37,7 @@
 # the terms of any one of the ANUOS License or the GPL.
 # =============================================================================
 #
-# Freely extensible biomedical record linkage (Febrl) - Version 0.4.01
+# Freely extensible biomedical record linkage (Febrl) - Version 0.4.02
 #
 # See: http://datamining.anu.edu.au/linkage.html
 #
@@ -379,7 +379,9 @@ class DataSet:
       if (random.random()*100 < sample):  # Randomly select a record
 
         c = 0
-        for col_val in rec_list:  # Loop over all field values in this record
+        # Loop over the field values in this record
+        #
+        for col_val in rec_list[:num_fields]:
 
           # Value has been stripped and/or missing values removed in .readall()
 

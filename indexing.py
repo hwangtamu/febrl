@@ -37,7 +37,7 @@
 # the terms of any one of the ANUOS License or the GPL.
 # =============================================================================
 #
-# Freely extensible biomedical record linkage (Febrl) - Version 0.4.01
+# Freely extensible biomedical record linkage (Febrl) - Version 0.4.02
 #
 # See: http://datamining.anu.edu.au/linkage.html
 #
@@ -1020,7 +1020,11 @@ class Indexing:
       for index_def in index_def_list:  # Loop over all the index' definitions
 
         field_col = index_def[data_set_num]  # Column of the field to extract
-        field_val = rec[field_col].lower()
+
+        if (field_col >= len(rec)):
+          field_val = ''
+        else:
+          field_val = rec[field_col].lower()
 
         if (field_val != ''):  # Field value is not empty
 

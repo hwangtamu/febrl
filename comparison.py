@@ -37,7 +37,7 @@
 # the terms of any one of the ANUOS License or the GPL.
 # =============================================================================
 #
-# Freely extensible biomedical record linkage (Febrl) - Version 0.4.01
+# Freely extensible biomedical record linkage (Febrl) - Version 0.4.02
 #
 # See: http://datamining.anu.edu.au/linkage.html
 #
@@ -181,8 +181,16 @@ class RecordComparator:
     # Compute a weight for each field comparator
     #
     for (comp_method,field_index1,field_index2) in self.field_comparison_list:
-      val1 = rec1[field_index1]
-      val2 = rec2[field_index2]
+
+      if (field_index1 >= len(rec1)):
+        val1 = ''
+      else:
+        val1 = rec1[field_index1]
+
+      if (field_index2 >= len(rec2)):
+        val2 = ''
+      else:
+        val2 = rec2[field_index2]
 
       w = comp_method(val1,val2)
       weight_vector.append(w)
