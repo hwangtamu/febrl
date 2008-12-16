@@ -19,7 +19,7 @@
 #   Dr Peter Christen (Department of Computer Science, Australian National
 #                      University)
 # 
-# Copyright (C) 2002 - 2007 the Australian National University and
+# Copyright (C) 2002 - 2008 the Australian National University and
 # others. All Rights Reserved.
 # 
 # Contributors:
@@ -37,7 +37,7 @@
 # the terms of any one of the ANUOS License or the GPL.
 # =============================================================================
 #
-# Freely extensible biomedical record linkage (Febrl) - Version 0.4.02
+# Freely extensible biomedical record linkage (Febrl) - Version 0.4.1
 #
 # See: http://datamining.anu.edu.au/linkage.html
 #
@@ -55,6 +55,7 @@ import unittest
 sys.path.append('..')
 
 import comparison
+import stringcmp
 
 log_level = logging.WARNING  # logging.INFO
 
@@ -1176,6 +1177,32 @@ class TestCase(unittest.TestCase):
         self.doStringFieldComparisonTest(efcrc)
 
     for t in [0.1, 0.25, 0.5, 0.6666, 0.8, 0.9]:
+
+      chfc = comparison.FieldComparatorCharHistogram(threshold = t,
+                                         missing_v = self.missing_values_list,
+                                         desc = 'FieldComparatorCharHistogram')
+      chfcc = comparison.FieldComparatorCharHistogram(threshold = t,
+                                         missing_v = self.missing_values_list,
+                                         desc = 'FieldComparatorCharHistogram',
+                                         do_cache = True)
+      self.doStringFieldComparisonTest(chfc)
+      self.doStringFieldComparisonTest(chfcc)
+
+      for comp_f in ['equal', stringcmp.jaro, stringcmp.qgram, stringcmp.lcs]:
+
+        tljfc = comparison.FieldComparatorTwoLevelJaro(threshold = t,
+                                          missing_v = self.missing_values_list,
+                                          comp_funct = comp_f,
+                                          min_thresh = 0.75,
+                                          desc = 'FieldComparatorTwoLevelJaro')
+        tljfcc = comparison.FieldComparatorTwoLevelJaro(threshold = t,
+                                          missing_v = self.missing_values_list,
+                                          comp_funct = comp_f,
+                                          min_thresh = 0.75,
+                                          desc = 'FieldComparatorTwoLevelJaro',
+                                          do_cache = True)
+        self.doStringFieldComparisonTest(tljfc)
+        self.doStringFieldComparisonTest(tljfcc)
 
       jfc = comparison.FieldComparatorJaro(threshold = t,
                                           missing_v = self.missing_values_list,

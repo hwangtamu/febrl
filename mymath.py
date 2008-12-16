@@ -19,7 +19,7 @@
 #   Dr Peter Christen (Department of Computer Science, Australian National
 #                      University)
 # 
-# Copyright (C) 2002 - 2007 the Australian National University and
+# Copyright (C) 2002 - 2008 the Australian National University and
 # others. All Rights Reserved.
 # 
 # Contributors:
@@ -37,7 +37,7 @@
 # the terms of any one of the ANUOS License or the GPL.
 # =============================================================================
 #
-# Freely extensible biomedical record linkage (Febrl) - Version 0.4.02
+# Freely extensible biomedical record linkage (Febrl) - Version 0.4.1
 #
 # See: http://datamining.anu.edu.au/linkage.html
 #
@@ -150,13 +150,13 @@ def distCanberra(vec1, vec2):
 def distCosine(vec1, vec2):
   """Cosine distance measure.
 
-     Note: This function assumes that all vector elelemts are non-negative.
+     Note: This function assumes that all vector elements are non-negative.
 
      See also:
        http://en.wikipedia.org/wiki/Vector_space_model
   """
 
-#  assert len(vec1) == len(vec2)
+  assert len(vec1) == len(vec2)
 
   vec_len = len(vec1)
 

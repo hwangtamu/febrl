@@ -19,7 +19,7 @@
 #   Dr Peter Christen (Department of Computer Science, Australian National
 #                      University)
 # 
-# Copyright (C) 2002 - 2007 the Australian National University and
+# Copyright (C) 2002 - 2008 the Australian National University and
 # others. All Rights Reserved.
 # 
 # Contributors:
@@ -37,7 +37,7 @@
 # the terms of any one of the ANUOS License or the GPL.
 # =============================================================================
 #
-# Freely extensible biomedical record linkage (Febrl) - Version 0.4.02
+# Freely extensible biomedical record linkage (Febrl) - Version 0.4.1
 #
 # See: http://datamining.anu.edu.au/linkage.html
 #
@@ -191,6 +191,11 @@ class RecordComparator:
         val2 = ''
       else:
         val2 = rec2[field_index2]
+
+      if (val1.isalpha()):
+        assert val1.islower(), val1
+      if (val2.isalpha()):
+        assert val2.islower(), val2
 
       w = comp_method(val1,val2)
       weight_vector.append(w)
@@ -4895,6 +4900,357 @@ class FieldComparatorTokenSet(FieldComparatorApproxString):
         assert (w <= 1.0), 'Token comparison: Similarity weight > 1.0'
 
         w = self.__calc_partagree_weight__(val1, val2, w)
+
+    if (self.do_caching == True):  # Put values pair into the cache
+      self.__put_into_cache__(val1, val2, w)
+
+    return w
+
+# =============================================================================
+
+class FieldComparatorCharHistogram(FieldComparatorApproxString):
+  """A field comparator based on counting all letters, digits and whitespaces
+     in two strings and building two corresponding histrograms. The similarity
+     is then calculated using the cosine similarity measure between these two
+     histogram vectors.
+  """
+
+  # ---------------------------------------------------------------------------
+
+  def __init__(self, **kwargs):
+    """No additional attributes needed, just call base class constructor.
+    """
+
+    FieldComparatorApproxString.__init__(self, kwargs)
+
+    self.log([('Threshold', self.threshold)])  # Log a message
+
+  # ---------------------------------------------------------------------------
+
+  def compare(self, val1, val2):
+    """Compare two field values using the character histogram approximate
+       string comparator.
+    """
+
+    # Check if one of the values is a missing value
+    #
+    if (val1 in self.missing_values) or (val2 in self.missing_values):
+      return self.missing_weight
+
+    if (self.do_caching == True):  # Check if values pair is in the cache
+      cache_weight = self.__get_from_cache__(val1, val2)
+      if (cache_weight != None):
+        return cache_weight
+
+    if (val1 == val2):
+      return self.__calc_freq_agree_weight__(val1)
+
+    histo1 = [0]*37
+    histo2 = [0]*37
+
+    workval1 = val1.lower()
+    workval2 = val2.lower()
+
+    for c in workval1:
+      if (c == ' '):
+        histo1[0] += 1
+      elif ((c >= 'a') and (c <= 'z')):  # Count characters
+        histo1[ord(c)-96] += 1
+      elif ((c >= '0') and (c <= '9')):  # Count digits
+        histo1[ord(c)-21] += 1
+
+    for c in workval2:
+      if (c == ' '):
+        histo2[0] += 1
+      elif ((c >= 'a') and (c <= 'z')):
+        histo2[ord(c)-96] += 1
+      elif ((c >= '0') and (c <= '9')):  # Count digits
+        histo2[ord(c)-21] += 1
+
+    vec1sum =  0.0
+    vec2sum =  0.0
+    vec12sum = 0.0
+
+    for i in range(27):
+      vec1sum +=  histo1[i]*histo1[i]
+      vec2sum +=  histo2[i]*histo2[i]
+      vec12sum += histo1[i]*histo2[i]
+
+    if (vec1sum*vec2sum == 0.0):
+      cos_sim = 0.0  # At least one vector is all zeros
+
+    else:
+      vec1sum = math.sqrt(vec1sum)
+      vec2sum = math.sqrt(vec2sum)
+
+      cos_sim = vec12sum / (vec1sum * vec2sum)
+
+      # Due to rounding errors the similarity can be slightly larger than 1.0
+      #
+      cos_sim = min(cos_sim, 1.0)
+
+    assert (cos_sim >= 0.0) and (cos_sim <= 1.0), (cos_sim, vec1, vec2)
+
+    if (cos_sim == 0.0):
+      w = self.disagree_weight
+    else:
+      w = self.__calc_partagree_weight__(val1, val2, cos_sim)
+
+    if (self.do_caching == True):  # Put values pair into the cache
+      self.__put_into_cache__(val1, val2, w)
+
+    return w
+
+# =============================================================================
+
+class FieldComparatorTwoLevelJaro(FieldComparatorApproxString):
+  """A field comparator that applies the Jaro comparator at word level, and
+     additionally allows the comparison of individual words to be done using an
+     approximate comparison function.
+
+     The additional arguments (besides the base class arguments) which have to
+     be set when this field comparator is initialised are:
+
+       comp_funct     The function used to compare individual words. Either the
+                      string 'equal' (default) or one of the string comparison
+                      functions available in the 'stringcmp' module (i.e. a
+                      function which takes two strings as input and returns a
+                      similarity value between 0 and 1)
+       min_threshold  Minimum threshold between 0 and 1. If an approximate
+                      string comparison function is used for 'comp_funct' then
+                      this 'min_threshold' needs to be set as well in order to
+                      select the words that can match in the current window -
+                      otherwise the 'best' match will be selected, even if it
+                      has a very low similarity value.
+  """
+
+  # ---------------------------------------------------------------------------
+
+  def __init__(self, **kwargs):
+    """Constructor. Process the 'comp_funct' and 'min_threshold' arguments
+       first, then call the base class constructor.
+    """
+
+    self.comp_funct =   'equal'
+    self.min_threshold = None
+
+    self.JARO_MARKER_CHAR = chr(1)  # Special character used to mark assigned
+                                    # characters
+
+    # Process all keyword arguments - - - - - - - - - - - - - - - - - - - - - -
+    #
+    base_kwargs = {}  # Dictionary, will contain unprocessed arguments for base
+                      # class constructor
+
+    for (keyword, value) in kwargs.items():
+
+      if (keyword.startswith('comp_f')):
+        if (isinstance(value, str)):
+          if (value == 'equal'):
+            self.comp_funct = 'equal'
+          else:
+            logging.exception('Value of "comp_funct" must be a function or' + \
+                              ' the string "equal"')
+            raise Exception
+        else:
+          auxiliary.check_is_function_or_method('comp_funct', value)
+          self.comp_funct = value
+
+      elif (keyword.startswith('min_t')):
+        auxiliary.check_is_normalised('min_threshold', value)
+        self.min_threshold = value
+
+      else:
+        base_kwargs[keyword] = value
+
+    FieldComparatorApproxString.__init__(self, base_kwargs)
+
+    # Make sure 'min_threshold' attribute is set  - - - - - - - - - - - - - -
+    #
+    if ((self.comp_funct != 'equal') and (self.min_threshold == None)):
+      logging.exception('Comparison function is given but no minimal ' + \
+                        'threshold')
+      raise Exception
+
+    self.log([('Threshold', self.threshold),
+              ('Comparison function', self.comp_funct),
+              ('Minimum threshold', self.min_threshold)])  # Log a message
+
+  # ---------------------------------------------------------------------------
+
+  def compare(self, val1, val2):
+    """Compare two field values using the two-level Jaro approximate string
+       comparator.
+    """
+
+    # Check if one of the values is a missing value
+    #
+    if (val1 in self.missing_values) or (val2 in self.missing_values):
+      return self.missing_weight
+
+    if (self.do_caching == True):  # Check if values pair is in the cache
+      cache_weight = self.__get_from_cache__(val1, val2)
+      if (cache_weight != None):
+        return cache_weight
+
+    if (val1 == val2):
+      return self.__calc_freq_agree_weight__(val1)
+
+    # If neither value contains a space (i.e. both are only one word) then use
+    # the given word level comparison function
+    #
+    if (' ' not in val1) and (' ' not in val2):
+      if (self.comp_funct == 'equal'):
+        # Already tested if strings are the same, so here they are not
+        #
+        return self.disagree_weight
+
+      # Calculate simple similarity value
+      #
+      w = self.comp_funct(val1, val2)
+
+      w = self.__calc_partagree_weight__(val1, val2, w)
+
+      if (self.do_caching == True):  # Put values pair into the cache
+        self.__put_into_cache__(val1, val2, w)
+
+      return w
+
+    # Convert values into lists of words (whitespace separated)
+    #
+    list1 = val1.split()
+    list2 = val2.split()
+
+    len1 = len(list1)
+    len2 = len(list2)
+
+    halflen = max(len1,len2) / 2
+
+    ass_list1 = []  # Words assigned in list1
+    ass_list2 = []  # Words assigned in list2
+
+    work_list1 = list1[:]  # Copy of original lists
+    work_list2 = list2[:]
+
+    common1 = 0  # Number of common characters
+    common2 = 0
+
+    # If 'equal' comparison function is given, then Jaro can be - - - - - - - -
+    # directly applied at word level
+    #
+    if (self.comp_funct == 'equal'):
+
+      for i in range(len1):  # Analyse the first word list
+        start = max(0,i-halflen)
+        end   = min(i+halflen+1,len2)
+        if (list1[i] in work_list2[start:end]):  # Found common word
+          ind = work_list2[start:end].index(list1[i])
+          common1 += 1
+          ass_list1.append(list1[i])
+          work_list2[ind+start] = self.JARO_MARKER_CHAR
+
+      for i in range(len2):  # Analyse the second string
+        start = max(0,i-halflen)
+        end   = min(i+halflen+1,len1)
+        if (list2[i] in work_list1[start:end]):  # Found common word
+          ind = work_list1[start:end].index(list2[i])
+          common2 += 1
+          ass_list2.append(list2[i])
+          work_list1[ind+start] = self.JARO_MARKER_CHAR
+
+      if (common1 != common2):
+        logging.error('Two-level-Jaro: Wrong common values for strings ' + \
+                      '"%s" and "%s"' % (val1, val2) + \
+                      ', common1: %i, common2: %i' % (common1, common2) + \
+                      ', common should be the same.')
+        common1 = float(common1+common2) / 2.0  ##### This is just a fix #####
+
+    # For approximate comparison function, compare all words within current
+    # 'window' and keep all matches above threshold, then select the best match
+    #
+    else:
+
+      for i in range(len1):  # Analyse the first word list
+        start = max(0,i-halflen)
+        end   = min(i+halflen+1,len2)
+        search_word = list1[i]
+        ind = -1  # The index of the best match found
+        best_match_sim = -1
+        word_ind = 0
+        for word in work_list2[start:end]:
+          tmp_sim = self.comp_funct(search_word, word)
+          if (tmp_sim >= self.min_threshold):
+            if (tmp_sim > best_match_sim):
+              ind = word_ind
+              best_match_sim = tmp_sim
+          word_ind += 1
+        if (ind >= 0):  # Found common word
+          common1 += 1
+          ass_list1.append(list1[i])
+          work_list2[ind+start] = self.JARO_MARKER_CHAR
+
+      for i in range(len2):  # Analyse the second string
+        start = max(0,i-halflen)
+        end   = min(i+halflen+1,len1)
+        search_word = list2[i]
+        ind = -1  # The index of the best match found
+        best_match_sim = -1
+        word_ind = 0
+        for word in work_list1[start:end]:
+          tmp_sim = self.comp_funct(search_word, word)
+          if (tmp_sim >= self.min_threshold):
+            if (tmp_sim > best_match_sim):
+              ind = word_ind
+              best_match_sim = tmp_sim
+          word_ind += 1
+        if (ind >= 0):  # Found common word
+          common2 += 1
+          ass_list2.append(list2[i])
+          work_list1[ind+start] = self.JARO_MARKER_CHAR
+
+      # For approximate comparisons, the assignment can be asymmetric, and thus
+      # the values of common can differ. For example consider the following two
+      # article titles:
+      # - synaptic activation of transient recepter potential channels by
+      #   metabotropic glutamate receptors in the lateral amygdala
+      # - synaptic activation of transient receptor potential channels by
+      #   metabotropic glutamate receptors in the lateral amygdala
+      # In the first assignment loop, 'recepter' will match with 'receptor',
+      # while in the second loop 'receptor' will match with 'receptors' (if for
+      # example the q-gram comparison function is used).
+      #
+      if (common1 != common2):
+        logging.warning('Two-level-Jaro: Different common values for ' + \
+                        'strings "%s" and "%s"' % (val1, val2) + \
+                        ', common1: %i, common2: %i' % (common1, common2))
+        common1 = float(common1+common2) / 2.0
+
+    if (common1 == 0):
+      w = self.disagree_weight
+
+    else:
+
+      # Compute number of transpositions  - - - - - - - - - - - - - - - - - - -
+      #
+      min_num_ass_words = min(len(ass_list1), len(ass_list2))
+      transposition = 0
+      for i in range(min_num_ass_words):
+        if (self.comp_funct == 'equal'):  # Standard way like for in basic Jaro
+          if (ass_list1[i] != ass_list2[i]):
+            transposition += 1
+        else:  # Again use approximate string comp. to calculate similarities
+          tmp_sim = self.comp_funct(ass_list1[i], ass_list2[i])
+          if (tmp_sim >= self.min_threshold):
+            transposition += 1
+
+      common1 = float(common1)
+      w = 1./3.*(common1 / float(len1) + common1 / float(len2) + \
+               (common1-transposition) / common1)
+
+      assert (w > 0.0), 'Two-Step Jaro: Weight is smaller than 0.0: %f' % (w)
+      assert (w < 1.0), 'Two-Step Jaro: Weight is larger than 1.0: %f' % (w)
+
+      w = self.__calc_partagree_weight__(val1, val2, w)
 
     if (self.do_caching == True):  # Put values pair into the cache
       self.__put_into_cache__(val1, val2, w)

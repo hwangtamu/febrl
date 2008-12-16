@@ -1,12 +1,7 @@
 Febrl 0.4 - TODO list
 ---------------------
-Last update: Peter Christen, 19/11/2007
 
-Bug:
-- lost data set header when changing data set type?
-- check indexing write files match status etc for bigMatch index
-
-Add: current folder for file choosers
+Last update: Peter Christen, 16/12/2008
 
 General Febrl modules:
 ----------------------
@@ -65,6 +60,10 @@ General Febrl modules:
 
 GUI:
 ----
+
+- Fix: lost data set header when changing data set type?
+- Fix: check indexing write files match status etc for bigMatch index
+- Add: current folder for file choosers
 
 - Load and parse a Febrl project file
 

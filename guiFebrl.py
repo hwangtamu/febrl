@@ -21,7 +21,7 @@
 #   Dr Peter Christen (Department of Computer Science, Australian National
 #                      University)
 # 
-# Copyright (C) 2002 - 2007 the Australian National University and
+# Copyright (C) 2002 - 2008 the Australian National University and
 # others. All Rights Reserved.
 # 
 # Contributors:
@@ -39,7 +39,7 @@
 # the terms of any one of the ANUOS License or the GPL.
 # =============================================================================
 #
-# Freely extensible biomedical record linkage (Febrl) - Version 0.4.02
+# Freely extensible biomedical record linkage (Febrl) - Version 0.4.1
 #
 # See: http://datamining.anu.edu.au/linkage.html
 #
@@ -8780,9 +8780,13 @@ class MainFebrlWindow:
       else:
         this_tag_table = {}
 
-      if (comp_std_type != 'Date'):
-        field_sep =       cs_dict['field_separator']
-        word_spill_flag = cs_dict['check_word_spill']
+## Changed PC 25/08/2008 ????
+#
+#      if (comp_std_type in ['Addr','Name']):
+#        field_sep =       cs_dict['field_separator']
+#        word_spill_flag = cs_dict['check_word_spill']
+      field_sep =       cs_dict.get('field_separator', '')
+      word_spill_flag = cs_dict.get('check_word_spill', False)
 
       # Initialise the component standardisers
       #

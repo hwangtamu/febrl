@@ -19,7 +19,7 @@
 #   Dr Peter Christen (Department of Computer Science, Australian National
 #                      University)
 # 
-# Copyright (C) 2002 - 2007 the Australian National University and
+# Copyright (C) 2002 - 2008 the Australian National University and
 # others. All Rights Reserved.
 # 
 # Contributors:
@@ -37,7 +37,7 @@
 # the terms of any one of the ANUOS License or the GPL.
 # =============================================================================
 #
-# Freely extensible biomedical record linkage (Febrl) - Version 0.4.02
+# Freely extensible biomedical record linkage (Febrl) - Version 0.4.1
 #
 # See: http://datamining.anu.edu.au/linkage.html
 #
@@ -2733,7 +2733,7 @@ class CanopyIndex(Indexing):
         field_ind = 0
         for field in rec:
           if (field_ind in comp_field_used):
-            comp_rec.append(field)
+            comp_rec.append(field.lower())
           else:
             comp_rec.append('')  # Set not needed fields to ''
           field_ind += 1
@@ -4715,7 +4715,7 @@ class SuffixArrayIndex(Indexing):
         field_ind = 0
         for field in rec:
           if (field_ind in comp_field_used_list):
-            comp_rec.append(field)
+            comp_rec.append(field.lower())
           else:
             comp_rec.append('')
           field_ind += 1
@@ -5965,15 +5965,16 @@ class DedupIndex(Indexing):
       #
       comp_rec =  []
       rec_len1 =  0
-      field_ind = 0
 
-      for field in rec1:
+      for field_ind in range(len(rec1)):
+        rec1[field_ind] = rec1[field_ind].lower()
+        field = rec1[field_ind]
+
         if (field_ind in comp_field_used_list):
-          comp_rec.append(field.lower())  # Make lowecase
+          comp_rec.append(field)  # Make lowecase
           rec_len1 += len(field)
         else:
           comp_rec.append('')
-        field_ind += 1
 
       rec_cache[rec_ident1] = comp_rec  # Put into record cache
 

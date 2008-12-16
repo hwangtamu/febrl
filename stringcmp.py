@@ -19,7 +19,7 @@
 #   Dr Peter Christen (Department of Computer Science, Australian National
 #                      University)
 # 
-# Copyright (C) 2002 - 2007 the Australian National University and
+# Copyright (C) 2002 - 2008 the Australian National University and
 # others. All Rights Reserved.
 # 
 # Contributors:
@@ -37,7 +37,7 @@
 # the terms of any one of the ANUOS License or the GPL.
 # =============================================================================
 #
-# Freely extensible biomedical record linkage (Febrl) - Version 0.4.02
+# Freely extensible biomedical record linkage (Febrl) - Version 0.4.1
 #
 # See: http://datamining.anu.edu.au/linkage.html
 #
@@ -73,6 +73,10 @@ Comparison methods provided:
   sortwinkler    Winkler with sorted words (if more than one), improves results
                  for swapped words
   editex         Phonetic aware edit-distance (Zobel et al. 1996)
+  twoleveljaro   Apply Jaro comparator at word level, with words being compared
+                 using a selectable approximate string comparison function
+  charhistogram  Get histogram of characters for both strings and calculate the
+                 cosine similarity between the two histogram vectors
 
 See doc strings of individual functions for detailed documentation.
 
@@ -86,6 +90,7 @@ approximate string comparisons for various string pairs.
 import bz2
 import difflib
 import logging
+import math
 import time
 import zlib
 
@@ -305,7 +310,7 @@ def do_stringcmp(cmp_method, str1, str2, min_threshold = None):
     elif ('Arith' in cmp_method):
       compr_method = 'arith'
     else:
-      logging.ecxeption('Illegal compression method given: %s' % (cmp_method))
+      logging.exception('Illegal compression method given: %s' % (cmp_method))
       raise Exception
     start_time = time.time()
     sim_weight = compression(str1, str2, compr_method, min_threshold)
@@ -2238,6 +2243,9 @@ def editex(str1, str2, min_threshold = None):
 
   w = 1.0 - float(F[n][m]) / float(max(F[0][m],F[n][0]))
 
+  if (w < 0.0):
+    w = 0.0
+
   assert (w >= 0.0) and (w <= 1.0), 'Similarity weight outside 0-1: %f' % (w)
 
   # A log message - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -2245,6 +2253,330 @@ def editex(str1, str2, min_threshold = None):
   logging.debug('Editex comparator string "%s" with "%s" value: %.3f' \
                 % (str1, str2, w))
   return w
+
+# =============================================================================
+
+def twoleveljaro(str1, str2, comp_funct = 'equal', min_threshold = None):
+  """Return approximate string comparator measure (between 0.0 and 1.0)
+
+  USAGE:
+    score = jaro(str1, str2, comp_funct, min_threshold)
+
+  ARGUMENTS:
+    str1           The first string
+    str2           The second string
+    comp_funct     The function used to compare individual words. Either the
+                   string 'equal' (default) or one of the string comparison
+                   functions available in this module (i.e. a function which
+                   takes two strings as input and returns a similarity value
+                   between 0 and 1)
+    min_threshold  Minimum threshold between 0 and 1 (currently not used)
+
+  DESCRIPTION:
+    This function applies Jaro comparator at word level, and additionally
+    allows the comparison of individual words to be done using an approximate
+    comparison function.
+
+    If an approximate string comparison function is used for 'comp_funct' then
+    the 'min_threshold' needs to be set as well in order to select the number
+    of words that can match in the current window - otherwise the 'best' match
+    will be selected, even if it has a very low similarity value.
+
+    For a description of the Jaro string comparator see 'An Application of the
+    Fellegi-Sunter Model of Record Linkage to the 1990 U.S. Decennial Census'
+    by William E. Winkler and Yves Thibaudeau.
+  """
+
+  # Quick check if the strings are empty or the same - - - - - - - - - - - - -
+  #
+  if (str1 == '') or (str2 == ''):
+    return 0.0
+  elif (str1 == str2):
+    return 1.0
+
+  # If neither string contains a space (i.e. both are only one word) then use
+  # the given word level comparison function
+  #
+  if (' ' not in str1) and (' ' not in str2):
+    if (comp_funct == 'equal'):
+      return 0.0 # Already tested if strings are the same, so here they are not
+
+    # Calculate simple similarity value
+    #
+    w = comp_funct(str1, str2)
+
+    assert (w >= 0.0) and (w <= 1.0), 'Similarity weight outside 0-1: %f' % (w)
+
+    return w
+
+  # If a comparison function is given, a minimum threshold is also required
+  #
+  if ((comp_funct != 'equal') and (min_threshold == None)):
+    logging.exception('Comparison function is given but no minimal threshold')
+    raise Exception
+
+  # Convert strings into lists of words (whitespace separated)
+  #
+  list1 = str1.split()
+  list2 = str2.split()
+
+  len1 = len(list1)
+  len2 = len(list2)
+
+  halflen = max(len1,len2) / 2
+
+  ass_list1 = []  # Words assigned in list1
+  ass_list2 = []  # Words assigned in list2
+
+  work_list1 = list1[:]  # Copy of original lists
+  work_list2 = list2[:]
+
+  common1 = 0  # Number of common characters
+  common2 = 0
+
+#  print halflen
+#  print 'word lists:'
+#  print ' ', list1
+#  print ' ', list2
+#  print
+
+  # If 'equal' comparison function is given, then Jaro can be - - - - - - - - -
+  # directly applied at word level
+  #
+  if (comp_funct == 'equal'):
+
+#    print 'equal: analyse word list 1:', list1
+    for i in range(len1):  # Analyse the first word list
+#      print i,   worklist1, asslist1
+#      print ' ', worklist2, asslist2
+
+      start = max(0,i-halflen)
+      end   = min(i+halflen+1,len2)
+#      print start, end, list1[i], worklist2[start:end]
+      if (list1[i] in work_list2[start:end]):  # Found common word
+        ind = work_list2[start:end].index(list1[i])
+        common1 += 1
+        ass_list1.append(list1[i])
+        work_list2[ind+start] = JARO_MARKER_CHAR
+#      print
+
+#    print
+#    print 'equal: analyse word list 2:', list2
+    for i in range(len2):  # Analyse the second string
+#      print i,   worklist1, asslist1
+#      print ' ', worklist2, asslist2
+
+      start = max(0,i-halflen)
+      end   = min(i+halflen+1,len1)
+#      print start, end, list2[i], worklist1[start:end]
+      if (list2[i] in work_list1[start:end]):  # Found common word
+        ind = work_list1[start:end].index(list2[i])
+        common2 += 1
+        ass_list2.append(list2[i])
+        work_list1[ind+start] = JARO_MARKER_CHAR
+#      print
+
+#    print 'common:', common1
+#    print 'assigned:'
+#    print ass_list1
+#    print ass_list2
+
+    if (common1 != common2):
+      logging.error('Two-level-Jaro: Wrong common values for strings ' + \
+                    '"%s" and "%s"' % (str1, str2) + \
+                    ', common1: %i, common2: %i' % (common1, common2) + \
+                    ', common should be the same.')
+      common1 = float(common1+common2) / 2.0  ##### This is just a fix #####
+
+  # For approximate comparison function, compare all words within current
+  # 'window' and keep all matches above threshold, then select the best match
+  #
+  else:
+
+#    print 'approx: analyse word list 1:', list1
+    for i in range(len1):  # Analyse the first word list
+#      print i,   work_list1, ass_list1
+#      print ' ', work_list2, ass_list2
+      start = max(0,i-halflen)
+      end   = min(i+halflen+1,len2)
+#      print start, end, list1[i], work_list2[start:end]
+      search_word = list1[i]
+      ind = -1  # The index of the best match found
+      best_match_sim = -1
+      word_ind = 0
+      for word in work_list2[start:end]:
+        tmp_sim = comp_funct(search_word, word)
+        if (tmp_sim >= min_threshold):
+          if (tmp_sim > best_match_sim):
+            ind = word_ind
+            best_match_sim = tmp_sim
+        word_ind += 1
+      if (ind >= 0):  # Found common word
+#        print '  found match:', search_word, work_list2[ind+start], best_match_sim
+        common1 += 1
+        ass_list1.append(list1[i])
+        work_list2[ind+start] = JARO_MARKER_CHAR
+#        print '*', work_list2
+#      print
+
+#    print
+#    print 'approx: analyse word list 2:', list2
+    for i in range(len2):  # Analyse the second string
+#      print i,   work_list1, ass_list1
+#      print ' ', work_list2, ass_list2
+      start = max(0,i-halflen)
+      end   = min(i+halflen+1,len1)
+#      print start, end, list2[i], work_list1[start:end]
+      search_word = list2[i]
+      ind = -1  # The index of the best match found
+      best_match_sim = -1
+      word_ind = 0
+      for word in work_list1[start:end]:
+        tmp_sim = comp_funct(search_word, word)
+        if (tmp_sim >= min_threshold):
+          if (tmp_sim > best_match_sim):
+            ind = word_ind
+            best_match_sim = tmp_sim
+        word_ind += 1
+      if (ind >= 0):  # Found common word
+#        print '  found match:', search_word, work_list1[ind+start], best_match_sim
+        common2 += 1
+        ass_list2.append(list2[i])
+        work_list1[ind+start] = JARO_MARKER_CHAR
+#        print '*', work_list1
+#      print
+
+#    print 'common:', common1
+#    print 'assigned:'
+#    print ass_list1
+#    print ass_list2
+
+    # For approximate comparisons, the assignment can be asymmetric, and thus
+    # the values of common can differ. For example consider the following two
+    # article titles:
+    # - synaptic activation of transient recepter potential channels by
+    #   metabotropic glutamate receptors in the lateral amygdala
+    # - synaptic activation of transient receptor potential channels by
+    #   metabotropic glutamate receptors in the lateral amygdala
+    # In the first assignment loop, 'recepter' will match with 'receptor',
+    # while in the second loop 'receptor' will match with 'receptors' (if for
+    # example the q-gram comparison function is used).
+    #
+    if (common1 != common2):
+      logging.warning('Two-level-Jaro: Different common values for strings' + \
+                      ' "%s" and "%s"' % (str1, str2) + \
+                      ', common1: %i, common2: %i' % (common1, common2))
+      common1 = float(common1+common2) / 2.0
+
+  if (common1 == 0):
+    return 0.0
+
+  # Compute number of transpositions  - - - - - - - - - - - - - - - - - - - - -
+  #
+  min_num_ass_words = min(len(ass_list1), len(ass_list2))
+  transposition = 0
+  for i in range(min_num_ass_words):
+    if (comp_funct == 'equal'):  # Standard way like done in Jaro comparator
+      if (ass_list1[i] != ass_list2[i]):
+        transposition += 1
+
+    else:  # Again use approximate stringcomparison to calculate similarities
+      tmp_sim = comp_funct(ass_list1[i], ass_list2[i])
+      if (tmp_sim >= min_threshold):
+#        print tmp_sim, ass_list1[i], ass_list2[i]
+        transposition += 1
+
+#  print 'transpositions:', transposition
+
+  common1 = float(common1)
+  w = 1./3.*(common1 / float(len1) + common1 / float(len2) + \
+           (common1-transposition) / common1)
+
+  assert (w >= 0.0) and (w <= 1.0), 'Similarity weight outside 0-1: %f' % (w)
+
+  # A log message - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  #
+  logging.debug('Two-Level-Jaro comparator string "%s" with "%s" value: %.3f' \
+                % (str1, str2, w))
+  return w
+
+# =============================================================================
+
+def charhistogram(str1, str2, min_threshold = None):
+  """Return approximate string comparator measure (between 0.0 and 1.0)
+
+  USAGE:
+    score = charhistogram(str1, str2, min_threshold)
+
+  ARGUMENTS:
+    str1           The first string
+    str2           The second string
+    min_threshold  Minimum threshold between 0 and 1 (currently not used)
+
+  DESCRIPTION:
+    This function counts all characters (and whitespaces) in the two strings
+    and builds histrograms of characters. It then calculates the cosine
+    similarity measure between these two histogram vectors.
+  """
+
+  # Quick check if the strings are empty or the same - - - - - - - - - - - - -
+  #
+  if (str1 == '') or (str2 == ''):
+    return 0.0
+  elif (str1 == str2):
+    return 1.0
+
+  histo1 = [0]*37
+  histo2 = [0]*37
+
+  workstr1 = str1.lower()
+  workstr2 = str2.lower()
+
+  for c in workstr1:
+    if (c == ' '):
+      histo1[0] += 1
+    elif ((c >= 'a') and (c <= 'z')):  # Count characters
+      histo1[ord(c)-96] += 1
+    elif ((c >= '0') and (c <= '9')):  # Count digits
+      histo1[ord(c)-21] += 1
+
+
+  for c in workstr2:
+    if (c == ' '):
+      histo2[0] += 1
+    elif ((c >= 'a') and (c <= 'z')):
+      histo2[ord(c)-96] += 1
+    elif ((c >= '0') and (c <= '9')):  # Count digits
+      histo2[ord(c)-21] += 1
+
+  #print histo1
+  #print histo2
+
+  vec1sum =  0.0
+  vec2sum =  0.0
+  vec12sum = 0.0
+
+  for i in range(27):
+    vec1sum +=  histo1[i]*histo1[i]
+    vec2sum +=  histo2[i]*histo2[i]
+    vec12sum += histo1[i]*histo2[i]
+
+  if (vec1sum*vec2sum == 0.0):
+    cos_sim = 0.0  # At least one vector is all zeros
+
+  else:
+    vec1sum = math.sqrt(vec1sum)
+    vec2sum = math.sqrt(vec2sum)
+
+    cos_sim = vec12sum / (vec1sum * vec2sum)
+
+    # Due to rounding errors the similarity can be slightly larger than 1.0
+    #
+    cos_sim = min(cos_sim, 1.0)
+
+  assert (cos_sim >= 0.0) and (cos_sim <= 1.0), (cos_sim, vec1, vec2)
+
+  return cos_sim
 
 # =============================================================================
 #
@@ -2288,7 +2620,8 @@ if (__name__ == '__main__'):
 
   msg.append('     String 1      String 2  Jaro  J-W  1gram 2gram 3gram' + \
              ' 1pqgr 2pqgr 3pqgr Sgram eDist meDis bDist Editx SeqMa ComBZ' + \
-             ' ComZL ComAC LCS2  LCS3  OLCS2 OLCS3 P-Win S-Win SWDis SyADi')
+             ' ComZL ComAC LCS2  LCS3  OLCS2 OLCS3 P-Win S-Win SWDis SyADi' + \
+             ' Histo 2LJaro 2LJaroA')
 
   for i in range(len(strings[0])):
     str1 = strings[0][i]
@@ -2320,6 +2653,9 @@ if (__name__ == '__main__'):
     s += ' %.3f' % (sortwinkler(str1,str2))
     s += ' %.3f' % (swdist(str1,str2))
     s += ' %.3f' % (syllaligndist(str1,str2))
+    s += ' %.3f' % (charhistogram(str1,str2))
+    s += ' %.3f' % (twoleveljaro(str1,str2))
+    s += ' %.3f' % (twoleveljaro(str1,str2, qgram, 0.8))
     msg.append(s)
 
     if (qgram(str1, str2, 2) != sgram(str1,str2,gc=[[0]])):

@@ -1,10 +1,10 @@
-Febrl-0.4 installation instructions
-===================================
+Febrl-0.4.1 installation instructions
+=====================================
 
-Peter Christen, 2 November 2007
+Peter Christen, 16 December 2008
 
 
-The basic Febrl-0.4 installation requires Python 2.5, with additional
+The basic Febrl-0.4.1 installation requires Python 2.5, with additional
 modules and libraries needed for the graphical user interface (GUI)
 and the support vector machine (SVM) classification method.
 
@@ -50,15 +50,15 @@ distribution, start Python and try the following:
 None of these import commands should give you an error.
 
 
-Febrl-0.4 installation:
------------------------
+Febrl-0.4.1 installation:
+-------------------------
 
-Unpack the febrl-0.4.tar.gz or febrl-0.4.zip archive and a new
+Unpack the febrl-0.4.1.tar.gz or febrl-0.4.1.zip archive and a new
 directory named 'febrl-0.4' will be created containing all the
 necessary Febrl modules and additional files such as example data sets,
 documentation, the Febrl data set generator and testing programs.
 
-Go into the 'tests' sub-directory within 'febrl-0.4' and either run
+Go into the 'tests' sub-directory within 'febrl-0.4.1' and either run
 all tests using the corresponding script provided:
 
 #> ./allTests.sh
@@ -68,16 +68,25 @@ or run the tests individually, for examples:
 #> python indexingTest.py
 #> python datasetTest.py
 
+Note (by Van Ly, FSF): Due to differences in the end of line convention
+for Mac (CR or \r), for Linux (LF or \n) and for Windows (CRLF or \r\n),
+allTests.sh currently has the Windows end of line convention which
+misbehaves on Linux Fedora 9 (in VirtualBox on Windows). Thus, the test
+script does not execute properly, the work around I used was to apply
 
-Starting Febrl-0.4
-------------------
+#> cat allTests.sh |sed -e ',\r,,' > allTests_1.sh
+#> chmod u+x allTests_1.sh ; ./allTests_1.sh
+
+
+Starting Febrl-0.4.1
+--------------------
 
 The Febrl GUI can be started using:
 
 #> ./guiFebrl.py
 
-(you might have to set the execute permission for the file guiFebrl.py
-to allow execute my the user), or using:
+(you might have to set the execute permission for the file guiFebrl.py),
+or using:
 
 #> python guiFebrl.py
 
@@ -90,15 +99,14 @@ saved from within the GUI) can be run outside the GUI, for example:
 Problems and errors:
 --------------------
 
-Please note that this is the initial 'alpha' distribution of Febrl-0.4
-which has only been tested to a limited extend on an Ubuntu Linux
-platform.
+Please note that this is the initial 'alpha' distribution of Febrl-0.4.1
+which has only been tested to a limited extent on an Ubuntu Linux platform.
 
-Please report and problems and bugs to: peter.christen@anu.edu.au
+Please report any problems and bugs to: peter.christen@anu.edu.au
 
 
-Febrl-0.4 mailing lists:
-------------------------
+Febrl-0.4.1 mailing lists:
+--------------------------
 
 To receive updates and news on Febrl please subscribe to the
 announcement mailing list at:
