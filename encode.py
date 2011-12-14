@@ -6,7 +6,7 @@
 # (the "License"); you may not use this file except in compliance with
 # the License. You may obtain a copy of the License at:
 # 
-#   http://datamining.anu.edu.au/linkage.html
+#   https://sourceforge.net/projects/febrl/
 # 
 # Software distributed under the License is distributed on an "AS IS"
 # basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See
@@ -16,10 +16,10 @@
 # The Original Software is: "encode.py"
 # 
 # The Initial Developer of the Original Software is:
-#   Dr Peter Christen (Department of Computer Science, Australian National
-#                      University)
+#   Dr Peter Christen (Research School of Computer Science, The Australian
+#                      National University)
 # 
-# Copyright (C) 2002 - 2008 the Australian National University and
+# Copyright (C) 2002 - 2011 the Australian National University and
 # others. All Rights Reserved.
 # 
 # Contributors:
@@ -37,7 +37,7 @@
 # the terms of any one of the ANUOS License or the GPL.
 # =============================================================================
 #
-# Freely extensible biomedical record linkage (Febrl) - Version 0.4.1
+# Freely extensible biomedical record linkage (Febrl) - Version 0.4.2
 #
 # See: http://datamining.anu.edu.au/linkage.html
 #
@@ -47,19 +47,20 @@
 
 Encoding methods provided:
 
-  soundex        Soundex
-  mod_soundex    Modified Soundex
-  phonex         Phonex
-  nysiis         NYSIIS
-  dmetaphone     Double-Metaphone
-  phonix         Phonix
-  fuzzysoundex   Fuzzy Soundex based on q-gram substitutions and letter
-                 encodings
-  get_substring  Simple function which extracts and returns a sub-string
+  soundex         Soundex
+  mod_soundex     Modified Soundex
+  phonex          Phonex
+  nysiis          NYSIIS
+  dmetaphone      Double-Metaphone
+  phonix          Phonix
+  fuzzy_soundex   Fuzzy Soundex based on q-gram substitutions and letter
+                  encodings
+  get_substring   Simple function which extracts and returns a sub-string
+  freq_vector     Count characters and put into a vector
 
 See doc strings of individual routines for detailed documentation.
 
-There is also a routine called 'phonixtransform' which only performs the
+There is also a routine called 'phonix_transform' which only performs the
 Phonix string transformation without the final numerical encoding. This can
 be useful for approximate string comparison functions.
 
@@ -89,22 +90,22 @@ def do_encode(encode_method, in_str):
 
   Possible values for 'encode_method' are:
 
-    soundex          Unlimited length Soundex encoding
-    soundex4         Soundex limited/padded to length 4
-    mod_soundex      Modified unlimited length Soundex encoding
-    mod_soundex4     Modified Soundex limited/padded to length 4
-    phonex           Unlimited length Phonex encoding
-    phonex4          Phonex limited/padded to length 4
-    phonix           Unlimited length Phonix encoding
-    phonix4          Phonix limited/padded to length 4
-    phonixtransform  Only perform Phonix string transformation without
-                     numerical encoding
-    nysiis           Unlimited length NYSIIS encoding
-    nysiis4          NYSIIS limited/padded to length 4
-    dmetaphone       Unlimited length Double-Metaphone encoding
-    dmetaphone4      Double-Metaphone limited/padded to length 4
-    fuzzysoundex     Fuzzy Soundex
-    fuzzysoundex4    Fuzzy Soundex limited/padded to length 4
+    soundex           Unlimited length Soundex encoding
+    soundex4          Soundex limited/padded to length 4
+    mod_soundex       Modified unlimited length Soundex encoding
+    mod_soundex4      Modified Soundex limited/padded to length 4
+    phonex            Unlimited length Phonex encoding
+    phonex4           Phonex limited/padded to length 4
+    phonix            Unlimited length Phonix encoding
+    phonix4           Phonix limited/padded to length 4
+    phonix_transform  Only perform Phonix string transformation without
+                      numerical encoding
+    nysiis            Unlimited length NYSIIS encoding
+    nysiis4           NYSIIS limited/padded to length 4
+    dmetaphone        Unlimited length Double-Metaphone encoding
+    dmetaphone4       Double-Metaphone limited/padded to length 4
+    fuzzy_soundex     Fuzzy Soundex
+    fuzzy_soundex4    Fuzzy Soundex limited/padded to length 4
 
   This functions returns the phonetic code as well as the time needed to
   generate it (as floating-point value in seconds).
@@ -130,9 +131,9 @@ def do_encode(encode_method, in_str):
     phonetic_code = phonex(in_str, maxlen)
     time_used = time.time() - start_time
 
-  elif (encode_method.startswith('phonixtransform')):
+  elif (encode_method.startswith('phonix_transform')):
     start_time = time.time()
-    phonetic_code = phonixtransform(in_str)
+    phonetic_code = phonix_transform(in_str)
     time_used = time.time() - start_time
 
   elif (encode_method.startswith('phonix')):
@@ -150,9 +151,9 @@ def do_encode(encode_method, in_str):
     phonetic_code = dmetaphone(in_str, maxlen)
     time_used = time.time() - start_time
 
-  elif (encode_method.startswith('fuzzysoundex')):
+  elif (encode_method.startswith('fuzzy_soundex')):
     start_time = time.time()
-    phonetic_code = fuzzysoundex(in_str, maxlen)
+    phonetic_code = fuzzy_soundex(in_str, maxlen)
     time_used = time.time() - start_time
 
   else:
@@ -167,7 +168,7 @@ def soundex(s, maxlen=4):
   """Compute the soundex code for a string.
 
   USAGE:
-    code = soundex(s, maxlen):
+    code = soundex(s, maxlen)
 
   ARGUMENTS:
     s        A string containing a name.
@@ -230,7 +231,7 @@ def mod_soundex(s, maxlen=4):
   """Compute the modified soundex code for a string.
 
   USAGE:
-    code = mod_soundex(s, maxlen):
+    code = mod_soundex(s, maxlen)
 
   ARGUMENTS:
     s        A string containing a name.
@@ -287,7 +288,7 @@ def phonex(s, maxlen=4):
   """Compute the phonex code for a string.
 
   USAGE:
-    code = phonex(s, maxlen):
+    code = phonex(s, maxlen)
 
   ARGUMENTS:
     s        A string containing a name.
@@ -427,7 +428,7 @@ def phonix(s, maxlen=4):
   """Compute the phonix code for a string.
 
   USAGE:
-    code = phonix(s, maxlen):
+    code = phonix(s, maxlen)
 
   ARGUMENTS:
     s        A string containing a name.
@@ -454,7 +455,7 @@ def phonix(s, maxlen=4):
 
   # First apply Phonix transformation
   #
-  phonixstr = phonixtransform(s)
+  phonixstr = phonix_transform(s)
 
   if (phonixstr == ''):
     if (maxlen > 0):
@@ -506,11 +507,11 @@ def phonix(s, maxlen=4):
 
 # =============================================================================
 
-def phonixtransform(s):
+def phonix_transform(s):
   """Do Phonix transformation for a string.
 
   USAGE:
-    phonixstr = phonixtransform(s, maxlen):
+    phonixstr = phonix_transform(s, maxlen)
 
   ARGUMENTS:
     s  A string containing a name.
@@ -706,7 +707,7 @@ def nysiis(s, maxlen=4):
   """Compute the NYSIIS code for a string.
 
   USAGE:
-    code = nysiis(s, maxlen):
+    code = nysiis(s, maxlen)
 
   ARGUMENTS:
     s        A string containing a name.
@@ -830,7 +831,7 @@ def dmetaphone(s, maxlen=4):
   """Compute the Double Metaphone code for a string.
 
   USAGE:
-    code = dmetaphone(s, maxlen):
+    code = dmetaphone(s, maxlen)
 
   ARGUMENTS:
     s        A string containing a name.
@@ -1677,11 +1678,11 @@ def dmetaphone(s, maxlen=4):
 
 # =============================================================================
 
-def fuzzysoundex(s, maxlen=4):
+def fuzzy_soundex(s, maxlen=4):
   """Compute the fuzzy soundex code for a string.
 
   USAGE:
-    code = fuzzysoundex(s, maxlen):
+    code = fuzzy_soundex(s, maxlen)
 
   ARGUMENTS:
     s        A string containing a name.
@@ -1696,7 +1697,7 @@ def fuzzysoundex(s, maxlen=4):
       "Improving Precision and Recall for Soundex Retrieval"
       by David Holmes and M. Catherine McCabe, 2002.
 
-    This method does q-gram basedsubstitution of sub-strings before encoding
+    This method does q-gram based substitution of sub-strings before encoding
     the input string.
   """
 
@@ -1818,14 +1819,100 @@ def fuzzysoundex(s, maxlen=4):
 
 # =============================================================================
 
-def get_substring(str, start_index, end_index):
+def get_substring(s, start_index, end_index):
   """Simple function to extract and return a substring from the given input
      string.
   """
 
   assert start_index <= end_index
 
-  return str[start_index:end_index]
+  return s[start_index:end_index]
+
+# =============================================================================
+
+def freq_vector(s, encode=None):
+  """Count occurrence of characters in the given string and put them into a
+     frequency vector.
+
+  USAGE:
+    code = freq_vector(s, encode)
+
+  ARGUMENTS:
+    s        A string containing a name.
+    encode   An encodingthat can be set to None (default), 'phonix', 'soundex',
+             or 'mod_soundex'. For the last three cases different encodings
+             will be applied before the frequency vector is being built. Note
+             that the resulting vectors will be of different lengths depending
+             upon the encoding method used.
+
+  DESCRIPTION:
+    Note that only letters will be encoded, all other characters in the input
+    strin will not be considered.
+
+    The function returns a list (vector) with frequency counts. For example
+    with encoding 'soundex' the string 'peter' will first be encoded as 1 (p),
+    0 (e), 3 (t), 0 (e), and 6 (r), then the frequency vector (which will be
+    returned) will be: [2,1,0,1,0,0,1,0].
+
+    Another example, without encoding function set: 'christine' will return a
+    vector: [0,0,1,0,1,0,0,1,2,0,0,0,0,1,0,0,0,1,1,1,0,0,0,0,0,0].
+  """
+
+  if (s == ''):
+    return ''
+
+  s = s.lower()
+
+  if (encode == 'phonix'):
+    trans_dict = {'a':0,'b':1,'c':2,'d':3,'e':0,'f':7,'g':2,'h':0,'i':0,'j':2,
+                  'k':2,'l':4,'m':5,'n':5,'o':0,'p':1,'q':2,'r':6,'s':8,'t':3,
+                  'u':0,'v':7,'w':0,'x':8,'y':0,'z':8}
+    f_vec = [0,0,0,0,0,0,0,0,0]
+
+  elif (encode == 'soundex'):
+    trans_dict = {'a':0,'b':1,'c':2,'d':3,'e':0,'f':1,'g':2,'h':0,'i':0,'j':2,
+                  'k':2,'l':4,'m':5,'n':5,'o':0,'p':1,'q':2,'r':6,'s':2,'t':3,
+                  'u':0,'v':1,'w':0,'x':2,'y':0,'z':2}
+    f_vec = [0,0,0,0,0,0,0]
+
+  elif (encode == 'mod_soundex'):
+    trans_dict = {'a':0,'b':1,'c':3,'d':6,'e':0,'f':2,'g':4,'h':0,'i':0,'j':4,
+                  'k':3,'l':7,'m':8,'n':8,'o':0,'p':1,'q':5,'r':9,'s':3,'t':6,
+                  'u':0,'v':2,'w':0,'x':5,'y':0,'z':5}
+    f_vec = [0,0,0,0,0,0,0,0,0,0]
+
+  elif (encode == None):
+    trans_dict = {'a':0,'b':1,'c':2,'d':3,'e':4,'f':5,'g':6,'h':7,'i':8,'j':9,
+                  'k':10,'l':11,'m':12,'n':13,'o':14,'p':15,'q':16,'r':17,
+                  's':18,'t':19,'u':20,'v':21,'w':22,'x':23,'y':24,'z':25}
+    f_vec = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+
+  else:
+    logging.exception('Illegal encoding method: %s' % (encode))
+    raise Exception
+
+  skip_count = 0  # Charcters skipped because they are not letters
+
+  for char in s:
+    if char in trans_dict:
+      f_vec[trans_dict[char]] = f_vec[trans_dict[char]]+1
+    else:
+      skip_count += 1
+
+  assert (sum(f_vec)+skip_count) == len(s)
+
+  ## Now convert into a character - 0=a, 1=b, 3=c etc.
+  ##
+  #resstr = ''
+  #
+  #for c in f_vec:
+  #  resstr += chr(97+c)
+  #
+  #assert len(f_vec) == len(resstr), (f_vec, resstr)
+  #
+  #return resstr
+
+  return f_vec
 
 # =============================================================================
 # Do some tests if called from command line
@@ -1857,7 +1944,7 @@ if (__name__ == '__main__'):
     phonex_my =       phonex(n)
     nysiis_my =       nysiis(n)
     dmeta_my =        dmetaphone(n)
-    fuzzysoundex_my = fuzzysoundex(n)
+    fuzzysoundex_my = fuzzy_soundex(n)
     phonix_my =       phonix(n)
 
     print '%16s %10s %9s %11s %11s %15s %14s %8s' % (n, phonex_my, \
@@ -1880,7 +1967,7 @@ if (__name__ == '__main__'):
     phonex_my =       phonex(rn)
     nysiis_my =       nysiis(rn)
     dmeta_my =        dmetaphone(rn)
-    fuzzysoundex_my = fuzzysoundex(rn)
+    fuzzysoundex_my = fuzzy_soundex(rn)
     phonix_my =       phonix(rn)
 
     print '%16s %10s %9s %11s %11s %15s %14s %8s' % (n, phonex_my, \

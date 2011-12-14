@@ -6,7 +6,7 @@
 # (the "License"); you may not use this file except in compliance with
 # the License. You may obtain a copy of the License at:
 # 
-#   http://datamining.anu.edu.au/linkage.html
+#   https://sourceforge.net/projects/febrl/
 # 
 # Software distributed under the License is distributed on an "AS IS"
 # basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See
@@ -16,10 +16,10 @@
 # The Original Software is: "encodeTest.py"
 # 
 # The Initial Developer of the Original Software is:
-#   Dr Peter Christen (Department of Computer Science, Australian National
-#                      University)
+#   Dr Peter Christen (Research School of Computer Science, The Australian
+#                      National University)
 # 
-# Copyright (C) 2002 - 2008 the Australian National University and
+# Copyright (C) 2002 - 2011 the Australian National University and
 # others. All Rights Reserved.
 # 
 # Contributors:
@@ -37,7 +37,7 @@
 # the terms of any one of the ANUOS License or the GPL.
 # =============================================================================
 #
-# Freely extensible biomedical record linkage (Febrl) - Version 0.4.1
+# Freely extensible biomedical record linkage (Febrl) - Version 0.4.2
 #
 # See: http://datamining.anu.edu.au/linkage.html
 #
@@ -95,7 +95,7 @@ class TestCase(unittest.TestCase):
 
       assert (isinstance(c,str)), \
              '"Soundex" of string "'+s+'"does not return a string: '+ \
-             str(type(code))
+             str(type(c))
 
       assert (s[0] == c[0]), \
              'First character in "Soundex" code for string "'+s+ \
@@ -114,7 +114,7 @@ class TestCase(unittest.TestCase):
 
       assert (isinstance(c,str)), \
              '"Soundex" of string "'+s+'"does not return a string: '+ \
-             str(type(code))
+             str(type(c))
 
       assert (s[0] == c[0]), \
              'First character in "Soundex" code for string "'+ \
@@ -128,7 +128,7 @@ class TestCase(unittest.TestCase):
 
       assert (isinstance(c,str)), \
              '"Soundex" of string "'+s+'"does not return'+ \
-             ' a string: '+str(type(code))
+             ' a string: '+str(type(c))
 
       assert (s[0] == c[0]), \
              'First character in "Soundex" code for string "'+ \
@@ -155,7 +155,7 @@ class TestCase(unittest.TestCase):
       c = encode.mod_soundex(s)
 
       assert (isinstance(c,str)), '"ModSoundex" of string "'+s+'"does not '+ \
-             'return a string: '+str(type(code))
+             'return a string: '+str(type(c))
 
       assert (s[0] == c[0]), 'First character in "ModSoundex" code for '+ \
              'string "'+s+'" differs from original string: '+str(c)
@@ -171,7 +171,7 @@ class TestCase(unittest.TestCase):
       c = encode.mod_soundex(s,maxlen=1)
 
       assert (isinstance(c,str)), '"ModSoundex" of string "'+s+'"does not '+ \
-             'return a string: '+str(type(code))
+             'return a string: '+str(type(c))
 
       assert (s[0] == c[0]), 'First character in "ModSoundex" code for '+ \
              'string "'+s+'" differs from original string: '+str(c)
@@ -182,7 +182,7 @@ class TestCase(unittest.TestCase):
       c = encode.mod_soundex(s,maxlen=6)
 
       assert (isinstance(c,str)), '"ModSoundex" of string "'+s+'"does not '+ \
-             'return a string: '+str(type(code))
+             'return a string: '+str(type(c))
 
       assert (s[0] == c[0]), 'First character in "ModSoundex" code for '+ \
              'string "'+s+'" differs from original string: '+str(c)
@@ -207,7 +207,7 @@ class TestCase(unittest.TestCase):
       c = encode.phonex(s)
 
       assert (isinstance(c,str)), '"Phonex" of string "'+s+'"does not return'+\
-             ' a string: '+str(type(code))
+             ' a string: '+str(type(c))
 
       assert (len(c) == 4), 'Length of "Phonex" code for string "'+s+'" is '+ \
              'not four characters: '+str(c)+' with length: '+str(len(c))
@@ -219,7 +219,7 @@ class TestCase(unittest.TestCase):
       c = encode.phonex(s,maxlen=1)
 
       assert (isinstance(c,str)), '"Phonex" of string "'+s+'"does not return'+\
-             ' a string: '+str(type(code))
+             ' a string: '+str(type(c))
 
       assert (len(c) == 1), 'Length of "Phonex" code for string "'+s+'" is '+ \
              'not one character: '+str(c)+' with length: '+str(len(c))
@@ -227,7 +227,7 @@ class TestCase(unittest.TestCase):
       c = encode.phonex(s,maxlen=6)
 
       assert (isinstance(c,str)), '"Phonex" of string "'+s+'"does not return'+\
-             ' a string: '+str(type(code))
+             ' a string: '+str(type(c))
 
       assert (len(c) <= 6), '"Phonex" code for string "'+s+'" is longer than'+\
              ' six characters: '+str(c)+' with length: '+str(len(c))
@@ -236,6 +236,49 @@ class TestCase(unittest.TestCase):
         assert (c[1:].isdigit() == 1), 'Characters after first in "Phonex" '+ \
                'code for string "'+s+'" are not digits: '+str(c)
 
+
+  def testPhonix(self):  # - - - - - - - - - - - - - - - - - - - - - - - - - -
+    """Test 'Phonix' string encoding"""
+
+    c = encode.phonix('')  # Test with empty string
+    assert (c == 'a000'), '"Phonix" of empty string is not "a000"'
+
+    c = encode.phonix('', maxlen=3)  # Test with empty string
+    assert (c == 'a00'), '"Phonix" of empty string with maxlen=3 is not "a00"'
+
+    for s in self.strings:
+
+      c = encode.phonix(s)
+
+      assert (isinstance(c,str)), '"Phonix" of string "'+s+'"does not return'+\
+             ' a string: '+str(type(c))
+
+      assert (len(c) == 4), 'Length of "Phonix" code for string "'+s+'" is '+ \
+             'not four characters: '+str(c)+' with length: '+str(len(c))
+
+      if (len(c) > 1):
+        assert (c[1:].isdigit() == 1), 'Characters after first in "Phonix" '+ \
+               'code for string "'+s+'" are not digits: '+str(c)
+
+      c = encode.phonex(s,maxlen=1)
+
+      assert (isinstance(c,str)), '"Phonix" of string "'+s+'"does not return'+\
+             ' a string: '+str(type(c))
+
+      assert (len(c) == 1), 'Length of "Phonix" code for string "'+s+'" is '+ \
+             'not one character: '+str(c)+' with length: '+str(len(c))
+
+      c = encode.phonix(s,maxlen=6)
+
+      assert (isinstance(c,str)), '"Phonix" of string "'+s+'"does not return'+\
+             ' a string: '+str(type(c))
+
+      assert (len(c) <= 6), '"Phonix" code for string "'+s+'" is longer than'+\
+             ' six characters: '+str(c)+' with length: '+str(len(c))
+
+      if (len(c) > 1):
+        assert (c[1:].isdigit() == 1), 'Characters after first in "Phonix" '+ \
+               'code for string "'+s+'" are not digits: '+str(c)
 
   def testNYSIIS(self):  # - - - - - - - - - - - - - - - - - - - - - - - - - -
     """Test 'NYSIIS' string encoding"""
@@ -248,7 +291,7 @@ class TestCase(unittest.TestCase):
       c = encode.nysiis(s)
 
       assert (isinstance(c,str)), '"NYSIIS" of string "'+s+'"does not return'+\
-             ' a string: '+str(type(code))
+             ' a string: '+str(type(c))
 
       assert (len(c) <= 4), 'Length of "NYSIIS" code for string "'+s+'" is '+ \
              'more than four characters: '+str(c)+' with length: '+str(len(c))
@@ -260,7 +303,7 @@ class TestCase(unittest.TestCase):
       c = encode.nysiis(s,maxlen=1)
 
       assert (isinstance(c,str)), '"NYSIIS" of string "'+s+'"does not return'+\
-             ' a string: '+str(type(code))
+             ' a string: '+str(type(c))
 
       assert (len(c) == 1), 'Length of "NYSIIS" code for string "'+s+'" is '+ \
              'not one character: '+str(c)+' with length: '+str(len(c))
@@ -268,7 +311,7 @@ class TestCase(unittest.TestCase):
       c = encode.nysiis(s,maxlen=6)
 
       assert (isinstance(c,str)), '"NYSIIS" of string "'+s+'"does not return'+\
-             ' a string: '+str(type(code))
+             ' a string: '+str(type(c))
 
       assert (len(c) <= 6), '"NYSIIS" code for string "'+s+'" is longer than'+\
              ' six characters: '+str(c)+' with length: '+str(len(c))
@@ -289,7 +332,7 @@ class TestCase(unittest.TestCase):
       c = encode.dmetaphone(s)
 
       assert (isinstance(c,str)), '"DoubleMetaphone" of string "'+s+'"does '+ \
-             'not return a string: '+str(type(code))
+             'not return a string: '+str(type(c))
 
       assert (len(c) <= 4), 'Length of "DoubleMetaphone" code for string "'+s+\
              '" is more than four characters: '+str(c)+' with length: '+ \
@@ -303,7 +346,7 @@ class TestCase(unittest.TestCase):
       c = encode.dmetaphone(s,maxlen=1)
 
       assert (isinstance(c,str)), '"DoubleMetaphone" of string "'+s+'"does '+ \
-             'not return a string: '+str(type(code))
+             'not return a string: '+str(type(c))
 
       assert (len(c) == 1), 'Length of "DoubleMetaphone" code for string "'+s+\
              '" is '+'not one character: '+str(c)+' with length: '+str(len(c))
@@ -311,7 +354,7 @@ class TestCase(unittest.TestCase):
       c = encode.dmetaphone(s,maxlen=6)
 
       assert (isinstance(c,str)), '"DoubleMetaphone" of string "'+s+'"does '+ \
-             'not return a string: '+str(type(code))
+             'not return a string: '+str(type(c))
 
       assert (len(c) <= 6), '"DoubleMetaphone" code for string "'+s+'" is '+ \
              'longer than six characters: '+str(c)+' with length: '+str(len(c))
@@ -352,6 +395,76 @@ class TestCase(unittest.TestCase):
       assert test_out_str == out_str, \
              'Get-substring returns wrong result (should be "%s"): "%s"' % \
              (out_str, test_out_str)
+
+
+  def testFreqVector(self):  # - - - - - - - - - - - - - - - - - - - - - - - -
+    """Test 'freq_vector' string encoding"""
+
+    c = encode.freq_vector('')  # Test with empty string
+    assert (c == ''), \
+           '"freq_vector" of empty string is not an empty string'
+
+    for s in self.strings:
+
+      c = encode.freq_vector(s)
+
+      assert (isinstance(c,list)), \
+             '"freq_vector" of string "'+s+'" does not return a list: '+ \
+             str(type(c))
+
+      assert (len(c) == 26), \
+             'Length of frequency vector with no encoding is not 26 for ' + \
+             'string "'+s+'": '+str(c)
+
+      for i in c:
+        assert (isinstance(i,int) and (i >= 0)), \
+               '"freq_vector" of string "'+s+'" does not contain integers:' \
+               + str(type(c))
+
+      c = encode.freq_vector(s, 'phonix')
+
+      assert (isinstance(c,list)), \
+             '"freq_vector" of string "'+s+'" does not return a list: '+ \
+             str(type(c))
+
+      assert (len(c) == 9), \
+             'Length of frequency vector with "phonix" encoding is not 9 ' + \
+             'for string "'+s+'": '+str(c)
+
+      for i in c:
+        assert (isinstance(i,int) and (i >= 0)), \
+               '"freq_vector" of string "'+s+'" does not contain integers:' \
+               + str(type(c))
+
+      c = encode.freq_vector(s, 'soundex')
+
+      assert (isinstance(c,list)), \
+             '"freq_vector" of string "'+s+'" does not return a list: '+ \
+             str(type(c))
+
+      assert (len(c) == 7), \
+             'Length of frequency vector with "soundex" encoding is not 7 ' + \
+             'for string "'+s+'": '+str(c)
+
+      for i in c:
+        assert (isinstance(i,int) and (i >= 0)), \
+               '"freq_vector" of string "'+s+'" does not contain integers:' \
+               + str(type(c))
+
+      c = encode.freq_vector(s, 'mod_soundex')
+
+      assert (isinstance(c,list)), \
+             '"freq_vector" of string "'+s+'" does not return a list: '+ \
+             str(type(c))
+
+      assert (len(c) == 10), \
+             'Length of frequency vector with "mod_soundex" encoding is ' + \
+             'not 10 for string "'+s+'": '+str(c)
+
+      for i in c:
+        assert (isinstance(i,int) and (i >= 0)), \
+               '"freq_vector" of string "'+s+'" does not contain integers:' \
+               + str(type(c))
 
 # =============================================================================
 # Start tests when called from command line

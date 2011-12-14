@@ -6,7 +6,7 @@
 # (the "License"); you may not use this file except in compliance with
 # the License. You may obtain a copy of the License at:
 # 
-#   http://datamining.anu.edu.au/linkage.html
+#   https://sourceforge.net/projects/febrl/
 # 
 # Software distributed under the License is distributed on an "AS IS"
 # basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See
@@ -16,10 +16,10 @@
 # The Original Software is: "dataset.py"
 # 
 # The Initial Developer of the Original Software is:
-#   Dr Peter Christen (Department of Computer Science, Australian National
-#                      University)
+#   Dr Peter Christen (Research School of Computer Science, The Australian
+#                      National University)
 # 
-# Copyright (C) 2002 - 2008 the Australian National University and
+# Copyright (C) 2002 - 2011 the Australian National University and
 # others. All Rights Reserved.
 # 
 # Contributors:
@@ -37,7 +37,7 @@
 # the terms of any one of the ANUOS License or the GPL.
 # =============================================================================
 #
-# Freely extensible biomedical record linkage (Febrl) - Version 0.4.1
+# Freely extensible biomedical record linkage (Febrl) - Version 0.4.2
 #
 # See: http://datamining.anu.edu.au/linkage.html
 #
@@ -859,7 +859,11 @@ class DataSetCSV(DataSet):
       #
       if ((sys.platform[0:5] in ['linux','sunos']) and \
           (file_gzipped == False)):  # Fast line counting
-        wc = os.popen('wc -l ' + self.file_name)
+        if (' ' not in self.file_name):
+          wc = os.popen('wc -l ' + self.file_name)
+        else:
+          wc = os.popen('wc -l "%s"' % (self.file_name))
+
         num_rows = int(string.split(wc.readline())[0])
         wc.close()
       else:  # Slow line counting method

@@ -447,7 +447,7 @@ The contents of this file are subject to the ANUOS License Version 1.3
 (the "License"); you may not use this file except in compliance with
 the License. You may obtain a copy of the License at:
 
-  http://datamining.anu.edu.au/linkage.html
+  https://sourceforge.net/projects/febrl/
 
 Software distributed under the License is distributed on an "AS IS"
 basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See
@@ -458,7 +458,7 @@ The Original Software is:
 
 The Initial Developers of the Original Software are:
 
-Copyright (C) 2002 - 2008 the Australian National University and
+Copyright (C) 2002 - 2011 the Australian National University and
 others. All Rights Reserved.
 
 Contributors:
@@ -595,4 +595,4 @@ APPENDIX 4. DIFFERENCES BETWEEN THE ANUOS LICENSE VERSION 1.3 AND THE
   (this document) and the ANUOS License Version 1.2 are as follows:
 
   i.    In Exhibit A the copyright notice was update from "2002 - 2005"
-        to "2002 - 2008".
+        to "2002 - 2011".

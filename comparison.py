@@ -6,7 +6,7 @@
 # (the "License"); you may not use this file except in compliance with
 # the License. You may obtain a copy of the License at:
 # 
-#   http://datamining.anu.edu.au/linkage.html
+#   https://sourceforge.net/projects/febrl/
 # 
 # Software distributed under the License is distributed on an "AS IS"
 # basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See
@@ -16,10 +16,10 @@
 # The Original Software is: "comparison.py"
 # 
 # The Initial Developer of the Original Software is:
-#   Dr Peter Christen (Department of Computer Science, Australian National
-#                      University)
+#   Dr Peter Christen (Research School of Computer Science, The Australian
+#                      National University)
 # 
-# Copyright (C) 2002 - 2008 the Australian National University and
+# Copyright (C) 2002 - 2011 the Australian National University and
 # others. All Rights Reserved.
 # 
 # Contributors:
@@ -37,7 +37,7 @@
 # the terms of any one of the ANUOS License or the GPL.
 # =============================================================================
 #
-# Freely extensible biomedical record linkage (Febrl) - Version 0.4.1
+# Freely extensible biomedical record linkage (Febrl) - Version 0.4.2
 #
 # See: http://datamining.anu.edu.au/linkage.html
 #
@@ -192,10 +192,8 @@ class RecordComparator:
       else:
         val2 = rec2[field_index2]
 
-      if (val1.isalpha()):
-        assert val1.islower(), val1
-      if (val2.isalpha()):
-        assert val2.islower(), val2
+      val1 = val1.lower()
+      val2 = val2.lower()
 
       w = comp_method(val1,val2)
       weight_vector.append(w)
@@ -1320,8 +1318,8 @@ class FieldComparatorEncodeString(FieldComparator):
       code1 = encode.dmetaphone(str1, maxlen=max_len)
       code2 = encode.dmetaphone(str2, maxlen=max_len)
     elif (self.encode_method == 'fuzzysoundex'):
-      code1 = encode.fuzzysoundex(str1, maxlen=max_len)
-      code2 = encode.fuzzysoundex(str2, maxlen=max_len)
+      code1 = encode.fuzzy_soundex(str1, maxlen=max_len)
+      code2 = encode.fuzzy_soundex(str2, maxlen=max_len)
     else:
       logging.exception('Illegal string encoding: %s' % (self.encode_method))
       raise Exception
@@ -2393,7 +2391,7 @@ class FieldComparatorJaro(FieldComparatorApproxString):
     # Calculate Jaro similarity value - - - - - - - - - - - - - - - - - - - - -
     #
     len1, len2 = len(val1), len(val2)
-    halflen = max(len1,len2) / 2 - 1
+    halflen = max(len1,len2) / 2 - 1  # Or + 1?? PC 12/03/2009
 
     ass1, ass2 = '', ''  # Characters assigned in string 1 and string 2
     workstr1, workstr2 = val1, val2  # Copies of the original strings
@@ -2405,7 +2403,7 @@ class FieldComparatorJaro(FieldComparatorApproxString):
       end   = min(i+halflen+1,len2)
       index = workstr2.find(val1[i],start,end)
       if (index > -1):  # Found common character
-        common1 += 0.5
+        common1 += 1
         ass1 = ass1 + val1[i]
         workstr2 = workstr2[:index]+self.JARO_MARKER_CHAR+workstr2[index+1:]
 
@@ -2414,7 +2412,7 @@ class FieldComparatorJaro(FieldComparatorApproxString):
       end   = min(i+halflen+1,len1)
       index = workstr1.find(val2[i],start,end)
       if (index > -1):  # Found common character
-        common2 += 0.5
+        common2 += 1
         ass2 = ass2 + val2[i]
         workstr1 = workstr1[:index]+self.JARO_MARKER_CHAR+workstr1[index+1:]
 
@@ -2569,7 +2567,7 @@ class FieldComparatorWinkler(FieldComparatorApproxString):
     if (len1 < 4) or (len2 < 4):  # Both strings must be at least 4 chars long
       return self.disagree_weight
 
-    halflen = max(len1,len2) / 2 -1    # Or + 1 ?? PC 3/11/2006
+    halflen = max(len1,len2) / 2 - 1  # Or + 1?? PC 12/03/2009
 
     ass1, ass2 = '', ''  # Characters assigned in string 1 and string 2
     workstr1, workstr2 = val1, val2  # Copies of the original strings
@@ -2583,7 +2581,7 @@ class FieldComparatorWinkler(FieldComparatorApproxString):
       end   = min(i+halflen+1,len2)
       index = workstr2.find(val1[i],start,end)
       if (index > -1):  # Found common character
-        common1 += 0.5
+        common1 += 1
         ass1 = ass1 + val1[i]
         workstr2 = workstr2[:index]+self.JARO_MARKER_CHAR+workstr2[index+1:]
 
@@ -2594,7 +2592,7 @@ class FieldComparatorWinkler(FieldComparatorApproxString):
       end   = min(i+halflen+1,len1)
       index = workstr1.find(val2[i],start,end)
       if (index > -1):  # Found common character
-        common2 += 0.5
+        common2 += 1
         ass2 = ass2 + val2[i]
         workstr1 = workstr1[:index]+self.JARO_MARKER_CHAR+workstr1[index+1:]
 
@@ -2638,7 +2636,7 @@ class FieldComparatorWinkler(FieldComparatorApproxString):
 
     # Check for same characters at the beginning - - - - - - - - - - - - - - -
     #
-    same_init = 0  # Number of same characters at beginning
+    same_init = 0  # Variable needed later on
 
     if (self.check_init == True):
 
@@ -2660,8 +2658,9 @@ class FieldComparatorWinkler(FieldComparatorApproxString):
 
       if ((min(len1,len2) > 4) and (common1 > same_init+1) and \
           (common1 >= min(len1,len2)+same_init)):
-        w_mod = (1.0-w) * (common1-same_init-1) / \
-                (float(len1)+float(len2)-same_init*2-2)
+        w_mod = w + (1.0-w) * (common1-same_init-1) / \
+                    (float(len1)+float(len2)-same_init*2+2)
+                                                # Fixed -2 => +2 PC 12/03/2009
 
         assert (w_mod >= w), 'Winkler: Long string adjustment decreases weight'
         assert (w_mod < 1.0), 'Winkler: Long strings adjustment weight > 1.0'
@@ -2673,7 +2672,8 @@ class FieldComparatorWinkler(FieldComparatorApproxString):
   # ---------------------------------------------------------------------------
 
   def compare(self, val1, val2):
-    """Compare two field values using the Jaro approximate string comparator.
+    """Compare two field values using the Winkler approximate string
+       comparator.
     """
 
     # Check if one of the values is a missing value
@@ -3885,8 +3885,8 @@ class FieldComparatorSyllAlDist(FieldComparatorApproxString):
     # Calculate syllable alignment distance similarity value - - - - - - - - -
     #
     if (self.do_phonix == True):
-      workstr1 = encode.phonixtransform(val1)
-      workstr2 = encode.phonixtransform(val2)
+      workstr1 = encode.phonix_transform(val1)
+      workstr2 = encode.phonix_transform(val2)
     else:
       workstr1 = val1
       workstr2 = val2
@@ -4204,6 +4204,9 @@ class FieldComparatorEditex(FieldComparatorApproxString):
         F[i][j] = min(F[i-1][j]+inc1, F[i][j-1]+inc2, F[i-1][j-1]+diag)
 
     w = 1.0 - float(F[n][m]) / float(max(F[0][m],F[n][0]))
+
+    if (w < 0.0):
+      w = 0.0
 
     assert (w >= 0.0), 'Editex: Similarity weight < 0.0'
     assert (w <= 1.0), 'Editex: Similarity weight > 1.0'

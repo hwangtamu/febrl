@@ -1,14 +1,14 @@
-Febrl-0.4.1 installation instructions
+Febrl-0.4.2 installation instructions
 =====================================
 
-Peter Christen, 16 December 2008
+Peter Christen, 14 December 2011
 
 
-The basic Febrl-0.4.1 installation requires Python 2.5, with additional
-modules and libraries needed for the graphical user interface (GUI)
-and the support vector machine (SVM) classification method.
+The basic Febrl-0.4.2 installation requires Python 2.6 or 2.7, with
+additional modules and libraries needed for the graphical user interface
+(GUI) and the support vector machine (SVM) classification method.
 
-Python 2.5:
+Python:
   http://www.python.org
 
 For the GUI, PyGTK and Matplotlib are required:
@@ -20,14 +20,6 @@ The SVM classifier is based on libsvm:
 
   Follow the installation instruction within the python directory once
   you have downloaded and unpacked libsvm.
-
-
-Windows: There is a one-in-all installer for Python and PyGTK available
-  at: http://osl.ulpgc.es/~arc/gnome/pygtk-setup.exe
-  For more details please see: http://www.pygtk.org/
-
-Macintosh: For information on running PyGTK on Max OSX please see:
-http://faq.pygtk.org/index.py?req=show&file=faq01.019.htp
 
 
 Test of installed modules:
@@ -50,15 +42,15 @@ distribution, start Python and try the following:
 None of these import commands should give you an error.
 
 
-Febrl-0.4.1 installation:
+Febrl-0.4.2 installation:
 -------------------------
 
-Unpack the febrl-0.4.1.tar.gz or febrl-0.4.1.zip archive and a new
-directory named 'febrl-0.4' will be created containing all the
+Unpack the febrl-0.4.2.tar.gz or febrl-0.4.2.zip archive and a new
+directory named 'febrl-0.4.2' will be created containing all the
 necessary Febrl modules and additional files such as example data sets,
 documentation, the Febrl data set generator and testing programs.
 
-Go into the 'tests' sub-directory within 'febrl-0.4.1' and either run
+Go into the 'tests' sub-directory within 'febrl-0.4.2' and either run
 all tests using the corresponding script provided:
 
 #> ./allTests.sh
@@ -78,7 +70,7 @@ script does not execute properly, the work around I used was to apply
 #> chmod u+x allTests_1.sh ; ./allTests_1.sh
 
 
-Starting Febrl-0.4.1
+Starting Febrl-0.4.2
 --------------------
 
 The Febrl GUI can be started using:
@@ -99,13 +91,14 @@ saved from within the GUI) can be run outside the GUI, for example:
 Problems and errors:
 --------------------
 
-Please note that this is the initial 'alpha' distribution of Febrl-0.4.1
-which has only been tested to a limited extent on an Ubuntu Linux platform.
+Please note that this is the initial 'alpha' distribution of Febrl-0.4.2
+which has only been tested to a limited extent on an Ubuntu Linux platform
+(specifically Ubuntu with Python 2.6 and Python 2.7).
 
 Please report any problems and bugs to: peter.christen@anu.edu.au
 
 
-Febrl-0.4.1 mailing lists:
+Febrl-0.4.2 mailing lists:
 --------------------------
 
 To receive updates and news on Febrl please subscribe to the

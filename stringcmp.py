@@ -6,7 +6,7 @@
 # (the "License"); you may not use this file except in compliance with
 # the License. You may obtain a copy of the License at:
 # 
-#   http://datamining.anu.edu.au/linkage.html
+#   https://sourceforge.net/projects/febrl/
 # 
 # Software distributed under the License is distributed on an "AS IS"
 # basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See
@@ -16,10 +16,10 @@
 # The Original Software is: "stringcmp.py"
 # 
 # The Initial Developer of the Original Software is:
-#   Dr Peter Christen (Department of Computer Science, Australian National
-#                      University)
+#   Dr Peter Christen (Research School of Computer Science, The Australian
+#                      National University)
 # 
-# Copyright (C) 2002 - 2008 the Australian National University and
+# Copyright (C) 2002 - 2011 the Australian National University and
 # others. All Rights Reserved.
 # 
 # Contributors:
@@ -37,7 +37,7 @@
 # the terms of any one of the ANUOS License or the GPL.
 # =============================================================================
 #
-# Freely extensible biomedical record linkage (Febrl) - Version 0.4.1
+# Freely extensible biomedical record linkage (Febrl) - Version 0.4.2
 #
 # See: http://datamining.anu.edu.au/linkage.html
 #
@@ -51,6 +51,7 @@ are the same).
 
 Comparison methods provided:
 
+  exact          Exact comparison
   jaro           Jaro
   winkler        Winkler (based on Jaro)  (for backwards compatibility)
   qgram          q-gram based
@@ -120,6 +121,7 @@ def do_stringcmp(cmp_method, str1, str2, min_threshold = None):
 
   Possible values for 'cmp_method' are:
 
+    exact            Exact comparison
     jaro             Jaro's method
     winkler          Jaro's method with Winkler modification (same as calling
                      'jaro-winkler')
@@ -248,7 +250,12 @@ def do_stringcmp(cmp_method, str1, str2, min_threshold = None):
   else:
     padded = False
 
-  if (cmp_method.startswith('jaro')):
+  if (cmp_method.startswith('exa')):
+    start_time = time.time()
+    sim_weight = exact(str1, str2)
+    time_used = time.time() - start_time
+
+  elif (cmp_method.startswith('jaro')):
     start_time = time.time()
     sim_weight = jaro(str1, str2, min_threshold)
     time_used = time.time() - start_time
@@ -357,6 +364,19 @@ def do_stringcmp(cmp_method, str1, str2, min_threshold = None):
 
 # =============================================================================
 
+def exact(str1, str2):
+  """Do exact comparison of two strings.
+  """
+
+  if (str1 == '') or (str2 == ''):
+    return 0.0
+  elif (str1 == str2):
+    return 1.0
+  else:
+    return 0.0
+
+# =============================================================================
+
 def jaro(str1, str2, min_threshold = None):
   """Return approximate string comparator measure (between 0.0 and 1.0)
 
@@ -384,7 +404,7 @@ def jaro(str1, str2, min_threshold = None):
   len1 = len(str1)
   len2 = len(str2)
 
-  halflen = max(len1,len2) / 2 + 1
+  halflen = max(len1,len2) / 2 - 1  # Or + 1?? PC 12/03/2009
 
   ass1 = ''  # Characters assigned in str1
   ass2 = ''  # Characters assigned in str2
@@ -1444,8 +1464,8 @@ def syllaligndist(str1, str2, common_divisor = 'average', min_threshold = None,
     return 1.0
 
   if (do_phonix == True):
-    workstr1 = encode.phonixtransform(str1)
-    workstr2 = encode.phonixtransform(str2)
+    workstr1 = encode.phonix_transform(str1)
+    workstr2 = encode.phonix_transform(str2)
   else:
     workstr1 = str1
     workstr2 = str2

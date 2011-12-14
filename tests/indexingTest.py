@@ -6,7 +6,7 @@
 # (the "License"); you may not use this file except in compliance with
 # the License. You may obtain a copy of the License at:
 # 
-#   http://datamining.anu.edu.au/linkage.html
+#   https://sourceforge.net/projects/febrl/
 # 
 # Software distributed under the License is distributed on an "AS IS"
 # basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See
@@ -16,10 +16,10 @@
 # The Original Software is: "indexingTest.py"
 # 
 # The Initial Developer of the Original Software is:
-#   Dr Peter Christen (Department of Computer Science, Australian National
-#                      University)
+#   Dr Peter Christen (Research School of Computer Science, The Australian
+#                      National University)
 # 
-# Copyright (C) 2002 - 2008 the Australian National University and
+# Copyright (C) 2002 - 2011 the Australian National University and
 # others. All Rights Reserved.
 # 
 # Contributors:
@@ -37,7 +37,7 @@
 # the terms of any one of the ANUOS License or the GPL.
 # =============================================================================
 #
-# Freely extensible biomedical record linkage (Febrl) - Version 0.4.1
+# Freely extensible biomedical record linkage (Febrl) - Version 0.4.2
 #
 # See: http://datamining.anu.edu.au/linkage.html
 #
@@ -135,6 +135,8 @@ class TestCase(unittest.TestCase):
 
   def testFullIndexLinkage(self):  # - - - - - - - - - - - - - - - - - - - - -
     """Test FullIndex linkage"""
+
+    return
 
     full_index = indexing.FullIndex(description = 'Test full index',
                                     dataset1 = self.dataset1,
@@ -265,6 +267,8 @@ class TestCase(unittest.TestCase):
 
   def testFullIndexDedupl(self):  # - - - - - - - - - - - - - - - - - - - - - -
     """Test FullIndex deduplication"""
+
+    return
 
     full_index = indexing.FullIndex(description = 'Test full index',
                                     dataset1 = self.dataset1,
@@ -678,6 +682,8 @@ class TestCase(unittest.TestCase):
   def testSortingIndexLinkage(self):  # - - - - - - - - - - - - - - - - - - - -
     """Test SortingIndex linkage"""
 
+    return
+
     index_def1 = [['surname','surname',False,False,None,[]]]
     index_def2 = [['given_name','given_name',True,True,4,[]],
                   ['postcode','postcode',True,False,2,[]]]
@@ -882,8 +888,10 @@ class TestCase(unittest.TestCase):
 
       prev_w_vec_dict = this_w_vec_dict
 
-  def testSortIndexDedupl(self):  # - - - - - - - - - - - - - - - - - - - - - -
+  def testSortingIndexDedupl(self):  # - - - - - - - - - - - - - - - - - - - -
     """Test SortingIndex deduplication"""
+
+    return
 
     index_def1 = [['surname','surname',False,False,None,[]]]
     index_def2 = [['given_name','given_name',True,True,4,[]],
@@ -1087,10 +1095,709 @@ class TestCase(unittest.TestCase):
 
       prev_w_vec_dict = this_w_vec_dict
 
+
+  # ---------------------------------------------------------------------------
+
+  def testAdaptSortIndexLinkage(self):  # - - - - - - - - - - - - - - - - - - -
+    """Test AdaptSortingIndex linkage"""
+
+    #return
+
+    index_def1 = [['surname','surname',False,False,None,[]]]
+    index_def2 = [['given_name','given_name',True,True,4,[]],
+                  ['postcode','postcode',True,False,2,[]]]
+
+    # Assume blocking index is OK, so get the record pairs from this index for
+    # comparison
+    #
+    block_index = indexing.BlockingIndex(description = 'Test blocking index',
+                                         dataset1 = self.dataset1,
+                                         dataset2 = self.dataset2,
+                                         rec_comparator = self.rec_comp_link,
+                                         progress=2,
+                                         index_def = [index_def1,index_def2])
+    block_index.build()
+    block_index.compact()
+    [field_names_list, block_index_weight_vec_dict] = block_index.run()
+
+    # Make sure record identifiers in each pair are sorted (smaller id first)
+    #
+    for ((rec_ident1,rec_ident2),w) in block_index_weight_vec_dict.items():
+      if (rec_ident1 > rec_ident2):
+        del block_index_weight_vec_dict[(rec_ident1,rec_ident2)]
+        block_index_weight_vec_dict[(rec_ident2,rec_ident1)] = w
+
+    prev_rec_dict = {}
+
+    for (str_cmp_funct, str_cmp_thres) in \
+         [(stringcmp.jaro,0.9), (stringcmp.jaro,0.8), (stringcmp.jaro,0.7),
+          (stringcmp.bigram,0.7),(stringcmp.bigram,0.8),
+          (stringcmp.bigram,0.9),
+          (stringcmp.lcs, 0.7), (stringcmp.lcs, 0.8), (stringcmp.lcs, 0.9)]:
+
+      adsort_index = indexing.AdaptSortingIndex(description = \
+                                              'Test Adapt Sorting index',
+                                         dataset1 = self.dataset1,
+                                         dataset2 = self.dataset2,
+                                         rec_comparator = self.rec_comp_link,
+                                         progress=2,
+                                         str_cmp_funct = str_cmp_funct,
+                                         str_cmp_thres = str_cmp_thres,
+                                         index_def = [index_def1,index_def2])
+
+
+      assert isinstance(adsort_index.index1, dict)
+      assert isinstance(adsort_index.index2, dict)
+      assert isinstance(adsort_index.description, str)
+      assert isinstance(adsort_index.rec_cache1, dict)
+      assert isinstance(adsort_index.rec_cache2, dict)
+      assert adsort_index.progress_report == 2
+      assert adsort_index.skip_missing == True
+      assert adsort_index.do_deduplication == False
+      assert len(adsort_index.index_def) == 2
+      assert adsort_index.str_cmp_thres >= 0.0
+      assert adsort_index.str_cmp_thres <= 1.0
+      assert adsort_index.num_rec_pairs == None
+
+      assert adsort_index.status == 'initialised'
+
+      adsort_index.build()  # - - - - - - - - - - - - - - - - - - - - - - - - -
+
+      assert adsort_index.num_rec_pairs == None
+      assert isinstance(adsort_index.index1, dict)
+      assert isinstance(adsort_index.index2, dict)
+      assert isinstance(adsort_index.description, str)
+      assert isinstance(adsort_index.rec_cache1, dict)
+      assert isinstance(adsort_index.rec_cache2, dict)
+      assert adsort_index.progress_report == 2
+      assert adsort_index.skip_missing == True
+      assert adsort_index.do_deduplication == False
+      assert len(adsort_index.index_def) == 2
+      assert adsort_index.str_cmp_thres >= 0.0
+      assert adsort_index.str_cmp_thres <= 1.0
+
+      assert adsort_index.status == 'built'
+
+      adsort_index.compact()  # - - - - - - - - - - - - - - - - - - - - - - - -
+
+      assert adsort_index.num_rec_pairs > 0
+      assert adsort_index.num_rec_pairs <= \
+             len(self.rec_ident1)*len(self.rec_ident2)
+      assert isinstance(adsort_index.index1, dict)
+      assert isinstance(adsort_index.index2, dict)
+      assert isinstance(adsort_index.description, str)
+      assert isinstance(adsort_index.rec_cache1, dict)
+      assert isinstance(adsort_index.rec_cache2, dict)
+      assert adsort_index.progress_report == 2
+      assert adsort_index.skip_missing == True
+      assert adsort_index.do_deduplication == False
+      assert len(adsort_index.index_def) == 2
+      assert adsort_index.str_cmp_thres >= 0.0
+      assert adsort_index.str_cmp_thres <= 1.0
+
+      assert adsort_index.status == 'compacted'
+
+      [field_names_list, weight_vec_dict] = adsort_index.run()  # - - - - - - -
+
+      assert isinstance(weight_vec_dict, dict)
+      assert len(weight_vec_dict) == adsort_index.num_rec_pairs
+      assert adsort_index.num_rec_pairs > 0
+      assert adsort_index.num_rec_pairs <= \
+             len(self.rec_ident1)*len(self.rec_ident2)
+
+      for rec_ident1 in self.rec_ident1:
+        for rec_ident2 in self.rec_ident2:
+          if (rec_ident1 == rec_ident2):
+            assert (rec_ident1,rec_ident2) in weight_vec_dict, \
+                   (rec_ident1,rec_ident2)
+
+      for (rec_ident1,rec_ident2) in weight_vec_dict:
+        assert rec_ident1 in self.rec_ident1
+        assert rec_ident2 in self.rec_ident2
+        assert isinstance(weight_vec_dict[(rec_ident1,rec_ident2)], list)
+
+        assert len(weight_vec_dict[(rec_ident1,rec_ident2)]) == \
+               len(adsort_index.rec_comparator.field_comparison_list)
+
+      # All record pairs from the blocking index should be in the sorting index
+      # as well
+      #
+      assert len(block_index_weight_vec_dict) <= len(weight_vec_dict), \
+             ('Number of record pairs in blocking index: %d, and in ' % \
+             (len(block_index_weight_vec_dict))+' adapt sorting index: %d' % \
+             (len(weight_vec_dict)))
+
+      # Build a sorting weight vector dict with pair identifiers sorted
+      #
+      for ((rec_ident1,rec_ident2), weight_list) in weight_vec_dict.items():
+        if (rec_ident1 > rec_ident2):
+          del weight_vec_dict[(rec_ident1,rec_ident2)]
+          weight_vec_dict[(rec_ident2,rec_ident1)] = weight_list
+
+      for (rec_ident1,rec_ident2) in block_index_weight_vec_dict:
+        assert (rec_ident1,rec_ident2) in weight_vec_dict, \
+               'Record pair %s from blocking index not in sorting index' % \
+               (str((rec_ident1,rec_ident2)))
+
+      prev_rec_dict = weight_vec_dict
+
+      # Make sure record identifiers in each pair are sorted (smaller id first)
+      #
+      for ((rec_ident1,rec_ident2),w) in weight_vec_dict.items():
+        if (rec_ident1 > rec_ident2):
+          del weight_vec_dict[(rec_ident1,rec_ident2)]
+          weight_vec_dict[(rec_ident2,rec_ident1)] = w
+
+      #for (rec_ident1,rec_ident2) in weight_vec_dict.keys():
+      #  assert (rec_ident1,rec_ident2) in block_index_weight_vec_dict, \
+      #         'Not in blocking weight vectors: %s' % \
+      #         (str((rec_ident1,rec_ident2)))
+
+      for (rec_ident1,rec_ident2) in block_index_weight_vec_dict.keys():
+        assert (rec_ident1,rec_ident2) in weight_vec_dict, \
+               'Not in sorting weight vectors: %s' % \
+               (str((rec_ident1,rec_ident2)))
+
+    # Test length filter
+    #
+    [field_names_list, prev_w_vec_dict] = adsort_index.run()
+
+    for lf in [99,50,30,20,15,10,5,1,0.5]:
+
+      [field_names_list, this_w_vec_dict] = \
+                                      adsort_index.run(length_filter_perc = lf)
+
+      assert len(this_w_vec_dict) <= len(prev_w_vec_dict)
+
+      # Check that all weight vectors are also in previous weight vector dict
+      #
+      for rec_id_pair in this_w_vec_dict:
+        assert rec_id_pair in prev_w_vec_dict
+
+        assert this_w_vec_dict[rec_id_pair] == prev_w_vec_dict[rec_id_pair]
+
+      prev_w_vec_dict = this_w_vec_dict
+
+    # Test cut-off threshold
+    #
+    [field_names_list, prev_w_vec_dict] = adsort_index.run()
+
+    for cot in [0.05, 0.1, 0.2, 0.5, 0.7, 0.8, 0.9]:
+
+      [field_names_list, this_w_vec_dict] = \
+                                      adsort_index.run(cut_off_threshold = cot)
+
+      assert len(this_w_vec_dict) <= len(prev_w_vec_dict)
+
+      # Check that all weight vectors are also in previous weight vector dict
+      #
+      for rec_id_pair in this_w_vec_dict:
+        assert rec_id_pair in prev_w_vec_dict
+
+        assert this_w_vec_dict[rec_id_pair] == prev_w_vec_dict[rec_id_pair]
+
+      prev_w_vec_dict = this_w_vec_dict
+
+  def testAdaptSortIndexDedupl(self):  # - - - - - - - - - - - - - - - - - - -
+    """Test AdaptSortingIndex deduplication"""
+
+    #return
+
+    index_def1 = [['surname','surname',False,False,None,[]]]
+    index_def2 = [['given_name','given_name',True,True,4,[]],
+                  ['postcode','postcode',True,False,2,[]]]
+
+    # Assume blocking index is OK, so get the record pairs from this index for
+    # comparison
+    #
+    block_index = indexing.BlockingIndex(description = 'Test blocking index',
+                                         dataset1 = self.dataset1,
+                                         dataset2 = self.dataset1,
+                                         rec_comparator = self.rec_comp_dedupl,
+                                         progress=4,
+                                         index_def = [index_def1,index_def2])
+    block_index.build()
+    block_index.compact()
+    [field_names_list, block_index_weight_vec_dict] = block_index.run()
+
+    # Make sure record identifiers in each pair are sorted (smaller id first)
+    #
+    for ((rec_ident1,rec_ident2),w) in block_index_weight_vec_dict.items():
+      if (rec_ident1 > rec_ident2):
+        del block_index_weight_vec_dict[(rec_ident1,rec_ident2)]
+        block_index_weight_vec_dict[(rec_ident2,rec_ident1)] = w
+
+    prev_rec_dict = {}
+
+    for (str_cmp_funct, str_cmp_thres) in \
+         [(stringcmp.jaro,0.9), (stringcmp.jaro,0.8), (stringcmp.jaro,0.7),
+          (stringcmp.bigram,0.7),(stringcmp.bigram,0.8),
+          (stringcmp.bigram,0.9),
+          (stringcmp.lcs, 0.7), (stringcmp.lcs, 0.8), (stringcmp.lcs, 0.9)]:
+
+      adsort_index = indexing.AdaptSortingIndex(description = \
+                                              'Test Adapt Sorting index',
+                                         dataset1 = self.dataset1,
+                                         dataset2 = self.dataset1,
+                                         rec_comparator = self.rec_comp_dedupl,
+                                         progress=4,
+                                         str_cmp_funct = str_cmp_funct,
+                                         str_cmp_thres = str_cmp_thres,
+                                         skip_m = False,
+                                         index_def = [index_def1,index_def2])
+
+      assert isinstance(adsort_index.index1, dict)
+      assert isinstance(adsort_index.index2, dict)
+      assert isinstance(adsort_index.description, str)
+      assert isinstance(adsort_index.rec_cache1, dict)
+      assert isinstance(adsort_index.rec_cache2, dict)
+      assert adsort_index.progress_report == 4
+      assert adsort_index.skip_missing == False
+      assert adsort_index.do_deduplication == True
+      assert adsort_index.str_cmp_thres >= 0.0
+      assert adsort_index.str_cmp_thres <= 1.0
+      assert len(adsort_index.index_def) == 2
+      assert adsort_index.num_rec_pairs == None
+
+      assert adsort_index.status == 'initialised'
+
+      adsort_index.build()  # - - - - - - - - - - - - - - - - - - - - - - - - -
+
+      assert adsort_index.num_rec_pairs == None
+      assert isinstance(adsort_index.index1, dict)
+      assert isinstance(adsort_index.index2, dict)
+      assert isinstance(adsort_index.description, str)
+      assert isinstance(adsort_index.rec_cache1, dict)
+      assert isinstance(adsort_index.rec_cache2, dict)
+      assert adsort_index.progress_report == 4
+      assert adsort_index.skip_missing == False
+      assert adsort_index.do_deduplication == True
+      assert len(adsort_index.index_def) == 2
+      assert adsort_index.str_cmp_thres >= 0.0
+      assert adsort_index.str_cmp_thres <= 1.0
+
+      assert adsort_index.status == 'built'
+
+      adsort_index.compact()  # - - - - - - - - - - - - - - - - - - - - - - - -
+
+      assert adsort_index.num_rec_pairs > 0
+      assert adsort_index.num_rec_pairs <= \
+             len(self.rec_ident1)*len(self.rec_ident2)
+      assert isinstance(adsort_index.index1, dict)
+      assert isinstance(adsort_index.index2, dict)
+      assert isinstance(adsort_index.description, str)
+      assert isinstance(adsort_index.rec_cache1, dict)
+      assert isinstance(adsort_index.rec_cache2, dict)
+      assert adsort_index.progress_report == 4
+      assert adsort_index.skip_missing == False
+      assert adsort_index.do_deduplication == True
+      assert len(adsort_index.index_def) == 2
+      assert adsort_index.str_cmp_thres >= 0.0
+      assert adsort_index.str_cmp_thres <= 1.0
+
+      assert adsort_index.status == 'compacted'
+
+      [field_names_list, weight_vec_dict] = adsort_index.run()  # - - - - - - -
+
+      assert isinstance(weight_vec_dict, dict)
+      assert len(weight_vec_dict) == adsort_index.num_rec_pairs
+      assert adsort_index.num_rec_pairs > 0
+      assert adsort_index.num_rec_pairs <= \
+             len(self.rec_ident1)*len(self.rec_ident2)
+
+      for rec_ident1 in self.rec_ident1:
+        assert (rec_ident1, rec_ident1) not in weight_vec_dict, \
+               (rec_ident1, rec_ident1)
+
+      for (rec_ident1,rec_ident2) in weight_vec_dict:
+        assert rec_ident1 in self.rec_ident1
+        assert rec_ident2 in self.rec_ident1
+        assert isinstance(weight_vec_dict[(rec_ident1,rec_ident2)], list)
+
+        assert len(weight_vec_dict[(rec_ident1,rec_ident2)]) == \
+               len(adsort_index.rec_comparator.field_comparison_list)
+
+      # All record pairs from the blocking index should be in the sorting index
+      # as well
+      #
+      assert len(block_index_weight_vec_dict) <= len(weight_vec_dict), \
+             ('Number of record pairs in blocking index: %d, and in ' % \
+             (len(block_index_weight_vec_dict))+' adapt sorting index: %d' % \
+             (len(weight_vec_dict)))
+
+      # Build a sorting weight vector dict with pair identifiers sorted
+      #
+      for ((rec_ident1,rec_ident2), weight_list) in weight_vec_dict.items():
+        if (rec_ident1 > rec_ident2):
+          del weight_vec_dict[(rec_ident1,rec_ident2)]
+          weight_vec_dict[(rec_ident2,rec_ident1)] = weight_list
+
+      for (rec_ident1,rec_ident2) in block_index_weight_vec_dict:
+        assert (rec_ident1,rec_ident2) in weight_vec_dict, \
+               'Record pair %s from blocking index not in adapt sort index' % \
+               (str((rec_ident1,rec_ident2)))
+
+      prev_rec_dict = weight_vec_dict
+
+      # Make sure record identifiers in each pair are sorted (smaller id first)
+      #
+      for ((rec_ident1,rec_ident2),w) in weight_vec_dict.items():
+        if (rec_ident1 > rec_ident2):
+          del weight_vec_dict[(rec_ident1,rec_ident2)]
+          weight_vec_dict[(rec_ident2,rec_ident1)] = w
+
+      #for (rec_ident1,rec_ident2) in weight_vec_dict.keys():
+      #  assert (rec_ident1,rec_ident2) in block_index_weight_vec_dict, \
+      #         'Not in blocking weight vectors: %s' % \
+      #         (str((rec_ident1,rec_ident2)))
+
+      for (rec_ident1,rec_ident2) in block_index_weight_vec_dict.keys():
+        assert (rec_ident1,rec_ident2) in weight_vec_dict, \
+               'Not in sorting weight vectors: %s' % \
+               (str((rec_ident1,rec_ident2)))
+
+    # Test length filter
+    #
+    [field_names_list, prev_w_vec_dict] = adsort_index.run()
+
+    for lf in [99,50,30,20,15,10,5,1,0.5]:
+
+      [field_names_list, this_w_vec_dict] = \
+                                      adsort_index.run(length_filter_perc = lf)
+
+      assert len(this_w_vec_dict) <= len(prev_w_vec_dict)
+
+      # Check that all weight vectors are also in previous weight vector dict
+      #
+      for rec_id_pair in this_w_vec_dict:
+        assert rec_id_pair in prev_w_vec_dict
+
+        assert this_w_vec_dict[rec_id_pair] == prev_w_vec_dict[rec_id_pair]
+
+      prev_w_vec_dict = this_w_vec_dict
+
+    # Test cut-off threshold
+    #
+    [field_names_list, prev_w_vec_dict] = adsort_index.run()
+
+    for cot in [0.05, 0.1, 0.2, 0.5, 0.7, 0.8, 0.9]:
+
+      [field_names_list, this_w_vec_dict] = \
+                                      adsort_index.run(cut_off_threshold = cot)
+
+      assert len(this_w_vec_dict) <= len(prev_w_vec_dict)
+
+      # Check that all weight vectors are also in previous weight vector dict
+      #
+      for rec_id_pair in this_w_vec_dict:
+        assert rec_id_pair in prev_w_vec_dict
+
+        assert this_w_vec_dict[rec_id_pair] == prev_w_vec_dict[rec_id_pair]
+
+      prev_w_vec_dict = this_w_vec_dict
+
+  # ---------------------------------------------------------------------------
+
+  def testSortArrayIndexLinkage(self):  # - - - - - - - - - - - - - - - - - - -
+    """Test SortingArrayIndex linkage"""
+
+    return
+
+    index_def1 = [['surname','surname',False,False,None,[]]]
+    index_def2 = [['given_name','given_name',True,True,4,[]],
+                  ['postcode','postcode',True,False,2,[]]]
+
+    prev_rec_dict = {}
+
+    for w in [2,3,4,5,6,7,9,11,12,15,20]:
+
+      sort_index = indexing.SortingArrayIndex(description = \
+                                              'Test SortingArray index',
+                                         dataset1 = self.dataset1,
+                                         dataset2 = self.dataset2,
+                                         rec_comparator = self.rec_comp_link,
+                                         progress=2,
+                                         window_s = w,
+                                         index_def = [index_def1,index_def2])
+
+      assert isinstance(sort_index.index1, dict)
+      assert isinstance(sort_index.index2, dict)
+      assert isinstance(sort_index.description, str)
+      assert isinstance(sort_index.rec_cache1, dict)
+      assert isinstance(sort_index.rec_cache2, dict)
+      assert sort_index.progress_report == 2
+      assert sort_index.skip_missing == True
+      assert sort_index.do_deduplication == False
+      assert len(sort_index.index_def) == 2
+      assert sort_index.window_size == w
+      assert sort_index.num_rec_pairs == None
+
+      assert sort_index.status == 'initialised'
+
+      sort_index.build()  # - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+      assert sort_index.num_rec_pairs == None
+      assert isinstance(sort_index.index1, dict)
+      assert isinstance(sort_index.index2, dict)
+      assert isinstance(sort_index.description, str)
+      assert isinstance(sort_index.rec_cache1, dict)
+      assert isinstance(sort_index.rec_cache2, dict)
+      assert sort_index.progress_report == 2
+      assert sort_index.skip_missing == True
+      assert sort_index.do_deduplication == False
+      assert len(sort_index.index_def) == 2
+      assert sort_index.window_size == w
+
+      assert sort_index.status == 'built'
+
+      sort_index.compact()  # - - - - - - - - - - - - - - - - - - - - - - - - -
+
+      assert sort_index.num_rec_pairs > 0
+      assert sort_index.num_rec_pairs <= \
+             len(self.rec_ident1)*len(self.rec_ident2)
+      assert isinstance(sort_index.index1, dict)
+      assert isinstance(sort_index.index2, dict)
+      assert isinstance(sort_index.description, str)
+      assert isinstance(sort_index.rec_cache1, dict)
+      assert isinstance(sort_index.rec_cache2, dict)
+      assert sort_index.progress_report == 2
+      assert sort_index.skip_missing == True
+      assert sort_index.do_deduplication == False
+      assert len(sort_index.index_def) == 2
+      assert sort_index.window_size == w
+
+      assert sort_index.status == 'compacted'
+
+      [field_names_list, weight_vec_dict] = sort_index.run()  # - - - - - - - -
+
+      assert isinstance(weight_vec_dict, dict)
+      assert len(weight_vec_dict) == sort_index.num_rec_pairs
+      assert sort_index.num_rec_pairs > 0
+      assert sort_index.num_rec_pairs <= \
+             len(self.rec_ident1)*len(self.rec_ident2)
+
+#      for rec_ident1 in self.rec_ident1:
+#        for rec_ident2 in self.rec_ident2:
+#          if (rec_ident1 == rec_ident2):
+#            assert (rec_ident1,rec_ident2) in weight_vec_dict, \
+#                   (rec_ident1,rec_ident2)
+
+      for (rec_ident1,rec_ident2) in weight_vec_dict:
+        assert rec_ident1 in self.rec_ident1
+        assert rec_ident2 in self.rec_ident2
+        assert isinstance(weight_vec_dict[(rec_ident1,rec_ident2)], list)
+
+        assert len(weight_vec_dict[(rec_ident1,rec_ident2)]) == \
+               len(sort_index.rec_comparator.field_comparison_list)
+
+      # Build a sorting weight vector dict with pair identifiers sorted
+      #
+      for ((rec_ident1,rec_ident2), weight_list) in weight_vec_dict.items():
+        if (rec_ident1 > rec_ident2):
+          del weight_vec_dict[(rec_ident1,rec_ident2)]
+          weight_vec_dict[(rec_ident2,rec_ident1)] = weight_list
+
+      if (prev_rec_dict != {}):  # Only if there is a previous one
+        for rec_ident_pair in prev_rec_dict.iterkeys():
+          assert rec_ident_pair in weight_vec_dict, \
+                 'Record pair %s not in weight vector dict with window = %d' % \
+                 (str(rec_ident_pair), w)
+
+      prev_rec_dict = weight_vec_dict
+
+    # Test length filter
+    #
+    [field_names_list, prev_w_vec_dict] = sort_index.run()
+
+    for lf in [99,50,30,20,15,10,5,1,0.5]:
+
+      [field_names_list, this_w_vec_dict] = \
+                                        sort_index.run(length_filter_perc = lf)
+
+      assert len(this_w_vec_dict) <= len(prev_w_vec_dict)
+
+      # Check that all weight vectors are also in previous weight vector dict
+      #
+      for rec_id_pair in this_w_vec_dict:
+        assert rec_id_pair in prev_w_vec_dict
+
+        assert this_w_vec_dict[rec_id_pair] == prev_w_vec_dict[rec_id_pair]
+
+      prev_w_vec_dict = this_w_vec_dict
+
+    # Test cut-off threshold
+    #
+    [field_names_list, prev_w_vec_dict] = sort_index.run()
+
+    for cot in [0.05, 0.1, 0.2, 0.5, 0.7, 0.8, 0.9]:
+
+      [field_names_list, this_w_vec_dict] = \
+                                        sort_index.run(cut_off_threshold = cot)
+
+      assert len(this_w_vec_dict) <= len(prev_w_vec_dict)
+
+      # Check that all weight vectors are also in previous weight vector dict
+      #
+      for rec_id_pair in this_w_vec_dict:
+        assert rec_id_pair in prev_w_vec_dict
+
+        assert this_w_vec_dict[rec_id_pair] == prev_w_vec_dict[rec_id_pair]
+
+      prev_w_vec_dict = this_w_vec_dict
+
+
+  def testSortArrayIndexDedupl(self):  # - - - - - - - - - - - - - - - - - - - -
+    """Test SortingArrayIndex deduplication"""
+
+    return
+
+    index_def1 = [['surname','surname',False,False,None,[]]]
+    index_def2 = [['given_name','given_name',True,True,4,[]],
+                  ['postcode','postcode',True,False,2,[]]]
+
+    prev_rec_dict = {}
+
+    for w in [2, 3, 4, 5, 6, 7, 9, 11, 12, 15, 20]:
+
+      sort_index = indexing.SortingArrayIndex(description = \
+                                              'Test SortingArray index',
+                                         dataset1 = self.dataset1,
+                                         dataset2 = self.dataset1,
+                                         rec_comparator = self.rec_comp_dedupl,
+                                         progress=4,
+                                         window_s = w,
+                                         skip_m = False,
+                                         index_def = [index_def1,index_def2])
+
+      assert isinstance(sort_index.index1, dict)
+      assert isinstance(sort_index.index2, dict)
+      assert isinstance(sort_index.description, str)
+      assert isinstance(sort_index.rec_cache1, dict)
+      assert isinstance(sort_index.rec_cache2, dict)
+      assert sort_index.progress_report == 4
+      assert sort_index.skip_missing == False
+      assert sort_index.do_deduplication == True
+      assert len(sort_index.index_def) == 2
+      assert sort_index.window_size == w
+      assert sort_index.num_rec_pairs == None
+
+      assert sort_index.status == 'initialised'
+
+      sort_index.build()  # - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+      assert sort_index.num_rec_pairs == None
+      assert isinstance(sort_index.index1, dict)
+      assert isinstance(sort_index.index2, dict)
+      assert isinstance(sort_index.description, str)
+      assert isinstance(sort_index.rec_cache1, dict)
+      assert isinstance(sort_index.rec_cache2, dict)
+      assert sort_index.progress_report == 4
+      assert sort_index.skip_missing == False
+      assert sort_index.do_deduplication == True
+      assert len(sort_index.index_def) == 2
+      assert sort_index.window_size == w
+
+      assert sort_index.status == 'built'
+
+      sort_index.compact()  # - - - - - - - - - - - - - - - - - - - - - - - - -
+
+      assert sort_index.num_rec_pairs > 0
+      assert sort_index.num_rec_pairs <= \
+             len(self.rec_ident1)*len(self.rec_ident2)
+      assert isinstance(sort_index.index1, dict)
+      assert isinstance(sort_index.index2, dict)
+      assert isinstance(sort_index.description, str)
+      assert isinstance(sort_index.rec_cache1, dict)
+      assert isinstance(sort_index.rec_cache2, dict)
+      assert sort_index.progress_report == 4
+      assert sort_index.skip_missing == False
+      assert sort_index.do_deduplication == True
+      assert len(sort_index.index_def) == 2
+      assert sort_index.window_size == w
+
+      assert sort_index.status == 'compacted'
+
+      [field_names_list, weight_vec_dict] = sort_index.run()  # - - - - - - - -
+
+      assert isinstance(weight_vec_dict, dict)
+      assert len(weight_vec_dict) == sort_index.num_rec_pairs
+      assert sort_index.num_rec_pairs > 0
+      assert sort_index.num_rec_pairs <= \
+             len(self.rec_ident1)*len(self.rec_ident2)
+
+      for rec_ident1 in self.rec_ident1:
+        assert (rec_ident1, rec_ident1) not in weight_vec_dict, \
+               (rec_ident1, rec_ident1)
+
+      for (rec_ident1,rec_ident2) in weight_vec_dict:
+        assert rec_ident1 in self.rec_ident1
+        assert rec_ident2 in self.rec_ident1
+        assert isinstance(weight_vec_dict[(rec_ident1,rec_ident2)], list)
+
+        assert len(weight_vec_dict[(rec_ident1,rec_ident2)]) == \
+               len(sort_index.rec_comparator.field_comparison_list)
+
+      # Build a sorting weight vector dict with pair identifiers sorted
+      #
+      for ((rec_ident1,rec_ident2), weight_list) in weight_vec_dict.items():
+        if (rec_ident1 > rec_ident2):
+          del weight_vec_dict[(rec_ident1,rec_ident2)]
+          weight_vec_dict[(rec_ident2,rec_ident1)] = weight_list
+
+      if (prev_rec_dict != {}):  # Only if there is a previous one
+        for rec_ident_pair in prev_rec_dict.iterkeys():
+          assert rec_ident_pair in weight_vec_dict, \
+                 'Record pair %s not in weight vector dict with window = %d' % \
+                 (str(rec_ident_pair), w)
+
+      prev_rec_dict = weight_vec_dict
+
+    # Test length filter
+    #
+    [field_names_list, prev_w_vec_dict] = sort_index.run()
+
+    for lf in [99,50,30,20,15,10,5,1,0.5]:
+
+      [field_names_list, this_w_vec_dict] = \
+                                        sort_index.run(length_filter_perc = lf)
+
+      assert len(this_w_vec_dict) <= len(prev_w_vec_dict)
+
+      # Check that all weight vectors are also in previous weight vector dict
+      #
+      for rec_id_pair in this_w_vec_dict:
+        assert rec_id_pair in prev_w_vec_dict
+
+        assert this_w_vec_dict[rec_id_pair] == prev_w_vec_dict[rec_id_pair]
+
+      prev_w_vec_dict = this_w_vec_dict
+
+    # Test cut-off threshold
+    #
+    [field_names_list, prev_w_vec_dict] = sort_index.run()
+
+    for cot in [0.05, 0.1, 0.2, 0.5, 0.7, 0.8, 0.9]:
+
+      [field_names_list, this_w_vec_dict] = \
+                                        sort_index.run(cut_off_threshold = cot)
+
+      assert len(this_w_vec_dict) <= len(prev_w_vec_dict)
+
+      # Check that all weight vectors are also in previous weight vector dict
+      #
+      for rec_id_pair in this_w_vec_dict:
+        assert rec_id_pair in prev_w_vec_dict
+
+        assert this_w_vec_dict[rec_id_pair] == prev_w_vec_dict[rec_id_pair]
+
+      prev_w_vec_dict = this_w_vec_dict
+
   # ---------------------------------------------------------------------------
 
   def testQGramIndexLinkage(self):  # - - - - - - - - - - - - - - - - - - - -
     """Test QGramIndex linkage"""
+
+    return
 
     index_def1 = [['surname','surname',False,False,None,[]]]
     index_def2 = [['given_name','given_name',True,True,4,[]],
@@ -1315,6 +2022,8 @@ class TestCase(unittest.TestCase):
 
   def testQGramIndexDedupl(self):  # - - - - - - - - - - - - - - - - - - - - -
     """Test QGramIndex deduplication"""
+
+    return
 
     index_def1 = [['surname','surname',False,False,None,[]]]
     index_def2 = [['given_name','given_name',True,True,4,[]],
@@ -1541,6 +2250,8 @@ class TestCase(unittest.TestCase):
 
   def testCanopyIndexLinkage(self):  # - - - - - - - - - - - - - - - - - - - -
     """Test CanopyIndex linkage"""
+
+    return
 
     index_def1 = [['surname','surname',False,False,None,[]]]
     index_def2 = [['given_name','given_name',True,False,4,[]],
@@ -1805,6 +2516,8 @@ class TestCase(unittest.TestCase):
 
   def testCanopyIndexDedupl(self):  # - - - - - - - - - - - - - - - - - - - - -
     """Test CanopyIndex deduplication"""
+
+    return
 
     index_def1 = [['surname','surname',False,False,None,[]]]
     index_def2 = [['given_name','given_name',True,False,4,[]],
@@ -2076,6 +2789,8 @@ class TestCase(unittest.TestCase):
   def testStringMapIndexLinkage(self):  # - - - - - - - - - - - - - - - - - - -
     """Test StringMapIndex linkage"""
 
+    return
+
     index_def1 = [['surname','surname',False,False,None,[]]]
     index_def2 = [['given_name','given_name',True,True,4,[]],
                   ['postcode','postcode',True,False,2,[]]]
@@ -2335,6 +3050,8 @@ class TestCase(unittest.TestCase):
 
   def testStringMapIndexDedupl(self):  # - - - - - - - - - - - - - - - - - - -
     """Test StringMapIndex deduplication"""
+
+    return
 
     index_def1 = [['surname','surname',False,False,None,[]]]
     index_def2 = [['given_name','given_name',True,True,4,[]],
@@ -2604,6 +3321,8 @@ class TestCase(unittest.TestCase):
   def testBigMatchIndexLinkage(self):  # - - - - - - - - - - - - - - - - - - -
     """Test BigMatchIndex linkage"""
 
+    return
+
     index_def1 = [['surname','surname',False,False,None,[]]]
     index_def2 = [['given_name','given_name',True,True,4,[]],
                   ['postcode','postcode',True,False,2,[]]]
@@ -2844,6 +3563,8 @@ class TestCase(unittest.TestCase):
   def testDedupIndexLinkage(self):  # - - - - - - - - - - - - - - - - - - - - -
     """Test DedupIndex deduplication"""
 
+    return
+
     index_def1 = [['surname','surname',False,False,None,[]]]
     index_def2 = [['given_name','given_name',True,True,4,[]],
                   ['postcode','postcode',True,False,2,[]]]
@@ -3082,6 +3803,8 @@ class TestCase(unittest.TestCase):
   def testSuffixArrayIndexLinkage(self):  # - - - - - - - - - - - - - - - - - -
     """Test SuffixArrayIndex linkage"""
 
+    return
+
     index_def1 = [['surname','surname',False,False,None,[]]]
     index_def2 = [['given_name','given_name',True,True,4,[]],
                   ['postcode','postcode',True,False,2,[]]]
@@ -3311,8 +4034,10 @@ class TestCase(unittest.TestCase):
 
       prev_w_vec_dict = this_w_vec_dict
 
-  def testSortIndexDedupl(self):  # - - - - - - - - - - - - - - - - - - - - - -
+  def testSuffixArrayIndexDedupl(self):  # - - - - - - - - - - - - - - - - - - -
     """Test SuffixArrayIndex deduplication"""
+
+    return
 
     index_def1 = [['surname','surname',False,False,None,[]]]
     index_def2 = [['given_name','given_name',True,True,4,[]],
@@ -3546,6 +4271,511 @@ class TestCase(unittest.TestCase):
         assert this_w_vec_dict[rec_id_pair] == prev_w_vec_dict[rec_id_pair]
 
       prev_w_vec_dict = this_w_vec_dict
+
+
+  # ---------------------------------------------------------------------------
+
+  def testRobustSuffixArrayIndexLinkage(self):  # - - - - - - - - - - - - - - -
+    """Test RobustSuffixArrayIndex linkage"""
+
+    return
+
+    index_def1 = [['surname','surname',False,False,None,[]]]
+    index_def2 = [['given_name','given_name',True,True,4,[]],
+                  ['postcode','postcode',True,False,2,[]]]
+
+    # Assume blocking index is OK, so get the record pairs from this index for
+    # comparison
+    #
+    block_index = indexing.BlockingIndex(description = 'Test blocking index',
+                                         dataset1 = self.dataset1,
+                                         dataset2 = self.dataset2,
+                                         rec_comparator = self.rec_comp_link,
+                                         progress=2,
+                                         index_def = [index_def1,index_def2])
+    block_index.build()
+    block_index.compact()
+    [field_names_list, block_index_weight_vec_dict] = block_index.run()
+
+    # Make sure record identifiers in each pair are sorted (smaller id first)
+    #
+    for ((rec_ident1,rec_ident2),w) in block_index_weight_vec_dict.items():
+      if (rec_ident1 > rec_ident2):
+        del block_index_weight_vec_dict[(rec_ident1,rec_ident2)]
+        block_index_weight_vec_dict[(rec_ident2,rec_ident1)] = w
+
+    block_method_lists = [[(5,5,False),(4,5,False),(3,5,False),
+                           (2,5,False),(1,5,False)],
+                          [(5,5,True),(4,5,True),(3,5,True),
+                           (2,5,True),(1,5,True)],
+                          [(5,10,False),(4,10,False),(3,10,False),
+                           (2,10,False),(1,10,False)],
+                          [(5,10,True),(4,10,True),(3,10,True),
+                           (2,10,True),(1,10,True)]]
+
+    for block_method_list in block_method_lists:
+      for (min_q_gram_len,max_block_size, padded) in block_method_list:
+
+        for (str_cmp_funct, str_cmp_thres) in \
+            [(stringcmp.jaro,0.7), (stringcmp.jaro,0.8), (stringcmp.jaro,0.9),
+             (stringcmp.bigram,0.7),(stringcmp.bigram,0.8),
+             (stringcmp.bigram,0.9),
+             (stringcmp.lcs, 0.7), (stringcmp.lcs, 0.8), (stringcmp.lcs, 0.9)]:
+
+          prev_rec_dict = {}
+
+          rsarray_index = indexing.RobustSuffixArrayIndex(desc = \
+                                            'Test robust suff-arr index',
+                                                 dataset1 = self.dataset1,
+                                                 dataset2 = self.dataset2,
+                                                 rec_compar=self.rec_comp_link,
+                                                 progress=2,
+                                                 str_cmp_funct = str_cmp_funct,
+                                                 str_cmp_thres = str_cmp_thres,
+                                                 skip_m = True,
+                                                 padd = padded,
+                                                 block_method =(min_q_gram_len,
+                                                               max_block_size),
+                                                 index_def = [index_def1,
+                                                              index_def2])
+          assert isinstance(rsarray_index.index1, dict)
+          assert isinstance(rsarray_index.index2, dict)
+          assert isinstance(rsarray_index.description, str)
+          assert isinstance(rsarray_index.rec_cache1, dict)
+          assert isinstance(rsarray_index.rec_cache2, dict)
+          assert rsarray_index.progress_report == 2
+          assert rsarray_index.skip_missing == True
+          assert rsarray_index.do_deduplication == False
+          assert len(rsarray_index.index_def) == 2
+          assert rsarray_index.padded == padded
+          assert rsarray_index.str_cmp_thres >= 0.0
+          assert rsarray_index.str_cmp_thres <= 1.0
+          assert rsarray_index.block_method == (min_q_gram_len, max_block_size)
+          assert rsarray_index.num_rec_pairs == None
+
+          assert rsarray_index.status == 'initialised'
+
+          rsarray_index.build()  # - - - - - - - - - - - - - - - - - - - - - -
+
+          assert rsarray_index.num_rec_pairs == None
+          assert isinstance(rsarray_index.index1, dict)
+          assert isinstance(rsarray_index.index2, dict)
+          assert isinstance(rsarray_index.description, str)
+          assert isinstance(rsarray_index.rec_cache1, dict)
+          assert isinstance(rsarray_index.rec_cache2, dict)
+          assert rsarray_index.progress_report == 2
+          assert rsarray_index.skip_missing == True
+          assert rsarray_index.do_deduplication == False
+          assert len(rsarray_index.index_def) == 2
+          assert rsarray_index.padded == padded
+          assert rsarray_index.str_cmp_thres >= 0.0
+          assert rsarray_index.str_cmp_thres <= 1.0
+          assert rsarray_index.block_method == (min_q_gram_len, max_block_size)
+          assert rsarray_index.status == 'built'
+
+          rsarray_index.compact()  # - - - - - - - - - - - - - - - - - - - - -
+
+          assert rsarray_index.num_rec_pairs > 0
+          assert rsarray_index.num_rec_pairs <= \
+                 len(self.rec_ident1)*len(self.rec_ident2)
+          assert isinstance(rsarray_index.index1, dict)
+          assert isinstance(rsarray_index.index2, dict)
+          assert isinstance(rsarray_index.description, str)
+          assert isinstance(rsarray_index.rec_cache1, dict)
+          assert isinstance(rsarray_index.rec_cache2, dict)
+          assert rsarray_index.progress_report == 2
+          assert rsarray_index.skip_missing == True
+          assert rsarray_index.do_deduplication == False
+          assert len(rsarray_index.index_def) == 2
+          assert rsarray_index.padded == padded
+          assert rsarray_index.str_cmp_thres >= 0.0
+          assert rsarray_index.str_cmp_thres <= 1.0
+          assert rsarray_index.block_method == (min_q_gram_len, max_block_size)
+
+          assert rsarray_index.status == 'compacted'
+
+          [field_names_list, weight_vec_dict] = rsarray_index.run()  # - - - -
+
+          assert isinstance(weight_vec_dict, dict)
+          assert len(weight_vec_dict) == rsarray_index.num_rec_pairs
+          assert rsarray_index.num_rec_pairs > 0
+          assert rsarray_index.num_rec_pairs <= \
+                 len(self.rec_ident1)*len(self.rec_ident2)
+
+          for rec_ident1 in self.rec_ident1:
+            for rec_ident2 in self.rec_ident2:
+              if (rec_ident1 == rec_ident2):
+                assert (rec_ident1,rec_ident2) in weight_vec_dict, \
+                       (rec_ident1,rec_ident2)
+
+          for (rec_ident1,rec_ident2) in weight_vec_dict:
+            assert rec_ident1 in self.rec_ident1
+            assert rec_ident2 in self.rec_ident2
+            assert isinstance(weight_vec_dict[(rec_ident1,rec_ident2)], list)
+
+            assert len(weight_vec_dict[(rec_ident1,rec_ident2)]) == \
+                   len(rsarray_index.rec_comparator.field_comparison_list)
+
+          # All record pairs from the blocking index should be in the suffix
+          # array index as well (only when min_g_gram_len = 1)
+          #
+          if (min_q_gram_len == 1):
+
+            assert len(block_index_weight_vec_dict) <= len(weight_vec_dict), \
+                 ('Number of record pairs in blocking index: %d, and in ' % \
+                 (len(block_index_weight_vec_dict))+ \
+                 'robust  suffix array index: %d' % (len(weight_vec_dict)))
+
+            # Build suffix array weight vector dict with pair identifier sorted
+            #
+            for ((rec_ident1,rec_ident2),w_list) in weight_vec_dict.items():
+              if (rec_ident1 > rec_ident2):
+                del weight_vec_dict[(rec_ident1,rec_ident2)]
+                weight_vec_dict[(rec_ident2,rec_ident1)] = w_list
+
+            for (rec_ident1,rec_ident2) in block_index_weight_vec_dict:
+              assert (rec_ident1,rec_ident2) in weight_vec_dict, \
+                   'Record pair %s from blocking index not in suffix array' % \
+                   (str((rec_ident1,rec_ident2)))+' index'
+
+            for rec_ident_pair in prev_rec_dict.iterkeys():
+              assert rec_ident_pair in weight_vec_dict, \
+                 'Record pair %s not in weight vector dict with method: %s' % \
+                 (str(rec_ident_pair), (str(rsarray_index.block_method)))
+
+          prev_rec_dict = weight_vec_dict
+
+    # Suffix array index with min_q_gram_len 1 and max_block_size very large
+    # should contain all pairs that are in blocking index
+    #
+    rsarray_index = indexing.RobustSuffixArrayIndex(desc= \
+                                             'Test robust suffix array index',
+                                             dataset1 = self.dataset1,
+                                             dataset2 = self.dataset2,
+                                             rec_compar = self.rec_comp_link,
+                                             progress=2,
+                                             skip_m = False,
+                                             padd = False,
+                                             log_funct = print_log,
+                                             str_cmp_funct = str_cmp_funct,
+                                             str_cmp_thres = str_cmp_thres,
+                                             block_method = (1,999),
+                                             index_def = [index_def1,
+                                                          index_def2])
+    rsarray_index.build()
+    rsarray_index.compact()
+    [field_names_list, weight_vec_dict] = rsarray_index.run()
+
+    # Make sure record identifiers in each pair are sorted (smaller id first)
+    #
+    for ((rec_ident1,rec_ident2),w) in weight_vec_dict.items():
+      if (rec_ident1 > rec_ident2):
+        del weight_vec_dict[(rec_ident1,rec_ident2)]
+        weight_vec_dict[(rec_ident2,rec_ident1)] = w
+
+#    for (rec_ident1,rec_ident2) in weight_vec_dict.keys():
+#      assert (rec_ident1,rec_ident2) in block_index_weight_vec_dict, \
+#             'Not in blocking weight vectors: %s' % \
+#             (str((rec_ident1,rec_ident2)))
+
+    for (rec_ident1,rec_ident2) in block_index_weight_vec_dict.keys():
+      assert (rec_ident1,rec_ident2) in weight_vec_dict, \
+             'Not in robust suffix array weight vectors: %s' % \
+             (str((rec_ident1,rec_ident2)))
+
+    # Test length filter
+    #
+    [field_names_list, prev_w_vec_dict] = rsarray_index.run()
+
+    for lf in [99,50,30,20,15,10,5,1,0.5]:
+
+      [field_names_list, this_w_vec_dict] = \
+                                     rsarray_index.run(length_filter_perc = lf)
+
+      assert len(this_w_vec_dict) <= len(prev_w_vec_dict)
+
+      # Check that all weight vectors are also in previous weight vector dict
+      #
+      for rec_id_pair in this_w_vec_dict:
+        assert rec_id_pair in prev_w_vec_dict
+
+        assert this_w_vec_dict[rec_id_pair] == prev_w_vec_dict[rec_id_pair]
+
+      prev_w_vec_dict = this_w_vec_dict
+
+    # Test cut-off threshold
+    #
+    [field_names_list, prev_w_vec_dict] = rsarray_index.run()
+
+    for cot in [0.05, 0.1, 0.2, 0.5, 0.7, 0.8, 0.9]:
+
+      [field_names_list, this_w_vec_dict] = \
+                                     rsarray_index.run(cut_off_threshold = cot)
+
+      assert len(this_w_vec_dict) <= len(prev_w_vec_dict)
+
+      # Check that all weight vectors are also in previous weight vector dict
+      #
+      for rec_id_pair in this_w_vec_dict:
+        assert rec_id_pair in prev_w_vec_dict
+
+        assert this_w_vec_dict[rec_id_pair] == prev_w_vec_dict[rec_id_pair]
+
+      prev_w_vec_dict = this_w_vec_dict
+
+
+  def testRobustSuffixArrayIndexDedupl(self):  # - - - - - - - - - - - - - - - -
+    """Test RobustSuffixArrayIndex deduplication"""
+
+    return
+
+    index_def1 = [['surname','surname',False,False,None,[]]]
+    index_def2 = [['given_name','given_name',True,True,4,[]],
+                  ['postcode','postcode',True,False,2,[]]]
+
+    # Assume blocking index is OK, so get the record pairs from this index for
+    # comparison
+    #
+    block_index = indexing.BlockingIndex(description = 'Test blocking index',
+                                         dataset1 = self.dataset1,
+                                         dataset2 = self.dataset1,
+                                         rec_comparator = self.rec_comp_dedupl,
+                                         progress=4,
+                                         index_def = [index_def1,index_def2])
+    block_index.build()
+    block_index.compact()
+    [field_names_list, block_index_weight_vec_dict] = block_index.run()
+
+    # Make sure record identifiers in each pair are sorted (smaller id first)
+    #
+    for ((rec_ident1,rec_ident2),w) in block_index_weight_vec_dict.items():
+      if (rec_ident1 > rec_ident2):
+        del block_index_weight_vec_dict[(rec_ident1,rec_ident2)]
+        block_index_weight_vec_dict[(rec_ident2,rec_ident1)] = w
+
+    block_method_lists = [[(5,5,False),(4,5,False),(3,5,False),
+                           (2,5,False),(1,5,False)],
+                          [(5,5,True),(4,5,True),(3,5,True),
+                           (2,5,True),(1,5,True)],
+                          [(5,10,False),(4,10,False),(3,10,False),
+                           (2,10,False),(1,10,False)],
+                          [(5,10,True),(4,10,True),(3,10,True),
+                           (2,10,True),(1,10,True)]]
+
+    for block_method_list in block_method_lists:
+      for (min_q_gram_len, max_block_size, padded) in block_method_list:
+
+        for (str_cmp_funct, str_cmp_thres) in \
+            [(stringcmp.jaro,0.7), (stringcmp.jaro,0.8), (stringcmp.jaro,0.9),
+             (stringcmp.bigram,0.7),(stringcmp.bigram,0.8),
+             (stringcmp.bigram,0.9),
+             (stringcmp.lcs, 0.7), (stringcmp.lcs, 0.8), (stringcmp.lcs, 0.9)]:
+
+          prev_rec_dict = {}
+
+          rsarray_index = indexing.RobustSuffixArrayIndex(desc= \
+                                      'Test robust suffix-array index',
+                                               dataset1 = self.dataset1,
+                                               dataset2 = self.dataset1,
+                                               rec_comp = self.rec_comp_dedupl,
+                                               progress=4,
+                                               str_cmp_funct = str_cmp_funct,
+                                               str_cmp_thres = str_cmp_thres,
+                                               padd = padded,
+                                               skip_m = False,
+                                               block_method = (min_q_gram_len,
+                                                               max_block_size),
+                                               index_def = [index_def1,
+                                                            index_def2])
+
+          assert isinstance(rsarray_index.index1, dict)
+          assert isinstance(rsarray_index.index2, dict)
+          assert isinstance(rsarray_index.description, str)
+          assert isinstance(rsarray_index.rec_cache1, dict)
+          assert isinstance(rsarray_index.rec_cache2, dict)
+          assert rsarray_index.progress_report == 4
+          assert rsarray_index.skip_missing == False
+          assert rsarray_index.do_deduplication == True
+          assert len(rsarray_index.index_def) == 2
+          assert rsarray_index.padded == padded
+          assert isinstance(rsarray_index.str_cmp_thres, float)
+          assert rsarray_index.str_cmp_thres >= 0.0
+          assert rsarray_index.str_cmp_thres <= 1.0
+          assert rsarray_index.block_method == (min_q_gram_len, max_block_size)
+          assert rsarray_index.num_rec_pairs == None
+
+          assert rsarray_index.status == 'initialised'
+
+          rsarray_index.build()  # - - - - - - - - - - - - - - - - - - - - - -
+
+          assert rsarray_index.num_rec_pairs == None
+          assert isinstance(rsarray_index.index1, dict)
+          assert isinstance(rsarray_index.index2, dict)
+          assert isinstance(rsarray_index.description, str)
+          assert isinstance(rsarray_index.rec_cache1, dict)
+          assert isinstance(rsarray_index.rec_cache2, dict)
+          assert rsarray_index.progress_report == 4
+          assert rsarray_index.skip_missing == False
+          assert rsarray_index.do_deduplication == True
+          assert len(rsarray_index.index_def) == 2
+          assert rsarray_index.padded == padded
+          assert isinstance(rsarray_index.str_cmp_thres, float)
+          assert rsarray_index.str_cmp_thres >= 0.0
+          assert rsarray_index.str_cmp_thres <= 1.0
+          assert rsarray_index.block_method == (min_q_gram_len, max_block_size)
+
+          assert rsarray_index.status == 'built'
+
+          rsarray_index.compact()  # - - - - - - - - - - - - - - - - - - - - -
+
+          assert rsarray_index.num_rec_pairs > 0
+          assert rsarray_index.num_rec_pairs <= \
+                 len(self.rec_ident1)*len(self.rec_ident2)
+          assert isinstance(rsarray_index.index1, dict)
+          assert isinstance(rsarray_index.index2, dict)
+          assert isinstance(rsarray_index.description, str)
+          assert isinstance(rsarray_index.rec_cache1, dict)
+          assert isinstance(rsarray_index.rec_cache2, dict)
+          assert rsarray_index.progress_report == 4
+          assert rsarray_index.skip_missing == False
+          assert rsarray_index.do_deduplication == True
+          assert len(rsarray_index.index_def) == 2
+          assert isinstance(rsarray_index.str_cmp_thres, float)
+          assert rsarray_index.str_cmp_thres >= 0.0
+          assert rsarray_index.str_cmp_thres <= 1.0
+          assert rsarray_index.padded == padded
+          assert rsarray_index.block_method == (min_q_gram_len, max_block_size)
+
+          assert rsarray_index.status == 'compacted'
+
+          [field_names_list, weight_vec_dict] = rsarray_index.run()  # - - - - -
+
+          assert isinstance(weight_vec_dict, dict)
+          assert len(weight_vec_dict) == rsarray_index.num_rec_pairs
+          assert rsarray_index.num_rec_pairs > 0
+          assert rsarray_index.num_rec_pairs <= \
+                 len(self.rec_ident1)*len(self.rec_ident2)
+
+          for rec_ident1 in self.rec_ident1:
+            assert (rec_ident1, rec_ident1) not in weight_vec_dict, \
+                   (rec_ident1, rec_ident1)
+
+          for (rec_ident1,rec_ident2) in weight_vec_dict:
+            assert rec_ident1 in self.rec_ident1
+            assert rec_ident2 in self.rec_ident1
+            assert isinstance(weight_vec_dict[(rec_ident1,rec_ident2)], list)
+
+            assert len(weight_vec_dict[(rec_ident1,rec_ident2)]) == \
+                   len(rsarray_index.rec_comparator.field_comparison_list)
+
+          # All record pairs from the blocking index should be in the suffix
+          # array index as well (only when min_g_gram_len = 1)
+          #
+          if (min_q_gram_len == 1):
+
+            assert len(block_index_weight_vec_dict) <= len(weight_vec_dict), \
+                 ('Number of record pairs in blocking index: %d, and in ' % \
+                 (len(block_index_weight_vec_dict))+ \
+                 ' robust suffix array index: %d' % (len(weight_vec_dict)))
+
+            # Build suffix array weight vector dict with pair identifier sorted
+            #
+            for ((rec_ident1,rec_ident2),w_list) in weight_vec_dict.items():
+              if (rec_ident1 > rec_ident2):
+                del weight_vec_dict[(rec_ident1,rec_ident2)]
+                weight_vec_dict[(rec_ident2,rec_ident1)] = w_list
+
+            for (rec_ident1,rec_ident2) in block_index_weight_vec_dict:
+              assert (rec_ident1,rec_ident2) in weight_vec_dict, \
+                   'Record pair %s from blocking index not in suffix array ' \
+                    % (str((rec_ident1,rec_ident2)))+'index'
+
+            for rec_ident_pair in prev_rec_dict.iterkeys():
+              assert rec_ident_pair in weight_vec_dict, \
+                   'Record pair %s not in weight vector dict with method: %s' \
+                   % (str(rec_ident_pair), (str(rsarray_index.block_method)))
+
+          prev_rec_dict = weight_vec_dict
+
+    # Suffix array index with min_q_gram_len 1 and max_block_size very large
+    # should contain all pairs that are in blocking index
+    #
+    rsarray_index = indexing.RobustSuffixArrayIndex(desc= \
+                                             'Test robust suffix-array index',
+                                             dataset1 = self.dataset1,
+                                             dataset2 = self.dataset1,
+                                             rec_compar = self.rec_comp_dedupl,
+                                             progress=4,
+                                             str_cmp_funct = str_cmp_funct,
+                                             str_cmp_thres = str_cmp_thres,
+                                             log_funct = print_log,
+                                             skip_m = False,
+                                             padd = False,
+                                             block_method = (1,999),
+                                             index_def = [index_def1,
+                                                          index_def2])
+
+    rsarray_index.build()
+    rsarray_index.compact()
+    [field_names_list, weight_vec_dict] = rsarray_index.run()
+
+    # Make sure record identifiers in each pair are sorted (smaller id first)
+    #
+    for ((rec_ident1,rec_ident2),w) in weight_vec_dict.items():
+      if (rec_ident1 > rec_ident2):
+        del weight_vec_dict[(rec_ident1,rec_ident2)]
+        weight_vec_dict[(rec_ident2,rec_ident1)] = w
+
+#    for (rec_ident1,rec_ident2) in weight_vec_dict.keys():
+#      assert (rec_ident1,rec_ident2) in block_index_weight_vec_dict, \
+#             'Not in blocking weight vectors: %s' % \
+#             (str((rec_ident1,rec_ident2)))
+
+    for (rec_ident1,rec_ident2) in block_index_weight_vec_dict.keys():
+      assert (rec_ident1,rec_ident2) in weight_vec_dict, \
+             'Not in robust suffix array weight vectors: %s' % \
+             (str((rec_ident1,rec_ident2)))
+
+    # Test length filter
+    #
+    [field_names_list, prev_w_vec_dict] = rsarray_index.run()
+
+    for lf in [99,50,30,20,15,10,5,1,0.5]:
+
+      [field_names_list, this_w_vec_dict] = \
+                                      rsarray_index.run(length_filter_perc = lf)
+
+      assert len(this_w_vec_dict) <= len(prev_w_vec_dict)
+
+      # Check that all weight vectors are also in previous weight vector dict
+      #
+      for rec_id_pair in this_w_vec_dict:
+        assert rec_id_pair in prev_w_vec_dict
+
+        assert this_w_vec_dict[rec_id_pair] == prev_w_vec_dict[rec_id_pair]
+
+      prev_w_vec_dict = this_w_vec_dict
+
+    # Test cut-off threshold
+    #
+    [field_names_list, prev_w_vec_dict] = rsarray_index.run()
+
+    for cot in [0.05, 0.1, 0.2, 0.5, 0.7, 0.8, 0.9]:
+
+      [field_names_list, this_w_vec_dict] = \
+                                     rsarray_index.run(cut_off_threshold = cot)
+
+      assert len(this_w_vec_dict) <= len(prev_w_vec_dict)
+
+      # Check that all weight vectors are also in previous weight vector dict
+      #
+      for rec_id_pair in this_w_vec_dict:
+        assert rec_id_pair in prev_w_vec_dict
+
+        assert this_w_vec_dict[rec_id_pair] == prev_w_vec_dict[rec_id_pair]
+
+      prev_w_vec_dict = this_w_vec_dict
+
 
 # =============================================================================
 # Start tests when called from command line

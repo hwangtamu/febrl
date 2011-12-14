@@ -6,7 +6,7 @@
 # (the "License"); you may not use this file except in compliance with
 # the License. You may obtain a copy of the License at:
 # 
-#   http://datamining.anu.edu.au/linkage.html
+#   https://sourceforge.net/projects/febrl/
 # 
 # Software distributed under the License is distributed on an "AS IS"
 # basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See
@@ -16,10 +16,10 @@
 # The Original Software is: "classification.py"
 # 
 # The Initial Developer of the Original Software is:
-#   Dr Peter Christen (Department of Computer Science, Australian National
-#                      University)
+#   Dr Peter Christen (Research School of Computer Science, The Australian
+#                      National University)
 # 
-# Copyright (C) 2002 - 2008 the Australian National University and
+# Copyright (C) 2002 - 2011 the Australian National University and
 # others. All Rights Reserved.
 # 
 # Contributors:
@@ -37,7 +37,7 @@
 # the terms of any one of the ANUOS License or the GPL.
 # =============================================================================
 #
-# Freely extensible biomedical record linkage (Febrl) - Version 0.4.1
+# Freely extensible biomedical record linkage (Febrl) - Version 0.4.2
 #
 # See: http://datamining.anu.edu.au/linkage.html
 #
@@ -58,6 +58,9 @@
      FarthestFirst     Unsupervised farthest first clustering algorithm.
      SuppVecMachine    Supervised support vector machine (SVM) classifier.
      TwoStep           Unsupervised two-step classifier.
+     TAILOR            Unsupervised hybrid classifier as described in the paper
+                       TAILOR: A record linkage toolbox (Elfeky MG, Verykios
+                       VS, Elmagarmid AK, ICDE, San Jose, 2002.
 
 ##
 TODO: DecisionTree    Supervised decision tree induction based classifier.
@@ -69,7 +72,7 @@ TODO: DecisionTree    Supervised decision tree induction based classifier.
                  non-match set is given, the training method will be called).
    - train       Train the classifier using training data.
    - test        Testing the trained classifier using test data (with known
-                 match andnon-match status).
+                 match and non-match status).
    - classify    Use the trained classifier to classify weight vectors with
                  unknown match status.
 
@@ -109,22 +112,22 @@ import math
 import os
 import random
 
-try:
-  import Numeric
-  imp_numeric = True
-except:
-  imp_numeric = False
-
-if (imp_numeric == True):
-  try:
-    import PyML
-    import PyML.datafunc
-    import PyML.svm
-    imp_pyml = True
-  except:
-    imp_pyml = False
-else:
-  imp_pyml = False
+#try:
+#  import Numeric
+#  imp_numeric = True
+#except:
+#  imp_numeric = False
+#
+#if (imp_numeric == True):
+#  try:
+#    import PyML
+#    import PyML.datafunc
+#    import PyML.svm
+#    imp_pyml = True
+#  except:
+#    imp_pyml = False
+#else:
+#  imp_pyml = False
 
 try:
   import svm
@@ -132,8 +135,8 @@ try:
 except:
   imp_svm = False
 
-if (imp_pyml == False):
-  logging.warn('Cannot import Numeric and PyML modules')
+#if (imp_pyml == False):
+#  logging.warn('Cannot import Numeric and PyML modules')
 if (imp_svm == False):
   logging.warn('Cannot import svm module')
 
@@ -384,7 +387,7 @@ class FellegiSunter(Classifier):
        classified matches and non-matches, but not the possible matches.
 
        TODO:
-       - Is this correct, does this makes sense? Check!  #####################
+       - Is this correct, does this makes sense?
     """
 
     auxiliary.check_is_dictionary('w_vec_dict', w_vec_dict)
@@ -1088,6 +1091,8 @@ class KMeans(Classifier):
                        set.
   """
 
+  # ---------------------------------------------------------------------------
+
   def __init__(self, **kwargs):
     """Constructor. Process the K-means specific arguments first, then call the
        base class constructor.
@@ -1203,7 +1208,7 @@ class KMeans(Classifier):
     logging.info('  Number of weight vectors to be used for clustering: %d' % \
                  (len(use_w_vec_dict)))
 
-    zero_w_vec = [0.0]*v_dim  # Weight vector with al zeros
+    zero_w_vec = [0.0]*v_dim  # Weight vector with all zeros
 
     # Initialise the cluster centroid - - - - - - - - - - - - - - - - - - - - -
     #
@@ -1259,11 +1264,11 @@ class KMeans(Classifier):
       new_m_centroid =  [0.0]*v_dim  # Summed new distances
       new_nm_centroid = [0.0]*v_dim
 
-      avrg_m_dist =  0.0
-      avrg_nm_dist = 0.0
-
       # Step 1: Calculate cluster membership for each weight vector - - - - - -
       #
+      num_m =  0  # Number of weight vectors assigned to matches
+      num_nm = 0  # Number of weight vectors assigned to non-matches
+
       for (rec_id_tuple, w_vec) in use_w_vec_dict.iteritems():
 
         m_dist =  self.dist_measure(w_vec, m_centroid)
@@ -1274,30 +1279,21 @@ class KMeans(Classifier):
           if (old_assign != 'M'):
             num_changed += 1
           cluster_assign_dict[rec_id_tuple] = 'M'
-          avrg_m_dist += m_dist
+          num_m += 1
 
-          # Add to summed cluster distances
-          #
-          for i in range(v_dim):
+          for i in range(v_dim):  # Add to summed cluster distances
             new_m_centroid[i] += w_vec[i]
 
         else:  # Assign to cluster NM (non-matches)
-
           old_assign = cluster_assign_dict.get(rec_id_tuple, 'X')
           if (old_assign != 'NM'):
             num_changed += 1
           cluster_assign_dict[rec_id_tuple] = 'NM'
-          avrg_nm_dist += nm_dist
+          num_nm += 1
 
-          # Add to summed cluster distances
-          #
-          for i in range(v_dim):
+          for i in range(v_dim):  # Add to summed cluster distances
             new_nm_centroid[i] += w_vec[i]
 
-      # Step 2: Calculate new cluster centroids - - - - - - - - - - - - - - - -
-      #
-      num_m =  cluster_assign_dict.values().count('M')
-      num_nm = cluster_assign_dict.values().count('NM')
       num_all = len(cluster_assign_dict)
 
       if ((num_m + num_nm) != num_all):
@@ -1306,18 +1302,17 @@ class KMeans(Classifier):
         raise Exception
 
       if (num_m == 0) or (num_nm == 0):
-        logging.warn('One clusters is empty: matches=%d, non-matches=%d' % \
+        logging.warn('One cluster is empty: matches=%d, non-matches=%d' % \
                      (num_m, num_nm))
         break  # Stop K-means iterations
 
-      for i in range(v_dim):  # Divide new centroid sums by number of vectors
+      # Step 2: Calculate new cluster centroids - - - - - - - - - - - - - - - -
+      #
+      for i in range(v_dim):  # Normalise new centroids
         new_m_centroid[i] /=  float(num_m)
         new_nm_centroid[i] /= float(num_nm)
 
-      avrg_m_dist /=  float(num_m)
-      avrg_nm_dist /= float(num_nm)
-
-      m_centroid =  new_m_centroid
+      m_centroid =  new_m_centroid  # Assign new centroids
       nm_centroid = new_nm_centroid
 
       logging.info('Iteration %d: %d vectors changed cluster assignment' % \
@@ -1334,6 +1329,7 @@ class KMeans(Classifier):
                  (auxiliary.str_vector(m_centroid)))
     logging.info('  Non-match centroid: %s' % \
                  (auxiliary.str_vector(nm_centroid)))
+    logging.info('  Cluster sizes: M=%d, NM=%d' % (num_m, num_nm))
 
   # ---------------------------------------------------------------------------
 
@@ -1657,6 +1653,8 @@ class FarthestFirst(Classifier):
        fuzz_reg_thres  The fuzzy region threshold, see K-means classifier for
                        more detailed information
   """
+
+  # ---------------------------------------------------------------------------
 
   def __init__(self, **kwargs):
     """Constructor. Process the farthest first specific arguments first, then
@@ -2314,11 +2312,22 @@ class SuppVecMachine(Classifier):
     elif (self.kernel_type == 'SIGMOID'):
       svm_kernel = svm.SIGMOID
 
-    svm_param = svm.svm_parameter(svm_type = svm.C_SVC, C=self.C,
-                                  kernel_type=svm_kernel)
     svm_prob =  svm.svm_problem(train_labels, train_data)
 
-    self.svm_model = svm.svm_model(svm_prob, svm_param)
+    # Due to change in SVM parameter setting in svm module, we need to catch
+    # possible error
+    #
+    try:
+      svm_param = svm.svm_parameter(svm_type = svm.C_SVC, C=self.C,
+                                    kernel_type=svm_kernel)
+      self.svm_model = svm.svm_model(svm_prob, svm_param)
+      self.svm_version = 'old'
+
+    except:
+      svm_param = svm.svm_parameter('-s %d -c %f -t %d' % \
+                  (svm.C_SVC, self.C, svm_kernel))
+      self.svm_model = svm.libsvm.svm_train(svm_prob, svm_param)
+      self.svm_version = 'new'
 
     logging.info('Trained SVM with %d training examples' % \
                  (len(use_w_vec_dict)))
@@ -2340,6 +2349,8 @@ class SuppVecMachine(Classifier):
       logging.warn('SVM has not been trained, testing not possible')
       return [0,0,0,0]
 
+    svm_version = self.svm_version  # Shortcut
+
     auxiliary.check_is_dictionary('w_vec_dict', w_vec_dict)
     auxiliary.check_is_set('match_set', match_set)
     auxiliary.check_is_set('non_match_set', non_match_set)
@@ -2363,12 +2374,26 @@ class SuppVecMachine(Classifier):
     num_false_nm = 0
 
     for (rec_id_tuple, w_vec) in w_vec_dict.iteritems():
-      if (self.svm_model.predict(w_vec) == 1.0):  # Match prediction
+
+      if (svm_version == 'old'):
+        if (self.svm_model.predict(w_vec) == 1.0):  # Match prediction
+          pred_match = True
+        else:
+          pred_match = False
+
+      else:  # New SVM module version
+        x0, max_idx = svm.gen_svm_nodearray(w_vec)
+
+        if (svm.libsvm.svm_predict(self.svm_model, x0) == 1.0):  # Match
+          pred_match = True
+        else:
+          pred_match = False
+
+      if (pred_match == True):
         if (rec_id_tuple in match_set):
           num_true_m += 1
         else:
           num_false_m += 1
-
       else:  # Non-match prediction
         if (rec_id_tuple in non_match_set):
           num_true_nm += 1
@@ -2390,16 +2415,10 @@ class SuppVecMachine(Classifier):
 
        Will return a confusion matrix as a list of the form: [TP, FN, FP, TN].
 
-       The cross validation approach is being conducted in svmlib. The complete
-       weight vector dictionary and corresponding labels are given to the
-       svm.py cross validation procedure.
-
-       All weight vectors are then classified on the generated SVM model and
-       the resulting performance is returned.
-
-       Note that this method only provides performance measures, but no trained
-       SVM model that can be used for classifying weight vectors later on. The
-       train() method needs to be used to get a trained SVM.
+       The cross validation approach splits the weight vector dictionary into
+       'n' parts (and 'n' corresponding sub-set for matches and non-matches),
+       and then generates 'n' SVM classifications, tests them and finally
+       returns the average performance of these 'n' classifiers.
     """
 
     auxiliary.check_is_integer('n', n)
@@ -2421,62 +2440,119 @@ class SuppVecMachine(Classifier):
                         len(non_match_set), len(match_set)+len(non_match_set)))
       raise Exception
 
+    # Get a random vector dictionary element to get dimensionality of vectors
+    #
+    (rec_id_tuple, w_vec) = w_vec_dict.popitem()
+    v_dim = len(w_vec)
+    w_vec_dict[rec_id_tuple] = w_vec  # Put back in
+
     logging.info('')
-    logging.info('Conduct %d-fold cross validation on SVM classifier ' % (n) \
-                 + 'using %d weight vectors' % (len(w_vec_dict)))
+    logging.info('Conduct %d-fold cross validation on SVM classifier ' % \
+                 (n) + 'using %d weight vectors' % (len(w_vec_dict)))
     logging.info('  Match and non-match sets with %d and %d entries' % \
                  (len(match_set), len(non_match_set)))
+    logging.info('  Dimensionality:   %d' % (v_dim))
 
-    # Generate the training data and labels for the SVM - - - - - - - - - - - -
+    # Create the sub-sets of record identifier pairs for folds - - - - - - - -
     #
-    train_data =   []
-    train_labels = []
+    rec_id_tuple_list = w_vec_dict.keys()
+    random.shuffle(rec_id_tuple_list)
+    fold_num_rec_id_tuple = max(1,int(round(float(len(rec_id_tuple_list))/n)))
 
-    for (rec_id_tuple, w_vec) in w_vec_dict.iteritems():
-      train_data.append(w_vec)
-      if (rec_id_tuple in match_set):
-        train_labels.append(1.0)  # Match class
-      else:
-        train_labels.append(-1.0)  # Non-match class
-
-    # Initialise the SVM - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    # Split the weight vector dictionary and match and non-match sets into
+    # (lists containing one entry per fold) and only store test elements
     #
-    if (self.kernel_type == 'LINEAR'):
-      svm_kernel = svm.LINEAR
-    elif (self.kernel_type == 'POLY'):
-      svm_kernel = svm.POLY
-    elif (self.kernel_type == 'RBF'):
-      svm_kernel = svm.RBF
-    elif (self.kernel_type == 'SIGMOID'):
-      svm_kernel = svm.SIGMOID
+    w_vec_dict_test_list = []
+    m_set_test_list =      []
+    nm_set_test_list =     []
 
-    svm_param = svm.svm_parameter(svm_type = svm.C_SVC, C=self.C,
-                                       kernel_type=svm_kernel)
-    svm_prob =  svm.svm_problem(train_labels, train_data)
+    for fold in range(n):
+      w_vec_dict_test_list.append({})
+      m_set_test_list.append(set())
+      nm_set_test_list.append(set())
 
-    target_list = svm.cross_validation(svm_prob, svm_param, n)
+    for fold in range(n):
 
-    assert len(target_list) == len(w_vec_dict)
+      # Calculate start and end indices for test elements for this fold
+      #
+      if (fold == (n-1)):  # The last fold, get remainder of list
+        start = fold*fold_num_rec_id_tuple
+        this_fold_test_ids = rec_id_tuple_list[start:]
+      else:  # All other folds
+        start = fold*fold_num_rec_id_tuple
+        end = start+fold_num_rec_id_tuple
+        this_fold_test_ids = rec_id_tuple_list[start:end]
 
+      for rec_id_tuple in this_fold_test_ids:
+
+        w_vec_dict_test_list[fold][rec_id_tuple] = w_vec_dict[rec_id_tuple]
+
+        if (rec_id_tuple in match_set):
+          m_set_test_list[fold].add(rec_id_tuple)
+        else:
+          nm_set_test_list[fold].add(rec_id_tuple)
+
+      assert len(w_vec_dict_test_list[fold]) == len(this_fold_test_ids)
+      assert len(m_set_test_list[fold]) + len(nm_set_test_list[fold]) == \
+             len(this_fold_test_ids)
+
+    # Initialise the total classification results - - - - - - - - - - - - - - -
+    #
     num_true_m =   0
+    num_false_nm = 0
     num_false_m =  0
     num_true_nm =  0
-    num_false_nm = 0
 
-    for i in range(len(target_list)):
-      if (target_list[i] == 1.0):  # Match prediction
-        if (train_labels[i] == 1.0):  # True match
-          num_true_m += 1
-        else:
-          num_false_m += 1
+    # Loop over folds - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    # Generate training and test dictionaries and sets
+    #
+    for fold in range(n):  # First extract test record identifier pairs
 
-      else:  # Non-match prediction
-        if (train_labels[i] == -1.0):  # True non-match
-          num_true_nm += 1
-        else:
-          num_false_nm += 1
+      this_fold_test_m_set =       m_set_test_list[fold]
+      this_fold_test_nm_set =      nm_set_test_list[fold]
+      this_fold_test_w_vec_dict =  w_vec_dict_test_list[fold]
 
-    assert (num_true_m+num_false_nm+num_false_m+num_true_nm) == len(w_vec_dict)
+      this_fold_train_m_set =  match_set.difference(m_set_test_list[fold])
+      this_fold_train_nm_set = non_match_set.difference(nm_set_test_list[fold])
+      this_fold_train_w_vec_dict = {}
+      for f2 in range(n):
+        if (f2 != fold):
+          this_fold_train_w_vec_dict.update(w_vec_dict_test_list[f2])
+
+      assert len(this_fold_test_m_set) + len(this_fold_train_m_set) == \
+             len(match_set)
+      assert len(this_fold_test_nm_set) + len(this_fold_train_nm_set) == \
+             len(non_match_set)
+      assert len(this_fold_test_w_vec_dict) + \
+             len(this_fold_train_w_vec_dict) == len(w_vec_dict)
+
+      assert this_fold_test_m_set.intersection(this_fold_train_m_set) == set()
+      assert this_fold_test_m_set.intersection(this_fold_test_nm_set) == set()
+      assert this_fold_test_m_set.intersection(this_fold_train_nm_set) == set()
+      assert this_fold_test_nm_set.intersection(this_fold_train_m_set) ==set()
+      assert this_fold_test_nm_set.intersection(this_fold_train_nm_set) ==set()
+      assert this_fold_train_m_set.intersection(this_fold_train_nm_set) ==set()
+
+      # Train and test SVM classifier on this fold's data
+      #
+      self.train(this_fold_train_w_vec_dict, this_fold_train_m_set,
+                 this_fold_train_nm_set)
+
+      [this_num_true_m,this_num_false_nm,this_num_false_m,this_num_true_nm] = \
+                                           self.test(this_fold_test_w_vec_dict,
+                                                     this_fold_test_m_set,
+                                                     this_fold_test_nm_set)
+      num_true_m +=   this_num_true_m
+      num_false_nm += this_num_false_nm
+      num_false_m +=  this_num_false_m
+      num_true_nm +=  this_num_true_nm
+
+    # Calculate final cross validation results - - - - - - - - - - - - - - - -
+    #
+    num_true_m /=   float(n)
+    num_false_nm /= float(n)
+    num_false_m /=  float(n)
+    num_true_nm /=  float(n)
 
     logging.info('  Results: TP = %d, FN = %d, FP = %d, TN = %d' % \
                  (num_true_m,num_false_nm,num_false_m,num_true_nm))
@@ -2500,6 +2576,8 @@ class SuppVecMachine(Classifier):
       logging.warn('SVM has not been trained, classification not possible')
       return set(), set(), set()
 
+    svm_version = self.svm_version  # Shortcut
+
     auxiliary.check_is_dictionary('w_vec_dict', w_vec_dict)
 
     match_set =      set()
@@ -2507,10 +2585,20 @@ class SuppVecMachine(Classifier):
     poss_match_set = set()
 
     for (rec_id_tuple, w_vec) in w_vec_dict.iteritems():
-      if (self.svm_model.predict(w_vec) == 1.0):  # Match prediction
-        match_set.add(rec_id_tuple)
-      else:  # Non-match prediction
-        non_match_set.add(rec_id_tuple)
+
+      if (svm_version == 'old'):
+        if (self.svm_model.predict(w_vec) == 1.0):  # Match prediction
+          match_set.add(rec_id_tuple)
+        else:  # Non-match prediction
+          non_match_set.add(rec_id_tuple)
+
+      else:  # New SVM module version
+        x0, max_idx = svm.gen_svm_nodearray(w_vec)
+
+        if (svm.libsvm.svm_predict(self.svm_model, x0) == 1.0):  # Match
+          match_set.add(rec_id_tuple)
+        else:  # Non-match prediction
+          non_match_set.add(rec_id_tuple)
 
     assert (len(match_set) + len(non_match_set) + len(poss_match_set)) == \
             len(w_vec_dict)
@@ -2573,7 +2661,7 @@ class TwoStep(Classifier):
                             the percentage of so far not-assigned weight
                             vectors to be added to the non-match training
                             example set. The sum of these two percentage values
-                            can be maximun 80% (due to the random selection
+                            can be maximum 80% (due to the random selection
                             process). Possible random selection methods are:
                             - 'uniform'      Uniform random distribution.
                             - 'linear'       Linear random distribution.
@@ -2585,30 +2673,47 @@ class TwoStep(Classifier):
                             being the name of the classifier and the following
                             elements parameters for the classifier. Possible
                             are currently:
-                            - ('kmeans', dist_measure)
-                              A one iteration K-means clustering will be done
-                              on the match and non-match training example sets
-                              (i.e. two centroids will be calculated in the
-                              training process, to be used for testing and
+                            - ('kmeans', dist_measure, max_iter_count)
+                              A K-means clustering will be done on the match
+                              and non-match training example sets, i.e. two
+                              centroids will be calculated in the training
+                              process, to be used for testing and
                               classification later. The parameter dist_measure
                               has to be a function that calculates a distance
-                              measure between two vectors (see the Febrl
-                              mymath.py module for such functions).
-                            - ('kmeans-nn', dist_measure)
-                              This classifier combines k-means clustering with
-                              nearest-neighbour based classification by
-                              performing several iterations of a k-means
-                              centroid followed by a nearest-neighbour based
-                              classification of so far not classified weight
-                              weight vectors. The parameter dist_measure
-                              has to be a function that calculates a distance
-                              measure between two vectors (see the Febrl
-                              mymath.py module for such functions).
-                            - ('svm', kernel_type, C)
+                              between two vectors (see the Febrl mymath.py
+                              module for such functions). If the value of
+                              'max_iter_count' is set to 0, then the centroids
+                              will be calculated only using the training sets,
+                              but no iterations using all weight vectors will
+                              be done.
+                            - ('nn', dist_measure, k)
+                              This classifier uses a nearest neighbour approach
+                              (with k the number of nearest weight vectors to
+                              be considered, this has to be an odd positive
+                              integer number, e.g. 1,3,5 etc.) using the given
+                              distance measure (which has to be a function that
+                              calculates a distance between two vectors, please
+                              see the Febrl mymath.py module for such
+                              functions).
+                            - ('svm', kernel_type, C, increment, train_perc)
                               A SVM will be trained using the match and
                               non-match and non-match training example sets.
                               See the SuppVecMachine documentation for more
-                              information on the parameters.
+                              information on the parameters. 'increment' is a
+                              percentage number that will determine the
+                              incremental inclusion of additional training
+                              examples from the weight vectors not included in
+                              the training sets from step 1 for refinement of
+                              the training step (calculated as percentage of
+                              the number of weight vectors classified as
+                              matches or non-matches in an iteration). If
+                              'increment' is set to 0, no additional weight
+                              vectors will be included. The 'train_perc'
+                              argument then gives the total percentage of
+                              weight vectors to be included into the training
+                              sets. For example, if set to 100 then all weight
+                              vectors will be included into a training set,
+                              while if set to 50 only half will be included.
   """
 
   # ---------------------------------------------------------------------------
@@ -2659,14 +2764,13 @@ class TwoStep(Classifier):
 
       elif (keyword.startswith('s2_class')):
         auxiliary.check_is_tuple('s2_classifier', value)
-        if (len(value) < 2):
+        if (len(value) not in [3,5]):
           logging.exception('Value of "s2_classifier" is not a tuple with ' + \
-                              'at least two elements:: %s' % (str(value)))
+                              'three or five elements: %s' % (str(value)))
           raise Exception
-        if (value[0] not in ['kmeans', 'kmeans-nn', 'svm']):
+        if (value[0] not in ['kmeans', 'nn', 'svm']):
           logging.exception('Value of "s2_classifier[0]" is not one of ' + \
-                            '"kmeans", "kmeans-nn", or "svm": %s' % \
-                            (str(value[0])))
+                            '"kmeans", "nn", or "svm": %s' % (str(value[0])))
           raise Exception
         self.s2_classifier = value
 
@@ -2735,28 +2839,58 @@ class TwoStep(Classifier):
     # Make sure a classifier is defined correctly - - - - - - - - - - - - - - -
     #
     auxiliary.check_is_tuple('s2_classifier', self.s2_classifier)
-    if (self.s2_classifier[0] in ['kmeans', 'kmeans-nn']):
-      if (len(self.s2_classifier) != 2):
-        logging.exception('Step 2 classifers "kmeans" and "kmeans-nn" ' + \
-                          'reguires one parameter (distance measure): %s' % \
-                          (str(self.s2_classifier)))
-        raise exception
+
+    if (self.s2_classifier[0] == 'kmeans'):
+      if (len(self.s2_classifier) != 3):
+        logging.exception('Step 2 classifer "kmeans" reguires two ' + \
+                          'parameters (distance measure and maximum ' + \
+                          'iteration count): %s' % (str(self.s2_classifier)))
+        raise Exception
       auxiliary.check_is_function_or_method('dist_measure',
                                             self.s2_classifier[1])
+      auxiliary.check_is_integer('max_iter_count', self.s2_classifier[2])
+      auxiliary.check_is_not_negative('max_iter_count', self.s2_classifier[2])
 
-    if (self.s2_classifier[0] == 'svm'):
+    elif (self.s2_classifier[0] == 'nn'):
       if (len(self.s2_classifier) != 3):
-        logging.exception('Step 2 classifer "svm" reguires two parameters ' + \
-                          '(kernel type and C): %s' % \
-                          (str(self.s2_classifier)))
-        raise exception
+        logging.exception('Step 2 classifer "nn" reguires two parameters ' + \
+                          '(distance measure and number of nearest ' + \
+                          'neighbours, k): %s' % (str(self.s2_classifier)))
+        raise Exception
+      auxiliary.check_is_function_or_method('dist_measure',
+                                            self.s2_classifier[1])
+      auxiliary.check_is_integer('k', self.s2_classifier[2])
+      auxiliary.check_is_positive('k', self.s2_classifier[2])
+      if ((self.s2_classifier[2] % 2) == 0):  # An even number
+        logging.exception('Number of nearest neighbours "k" for step 2 ' + \
+                          'classifier "nn" has to be a positive odd integer')
+        raise Exception
+
+    elif (self.s2_classifier[0] == 'svm'):
+      if (len(self.s2_classifier) != 5):
+        logging.exception('Step 2 classifer "svm" reguires four parameters' + \
+                          ' (kernel type, C, increment, and training ' + \
+                          'percentage): %s' % (str(self.s2_classifier)))
+        raise Exception
       if (self.s2_classifier[1] not in ['LINEAR', 'POLY', 'RBF', 'SIGMOID']):
-          logging.exception('Illegal value for kernel type: %s ' % \
-                            (self.s2_classifier[1]) + \
-                            '(possible are: LINEAR, POLY, RBF, SIGMOID)')
-          raise Exception
+        logging.exception('Illegal value for kernel type: %s ' % \
+                          (self.s2_classifier[1]) + \
+                          '(possible are: LINEAR, POLY, RBF, SIGMOID)')
+        raise Exception
       auxiliary.check_is_number('C', self.s2_classifier[2])
       auxiliary.check_is_not_negative('C', self.s2_classifier[2])
+      auxiliary.check_is_integer('increment', self.s2_classifier[3])
+      auxiliary.check_is_not_negative('increment', self.s2_classifier[3])
+      auxiliary.check_is_integer('train_perc', self.s2_classifier[4])
+      auxiliary.check_is_not_negative('train_perc', self.s2_classifier[4])
+
+      if ((self.s2_classifier[3] > 0) and (self.s2_classifier[4] == 0)):
+        logging.exception('Two-step SVM increment larger than 0 but ' + \
+                          'training percentage set to 0 - not possible.')
+        raise Exception
+      if ((self.s2_classifier[3] == 0) and (self.s2_classifier[4] > 0)):
+        logging.warning('Two-step SVM increment set to 0 but training ' + \
+                        'percentage set to larger than zero - Not used.')
 
     # Check if step 2 classifier is SVM and svm.py module is installed or not
     #
@@ -2849,7 +2983,8 @@ class TwoStep(Classifier):
       else:
         vec_sum = 0.0
         for w in w_vec:
-          vec_sum += abs(w-m_val)
+#          vec_sum += abs(w-m_val)         # Manhatten distance
+          vec_sum += (w-m_val)*(w-m_val)  # Euclidean distance
         heapq.heappush(m_heap, (vec_sum, rec_id_tuple))
 
       # Check if this weight vector is a good non-match example - - - - - - - -
@@ -2866,7 +3001,8 @@ class TwoStep(Classifier):
       else:
         vec_sum = 0.0
         for w in w_vec:
-          vec_sum += abs(w-nm_val)
+#          vec_sum += abs(w-nm_val)          # Manhatten distance
+          vec_sum += (w-nm_val)*(w-nm_val)  # Euclidean distance
         heapq.heappush(nm_heap, (vec_sum, rec_id_tuple))
 
     # Nothing further to process for threshold methods
@@ -3091,10 +3227,16 @@ class TwoStep(Classifier):
       if (self.s2_classifier[0] == 'svm'):  # Cannot train SVM classifier
         self.svm_model = None
       elif (self.s2_classifier[0] == 'kmeans'):
-       self.m_centroid = None
-       self.nm_centroid = None
+        self.m_centroid = None
+        self.nm_centroid = None
+      elif (self.s2_classifier[0] == 'nn'):
+        self.nn_m_train_w_vec_set =  None
+        self.nn_nm_train_w_vec_set = None
 
       return  # Return without model training
+
+    self.m_train_set =  m_train_set  # Save for later
+    self.nm_train_set = nm_train_set
 
     # End of step one, now classify training example sets - - - - - - - - - - -
     #
@@ -3102,7 +3244,8 @@ class TwoStep(Classifier):
                  (str(self.s2_classifier)) + 'with %d match and %d non-match' \
                  % (len(m_train_set), len(nm_train_set)) +' training examples')
 
-    if (self.s2_classifier[0] == 'svm'):
+    if (self.s2_classifier[0] == 'svm'):  # - - - - - - - - - - - - - - - - - -
+
       svm_type =   svm.C_SVC
       if (self.s2_classifier[1] == 'LINEAR'):
         svm_kernel = svm.LINEAR
@@ -3112,9 +3255,11 @@ class TwoStep(Classifier):
         svm_kernel = svm.RBF
       elif (self.s2_classifier[1] == 'SIGMOID'):
         svm_kernel = svm.SIGMOID
-      C = self.s2_classifier[2]
+      C =          self.s2_classifier[2]
+      increment =  self.s2_classifier[3]
+      train_perc = self.s2_classifier[4]
 
-      train_data =   []
+      train_data =   []  # Generate training data
       train_labels = []
 
       for rec_id_tuple in m_train_set:
@@ -3126,18 +3271,174 @@ class TwoStep(Classifier):
 
       # Initialise and train the SVM - - - - - - - - - - - - - - - - - - - - -
       #
-      svm_param = svm.svm_parameter(svm_type = svm.C_SVC, C=C,
-                                    kernel_type=svm_kernel)
       svm_prob =  svm.svm_problem(train_labels, train_data)
 
-      self.svm_model = svm.svm_model(svm_prob, svm_param)
+      # Due to change in SVM parameter setting in svm module, we need to catch
+      # possible error
+      #
+      try:
+        svm_param = svm.svm_parameter(svm_type = svm.C_SVC, C=C,
+                                      kernel_type=svm_kernel)
+        self.svm_model = svm.svm_model(svm_prob, svm_param)
+        self.svm_version = 'old'
+
+      except:
+        svm_param = svm.svm_parameter('-s %d -c %f -t %d' % \
+                    (svm_type, C, svm_kernel))
+        self.svm_model = svm.libsvm.svm_train(svm_prob, svm_param)
+        self.svm_version = 'new'
+
+      # Iterative refinement by inclusion of additional weight vectors
+      #
+      if (increment > 0):
+
+        #print '-------------------------------------------------'
+        #print 'Initial training sets size:',len(m_train_set),len(nm_train_set)
+
+        # Total number of weight vectors to add to both training sets
+        #
+        total_train_num_w_vec = int(len(w_vec_dict) * train_perc / 100.0)
+
+        # Make a dictionary of weight vectors not yet in training data
+        #
+        un_used_w_vec_dict = {}
+
+        for (rec_id_tuple, w_vec) in w_vec_dict.iteritems():
+          if ((rec_id_tuple not in m_train_set) and \
+              (rec_id_tuple not in nm_train_set)):
+            un_used_w_vec_dict[rec_id_tuple] = w_vec
+
+        assert len(train_data) == len(m_train_set)+len(nm_train_set), \
+               (len(train_data), len(m_train_set)+len(nm_train_set))
+        assert len(w_vec_dict) == len(un_used_w_vec_dict)+len(train_data), \
+               (len(w_vec_dict), len(un_used_w_vec_dict)+len(train_data))
+
+        # Loop until enough weight vectors in training data
+        #
+        while (len(train_data) < total_train_num_w_vec):
+
+          # Two lists with the classified weight vectors not yet in the
+          # training sets
+          #
+          new_m_class_set_list =  []
+          new_nm_class_set_list = []
+
+          # Classify so far un-used weight vectors
+          #
+          for (rec_id_tuple, w_vec) in un_used_w_vec_dict.iteritems():
+
+            if (self.svm_version == 'old'):
+              c1 = self.svm_model.predict(w_vec)
+              c2 = self.svm_model.predict_values(w_vec)
+
+              if (c1 == 1.0):  # Classified as match
+                new_m_class_set_list.append((c2[(1, -1)], rec_id_tuple))
+              else:  # A non-match
+                new_nm_class_set_list.append((c2[(-1, 1)], rec_id_tuple))
+
+            else:  # new svm module version
+              x0, max_idx = svm.gen_svm_nodearray(w_vec)
+              c1 = svm.libsvm.svm_predict(self.svm_model, x0)
+              # From: http://code.google.com/p/search/source/browse/...
+              #       trunk/libsvm-2.91/python/svmutil.py?r=5
+              nr_class = 2 #svm.toPyModel(self.svm_model).get_nr_class()
+              nr_classifier = nr_class*(nr_class-1)//2
+              dec_values = (svm.c_double * nr_classifier)()
+              c2 = svm.libsvm.svm_predict_values(self.svm_model, x0, dec_values)
+              assert c1==c2
+              values = dec_values[:nr_classifier]
+
+              if (c1 == 1.0):  # Classified as match
+                new_m_class_set_list.append((values[0], rec_id_tuple))
+              else:  # A non-match
+                new_nm_class_set_list.append((values[0], rec_id_tuple))
+
+          # If any of the two lists are empty (i.e. all weight vectors were
+          # either classified as matches or non-matches) then exit the loop
+          #
+          if ((new_m_class_set_list == []) or (new_nm_class_set_list == [])):
+            logging.warn('Two-step SVM classifier: One of the training ' + \
+                         'sets is empty! Abort iterative refinement.')
+            break  # Abort and keep previous model  ### CHECk IF THIS IS OK??
+
+          # Sort so largest probability values from SCM predict_values first
+          #
+          new_m_class_set_list.sort(reverse=True)
+          new_nm_class_set_list.sort(reverse=True)
+
+          #print 'New classified set sizes: matches=%d, non-matches=%d' % \
+          #      (len(new_m_class_set_list), len(new_nm_class_set_list))
+
+          #print
+          #print 'Best match training examples:'
+          #for i in range(min(10, len(new_m_class_set_list))):
+          #  print ' ', new_m_class_set_list[i][0], \
+          #        sum(w_vec_dict[new_m_class_set_list[i][1]]), \
+          #        w_vec_dict[new_m_class_set_list[i][1]]
+          #print
+          #print 'Best non-match training examples:'
+          #for i in range(min(10, len(new_nm_class_set_list))):
+          #  print ' ', new_nm_class_set_list[i][0], \
+          #        sum(w_vec_dict[new_nm_class_set_list[i][1]]), \
+          #        w_vec_dict[new_nm_class_set_list[i][1]]
+          #print
+
+          # Calculate the number of new weight vectors to add to training sets
+          #
+          add_num_m =  max(1, int(len(new_m_class_set_list)*increment / 100.0))
+          add_num_nm = max(1, int(len(new_nm_class_set_list)*increment /100.0))
+
+          #print 'Add number of weight vectors: %d / %d' % \
+          #      (add_num_m, add_num_nm)
+
+          for i in range(add_num_m):  # Add new match training records
+            rec_id_tuple = new_m_class_set_list[i][1]
+            m_train_set.add(rec_id_tuple)
+            train_data.append(w_vec_dict[rec_id_tuple])
+            train_labels.append(1.0)
+            del un_used_w_vec_dict[rec_id_tuple]  # It is used in training now
+
+          for i in range(add_num_nm):  # Add new non-match training records
+            rec_id_tuple = new_nm_class_set_list[i][1]
+            nm_train_set.add(rec_id_tuple)
+            train_data.append(w_vec_dict[rec_id_tuple])
+            train_labels.append(-1.0)
+            del un_used_w_vec_dict[rec_id_tuple]  # It is used in training now
+
+          print 'Size of new training sets:',len(m_train_set),len(nm_train_set)
+
+          assert len(train_data) == len(m_train_set)+len(nm_train_set), \
+                 (len(train_data), len(m_train_set)+len(nm_train_set))
+          assert len(w_vec_dict) == len(un_used_w_vec_dict)+len(train_data), \
+                 (len(w_vec_dict), len(un_used_w_vec_dict)+len(train_data))
+
+          self.m_train_set =  m_train_set  # Save for later use
+          self.nm_train_set = nm_train_set
+
+          # Re-train SVM classifier
+          #
+          svm_prob = svm.svm_problem(train_labels, train_data)
+          if (self.svm_version == 'old'):
+            self.svm_model = svm.svm_model(svm_prob, svm_param)
+          else:
+            self.svm_model = svm.libsvm.svm_train(svm_prob, svm_param)
+
+        print 'Final training sets size:',len(m_train_set),len(nm_train_set)
+        print (len(m_train_set)+len(nm_train_set)) / float(len(w_vec_dict))
+        print '  increment:', increment, 'train_perc', train_perc
+        print
 
       logging.info('Trained SVM with %d training examples' % (len(train_data)))
 
-    # One step of k-means clustering - - - - - - - - - - - - - - - - - - - - - -
+    # K-means clustering - - - - - - - - - - - - - - - - - - - - - - - - - - -
     #
     elif (self.s2_classifier[0] == 'kmeans'):
 
+      max_iter_count = self.s2_classifier[2]
+      dist_meas =      self.s2_classifier[1]
+
+      # Initialise centroids as center of training example sets from step 1
+      #
       m_centroid =  [0.0]*v_dim
       nm_centroid = [0.0]*v_dim
 
@@ -3159,26 +3460,336 @@ class TwoStep(Classifier):
         if (num_m > 0):
           m_centroid[i] /=  float(num_m)
         else:
-          m_centroid[i] = 99999.99  # Move it far away
+          m_centroid[i] = 1.0  # Set to exact match value
+
         if (num_nm > 0):
           nm_centroid[i] /= float(num_nm)
         else:
-          nm_centroid[i] = -99999.99  # Move it far away
+          nm_centroid[i] = 0.0  # Set to total dissimilarity value
+
+      # If max_iter_count > 0 start normal k-means iterations - - - - - - - - -
+      #
+      if (max_iter_count > 0):
+
+        cluster_assign_dict = {}  # Dictionary with cluster assignments
+
+        iter_cnt =    1  # Iteration counter
+        num_changed = 1
+
+        while (num_changed > 0) and (iter_cnt < max_iter_count):
+
+          num_changed =     0
+          new_m_centroid =  [0.0]*v_dim  # Summed new distances
+          new_nm_centroid = [0.0]*v_dim
+
+          # Step 1: Calculate cluster membership for all weight vectors (not
+          #         just the ones in the training example sets
+          #
+          num_m =  0  # Number of weight vectors assigned to matches
+          num_nm = 0  # Number of weight vectors assigned to non-matches
+
+          for (rec_id_tuple, w_vec) in w_vec_dict.iteritems():
+
+            m_dist =  dist_meas(w_vec, m_centroid)
+            nm_dist = dist_meas(w_vec, nm_centroid)
+
+            if (m_dist < nm_dist):  # Assign to cluster M (matches)
+              old_assign = cluster_assign_dict.get(rec_id_tuple, 'X')
+              if (old_assign != 'M'):
+                num_changed += 1
+              cluster_assign_dict[rec_id_tuple] = 'M'
+              num_m += 1
+
+              for i in range(v_dim):  # Add to summed cluster distances
+                new_m_centroid[i] += w_vec[i]
+
+            else:  # Assign to cluster NM (non-matches)
+              old_assign = cluster_assign_dict.get(rec_id_tuple, 'X')
+              if (old_assign != 'NM'):
+                num_changed += 1
+              cluster_assign_dict[rec_id_tuple] = 'NM'
+              num_nm += 1
+
+              for i in range(v_dim):  # Add to summed cluster distances
+                new_nm_centroid[i] += w_vec[i]
+
+          num_all = len(cluster_assign_dict)
+
+          if ((num_m + num_nm) != num_all):
+            logging.exception('Not all %d weight vectors were assigned: ' % \
+                              (num_all) + 'M=%d, U=%d' % (num_m, num_nm))
+            raise Exception
+
+          if (num_m == 0) or (num_nm == 0):
+            logging.warn('One cluster is empty: ' + \
+                         'matches=%d, non-matches=%d' % (num_m, num_nm))
+            break  # Stop K-means iterations
+
+          # Step 2: Calculate new cluster centroids
+          #
+          for i in range(v_dim):  # Normalise new centroids
+            new_m_centroid[i] /=  float(num_m)
+            new_nm_centroid[i] /= float(num_nm)
+
+          m_centroid =  new_m_centroid  # Assign new centroids
+          nm_centroid = new_nm_centroid
+
+          logging.info('Iteration %d: %d vectors changed cluster ' % \
+                       (iter_cnt, num_changed) + 'assignment')
+
+          iter_cnt += 1
 
       self.m_centroid =  m_centroid  # Save for later use
       self.nm_centroid = nm_centroid
 
-      logging.info('Non-match centroid: %s' % \
+      logging.info('Initial non-match centroid: %s' % \
                    (auxiliary.str_vector(nm_centroid)))
-      logging.info('Match centroid:     %s' % \
+      logging.info('Initials match centroid:     %s' % \
                    (auxiliary.str_vector(m_centroid)))
 
-    # Combined k-means clustering with nearest-neighbours - - - - - - - - - - -
+    # Nearest neighbour based classification - - - - - - - - - - - - - - - - -
     #
-    elif (self.s2_classifier[0] == 'kmeans-nn'):
+    elif (self.s2_classifier[0] == 'nn'):
 
-      pass
-###### TODO PC 15/11/2007
+      dist_meas = self.s2_classifier[1]
+      k =         self.s2_classifier[2]
+
+      k1 = k+1  # Number of nearest weight vectors to store in nearest lists
+
+      # Two dictionaries with the match and non-match training examples (weight
+      # vectors as tuples), values will be lists with their nearest not yet
+      # classified weight vectors
+      #
+      nn_m_train_w_vec_dict =  {}
+      nn_nm_train_w_vec_dict = {}
+
+      # First insert all step 1 training weight vectors into match and
+      # non-match nearest neighbour training stes
+      #
+      for rec_id_tuple in m_train_set:
+        m_w_vec = tuple(w_vec_dict[rec_id_tuple])
+        nn_m_train_w_vec_dict[m_w_vec] = []
+
+      for rec_id_tuple in nm_train_set:
+        nm_w_vec = tuple(w_vec_dict[rec_id_tuple])
+        nn_nm_train_w_vec_dict[nm_w_vec] = []
+
+      # A dictionary which will contain the weight vectors not in the training
+      # sets and information about their closest k training weight vectors
+      # (distance and if a match ('M') or non-match ('NM'), and the training
+      # vector itself)
+      #
+      nn_to_classify_w_vec_dict = {}
+
+      # Generate a heap with all weight vectors so far not classified
+      # according to their smallest distances to either a match or a non-match
+      # training example (for each keep distance, weight vector and either 'M'
+      # or 'NM')
+      #
+      nearest_w_vec_heap = []
+
+      # Step 1: For each (unique) non-training weight vector find its closest k
+      # weight vectors from the training sets
+      #
+      for (rec_id_tuple, w_vec) in w_vec_dict.iteritems():
+
+        if ((rec_id_tuple not in m_train_set) and \
+            (rec_id_tuple not in nm_train_set)):
+
+          this_w_vec = tuple(w_vec)  # Tuple can be used as dictionary key
+
+          # Check if this specific weight vector has not yet been processed
+          # (i.e. duplicate vectors with same weights) or if it is in the
+          # match or non-match training sets
+          #
+          if ((this_w_vec not in nn_to_classify_w_vec_dict) and \
+              (this_w_vec not in nn_m_train_w_vec_dict) and \
+              (this_w_vec not in nn_nm_train_w_vec_dict)):
+            nearest_list = []  # List of k nearest weight vectors
+            largest_dist = 9999999.999
+
+            # Check its distance to weight vectors in the match training set
+            #
+            for m_w_vec in nn_m_train_w_vec_dict:
+              m_dist = dist_meas(this_w_vec, m_w_vec)
+
+              # Insert into nearest list for this weight vector
+              #
+              if (m_dist < largest_dist):
+                nearest_list.append((m_dist, 'M', m_w_vec))
+                nearest_list.sort()  # Smallest distances first
+                nearest_list = nearest_list[:k1]  # Only keep k+1 nearest elem.
+                largest_dist = nearest_list[-1][0]
+
+              # Insert weight vector into nearest list for M weight vector
+              #
+              m_nearest_list = nn_m_train_w_vec_dict[m_w_vec]
+              if (m_nearest_list == []):
+                nn_m_train_w_vec_dict[m_w_vec] = [(m_dist, this_w_vec)]
+              elif (m_dist < m_nearest_list[-1][0]):
+                m_nearest_list.append((m_dist, this_w_vec))
+                m_nearest_list.sort()  # Smallest distances first
+                nn_m_train_w_vec_dict[m_w_vec] = m_nearest_list[:k1]
+
+            for nm_w_vec in nn_nm_train_w_vec_dict:
+              nm_dist = dist_meas(this_w_vec, nm_w_vec)
+
+              # Insert into nearest list for this weight vector
+              #
+              if (nm_dist < largest_dist):
+                nearest_list.append((nm_dist, 'NM', nm_w_vec))
+                nearest_list.sort()  # Smallest distances first
+                nearest_list = nearest_list[:k1]  # Only keep k+1 nearest elem.
+                largest_dist = nearest_list[-1][0]
+
+              # Insert weight vector into nearest list for NM weight vector
+              #
+              nm_nearest_list = nn_nm_train_w_vec_dict[nm_w_vec]
+              if (nm_nearest_list == []):
+                nn_nm_train_w_vec_dict[nm_w_vec] = [(nm_dist, this_w_vec)]
+              elif (nm_dist < nm_nearest_list[-1][0]):
+                nm_nearest_list.append((nm_dist, this_w_vec))
+                nm_nearest_list.sort()  # Smallest distances first
+                nn_nm_train_w_vec_dict[nm_w_vec] = nm_nearest_list[:k1]
+
+            # Now calculate sum of k nearest distances and insert into heap
+            #
+            dist_sum = 0.0
+            for (dist_val, match_type, train_w_vec) in nearest_list[:k]:
+              dist_sum += dist_val
+
+            heapq.heappush(nearest_w_vec_heap, (dist_sum, this_w_vec))
+
+            # Insert into dictionary of weight vectors to be classified
+            #
+            nn_to_classify_w_vec_dict[this_w_vec] = (nearest_list, dist_sum)
+
+      assert len(nearest_w_vec_heap) == len(nn_to_classify_w_vec_dict), \
+             (len(nearest_w_vec_heap), len(nn_to_classify_w_vec_dict))
+
+      # Step 2: Insert element on top of heap (the overall nearest to either
+      # training set) into one of the training sets and remove from dictionary
+      # of weight vectors to be classified. Then re-calculate the distances to
+      # its nesrest neighbours yet to be classified
+      #
+      while (nn_to_classify_w_vec_dict != {}):
+
+        nearest_w_vec_info = heapq.heappop(nearest_w_vec_heap)
+        nearest_w_vec =      nearest_w_vec_info[1]
+
+        while (nearest_w_vec not in nn_to_classify_w_vec_dict):
+          nearest_w_vec_info = heapq.heappop(nearest_w_vec_heap)
+          nearest_w_vec =      nearest_w_vec_info[1]
+
+        nearest_list = nn_to_classify_w_vec_dict[nearest_w_vec][0]
+
+        # Remove from dictionary of weight vectors to classify
+        #
+        del nn_to_classify_w_vec_dict[nearest_w_vec]
+
+        # Determine if this nearest is going to be inserted into the match or
+        # non-match training set
+        #
+        num_m, num_nm = 0,0
+        for (dist_val, match_type, train_w_vec) in nearest_list[:k]:
+          if (match_type == 'M'):
+            num_m += 1
+          else:
+            num_nm += 1
+
+        if (num_m > num_nm):
+          nearest_w_vec_type = 'M'
+        else:
+          nearest_w_vec_type = 'NM'
+
+        # If there are more weight vectors to classify, update their nearest
+        # lists
+        #
+        if (nn_to_classify_w_vec_dict != {}):
+
+          # Get weight vectors from so far unclassified weight vectors via the
+          # nearest lists of the weight vectors from the training sets that are
+          # nearest to this weight vector
+          #
+          nearest_w_vec_set = set()  # Only add unique weight vectors
+
+          for (dist_val, match_type, train_w_vec) in nearest_list:
+
+            if (match_type == 'M'):  # Get nearest to match training example
+              train_nearest_list = nn_m_train_w_vec_dict[train_w_vec]
+
+            else:  # Nearest to non-match training example
+              train_nearest_list = nn_nm_train_w_vec_dict[train_w_vec]
+
+            for (dist, w_vec) in train_nearest_list:
+              if (w_vec in nn_to_classify_w_vec_dict):  # Still to classify
+                nearest_w_vec_set.add(w_vec)
+
+                assert w_vec not in nn_m_train_w_vec_dict
+                assert w_vec not in nn_nm_train_w_vec_dict
+
+          # Generate the nearest list of the new training example
+          #
+          new_train_w_vec_nearest_list = []
+
+          # For all selected so far not classified weight vector update their
+          # nearest lists as well as the nearest lists of their corresponding
+          # nearest weight vectors from the training sets
+          #
+          for this_w_vec in nearest_w_vec_set:
+
+            this_nearest_list = nn_to_classify_w_vec_dict[this_w_vec][0]
+            this_dist_sum =     nn_to_classify_w_vec_dict[this_w_vec][1]
+            largest_dist =      this_nearest_list[-1][0]
+
+            # Claculate distance to the new training weight vector
+            #
+            new_dist = dist_meas(nearest_w_vec, this_w_vec)
+
+            if (new_dist < largest_dist):
+              this_nearest_list.append((new_dist, nearest_w_vec_type,
+                                        nearest_w_vec))
+              this_nearest_list.sort()  # Smallest distances first
+              this_nearest_list = this_nearest_list[:k1]
+
+            # Insert into either the nearest list of the new training example
+            #
+            if (new_train_w_vec_nearest_list == []):
+              new_train_w_vec_nearest_list.append((new_dist, this_w_vec))
+            elif (new_dist < new_train_w_vec_nearest_list[-1][0]):
+              new_train_w_vec_nearest_list.append((new_dist, this_w_vec))
+              new_train_w_vec_nearest_list.sort()  # Smallest distances first
+              new_train_w_vec_nearest_list = \
+                   new_train_w_vec_nearest_list[:k1]
+
+            # Calculate new distance sum, and if smaller insert into heap
+            #
+            dist_sum = 0.0
+            for (dist_val, match_type, train_w_vec) in this_nearest_list[:k]:
+              dist_sum += dist_val
+
+            if (dist_sum < this_dist_sum):
+              heapq.heappush(nearest_w_vec_heap, (dist_sum, this_w_vec))
+
+            # Update in dictionary of weight vectors to be classified
+            #
+            nn_to_classify_w_vec_dict[this_w_vec] = (this_nearest_list,
+                                                     dist_sum)
+
+        else:  # Last step, no more weight vectors to be classified
+          new_train_w_vec_nearest_list = []  # Not needed anymore
+
+        # Finally insert the new training example into appropriate training set
+        #
+        if (nearest_w_vec_type == 'M'):
+          nn_m_train_w_vec_dict[nearest_w_vec] = new_train_w_vec_nearest_list
+        else:
+          nn_nm_train_w_vec_dict[nearest_w_vec] = new_train_w_vec_nearest_list
+
+      # Save final training sets for later use
+      #
+      self.nn_m_train_w_vec_set =  set(nn_m_train_w_vec_dict.keys())
+      self.nn_nm_train_w_vec_set = set(nn_nm_train_w_vec_dict.keys())
 
     else:
       logging.exception('Illegal step classifier method: %s' % \
@@ -3233,7 +3844,22 @@ class TwoStep(Classifier):
         return [0,0,0,0]
 
       for (rec_id_tuple, w_vec) in w_vec_dict.iteritems():
-        if (self.svm_model.predict(w_vec) == 1.0):  # Match prediction
+
+        if (self.svm_version == 'old'):
+          if (self.svm_model.predict(w_vec) == 1.0):  # Match prediction
+            pred_match = True
+          else:
+            pred_match = False
+# PC
+        else:  # New SVM module version
+          x0, max_idx = svm.gen_svm_nodearray(w_vec)
+
+          if (svm.libsvm.svm_predict(self.svm_model, x0) == 1.0):  # Match
+            pred_match = True
+          else:
+            pred_match = False
+
+        if (pred_match == True):
           if (rec_id_tuple in match_set):
             num_true_m += 1
           else:
@@ -3268,6 +3894,79 @@ class TwoStep(Classifier):
             num_true_nm += 1
           else:
             num_false_nm += 1
+
+    elif (self.s2_classifier[0] == 'nn'):  # Nearest neighbour classifier - - -
+
+      nn_m_train_w_vec_set =  self.nn_m_train_w_vec_set
+      nn_nm_train_w_vec_set = self.nn_nm_train_w_vec_set
+
+      if ((nn_m_train_w_vec_set == None) or (nn_nm_train_w_vec_set == None)):
+        logging.warn('Nearest neighbour classifier has not been trained, ' + \
+                     'testing not possible')
+        return [0,0,0,0]
+
+      dist_meas = self.s2_classifier[1]
+      k =         self.s2_classifier[2]
+
+      for (rec_id_tuple, w_vec) in w_vec_dict.iteritems():
+
+        this_w_vec = tuple(w_vec)  # Tuple can be used as dictionary key
+
+        # Check if this weight vector is in one of the training sets
+        #
+        if (this_w_vec in nn_m_train_w_vec_set):
+          if (rec_id_tuple in match_set):
+            num_true_m += 1
+          else:
+            num_false_m += 1
+
+        elif (this_w_vec in nn_nm_train_w_vec_set):
+          if (rec_id_tuple in non_match_set):
+            num_true_nm += 1
+          else:
+            num_false_nm += 1
+
+        else:  # Have to find its k nearest neighbours from training sets
+
+          nearest_list = [(9999999, '')]  # List of k nearest weight vectors
+
+          for m_w_vec in nn_m_train_w_vec_set:
+            m_dist = dist_meas(this_w_vec, m_w_vec)
+            nearest_list.append((m_dist,'M'))
+            nearest_list.sort()  # Smallest distances first
+            nearest_list = nearest_list[:k]  # Only keep k nearest elements
+
+          for nm_w_vec in nn_nm_train_w_vec_set:
+            nm_dist = dist_meas(this_w_vec, nm_w_vec)
+            nearest_list.append((nm_dist,'NM'))
+            nearest_list.sort()  # Smallest distances first
+            nearest_list = nearest_list[:k]  # Only keep k nearest elements
+
+          # Now determine if this the the overall new nearest weight vector to
+          # either match or non-match training examples
+          #
+          dist_sum = 0.0  # Sum of its k distances
+          num_m =    0    # Number o matches in k nearest
+          num_nm =   0    # Number of non-matches in k nearest
+
+          for (dist_val, set_val) in nearest_list:
+            dist_sum += dist_val
+            if (set_val == 'M'):
+              num_m += 1
+            else:
+              num_nm += 1
+
+          if (num_m > num_nm):  # NN classifies this as a match
+            if (rec_id_tuple in match_set):
+              num_true_m += 1
+            else:
+              num_false_m += 1
+
+          else:  # NN classifies this as a non-match
+            if (rec_id_tuple in non_match_set):
+              num_true_nm += 1
+            else:
+              num_false_nm += 1
 
     else:
       logging.exception('Illegal step classifier method: %s' % \
@@ -3332,10 +4031,20 @@ class TwoStep(Classifier):
         return set(), set(), set()
 
       for (rec_id_tuple, w_vec) in w_vec_dict.iteritems():
-        if (self.svm_model.predict(w_vec) == 1.0):  # Match prediction
-          match_set.add(rec_id_tuple)
-        else:  # Non-match prediction
-          non_match_set.add(rec_id_tuple)
+
+        if (self.svm_version == 'old'):
+          if (self.svm_model.predict(w_vec) == 1.0):  # Match prediction
+            match_set.add(rec_id_tuple)
+          else:  # Non-match prediction
+            non_match_set.add(rec_id_tuple)
+
+        else:  # New SVM module version
+          x0, max_idx = svm.gen_svm_nodearray(w_vec)
+
+          if (svm.libsvm.svm_predict(self.svm_model, x0) == 1.0):  # Match
+            match_set.add(rec_id_tuple)
+          else:  # Non-match prediction
+            non_match_set.add(rec_id_tuple)
 
     elif (self.s2_classifier[0] == 'kmeans'):  # K-means clustering - - - - - -
 
@@ -3356,6 +4065,66 @@ class TwoStep(Classifier):
         else:
           non_match_set.add(rec_id_tuple)
 
+    elif (self.s2_classifier[0] == 'nn'):  # Nearest neighbour classifier - - -
+
+      nn_m_train_w_vec_set =  self.nn_m_train_w_vec_set
+      nn_nm_train_w_vec_set = self.nn_nm_train_w_vec_set
+
+      if ((nn_m_train_w_vec_set == None) or (nn_nm_train_w_vec_set == None)):
+        logging.warn('Nearest neighbour classifier has not been trained, ' + \
+                     'classification not possible')
+        return set(), set(), set()
+
+      dist_meas = self.s2_classifier[1]
+      k =         self.s2_classifier[2]
+
+      for (rec_id_tuple, w_vec) in w_vec_dict.iteritems():
+
+        this_w_vec = tuple(w_vec)  # Tuple can be used as dictionary key
+
+        # Check if this weight vector is in one of the training sets
+        #
+        if (this_w_vec in nn_m_train_w_vec_set):
+          match_set.add(rec_id_tuple)
+
+        elif (this_w_vec in nn_nm_train_w_vec_set):
+          non_match_set.add(rec_id_tuple)
+
+        else:  # Have to find its k nearest neighbours from training sets
+
+          nearest_list = []  # List of k nearest weight vectors
+
+          for m_w_vec in nn_m_train_w_vec_set:
+            m_dist = dist_meas(this_w_vec, m_w_vec)
+            nearest_list.append((m_dist,'M'))
+            nearest_list.sort()  # Smallest distances first
+            nearest_list = nearest_list[:k]  # Only keep k nearest elements
+
+          for nm_w_vec in nn_nm_train_w_vec_set:
+            nm_dist = dist_meas(this_w_vec, nm_w_vec)
+            nearest_list.append((nm_dist,'NM'))
+            nearest_list.sort()  # Smallest distances first
+            nearest_list = nearest_list[:k]  # Only keep k nearest elements
+
+          # Now determine if this the the overall new nearest weight vector to
+          # either match or non-match training examples
+          #
+          dist_sum = 0.0  # Sum of its k distances
+          num_m =    0    # Number o matches in k nearest
+          num_nm =   0    # Number of non-matches in k nearest
+
+          for (dist_val, set_val) in nearest_list:
+            dist_sum += dist_val
+            if (set_val == 'M'):
+              num_m += 1
+            else:
+              num_nm += 1
+
+          if (num_m > num_nm):  # NN classifies this as a match
+            match_set.add(rec_id_tuple)
+          else:
+            non_match_set.add(rec_id_tuple)
+
     else:
       logging.exception('Illegal step classifier method: %s' % \
                         (str(self.s2_classifier)))
@@ -3370,6 +4139,625 @@ class TwoStep(Classifier):
                  (len(poss_match_set)))
 
     return match_set, non_match_set, poss_match_set
+
+# =============================================================================
+
+class TAILOR(Classifier):
+  """Implements the unsupervised hybrid classifier (based on k-means clustering
+     followed by SVM classification) as described in the paper:
+
+     TAILOR: A record linkage toolbox (Elfeky MG, Verykios VS, Elmagarmid AK,
+     ICDE, San Jose, 2002.
+
+     Note that in TAILOR originally a decision tree was used for classification
+     rather than an SVM.
+
+     Three clusters will be generated in a first step, one for matches,
+     non-matches and possible matches each, and in the second step the match
+     and non-match clusters will be used to train a binary SVM classifier.
+
+     The arguments that have to be set when this classifier is initialised are:
+
+       max_iter_count  The maximum number of iterations allowed.
+       dist_measure    A function that calculates a distance measure between
+                       two vectors (see the Febrl mymath.py module for such
+                       functions).
+       sample          A number between 0 and 100 that gives the percentage of
+                       weight vectors that will be randomly selected and used
+                       for clustering in the training process. If set to 100
+                       (the default) then all given weight vectors will be
+                       used.
+       kernel_type     The kernel type from from libsvm. Default value LINEAR,
+                       other possibilities are: POLY, RBF, SIGMOID.
+       C               The 'C' parameter from libsvm. Default value is 10.
+  """
+
+  # ---------------------------------------------------------------------------
+
+  def __init__(self, **kwargs):
+    """Constructor. Process the classifer specific arguments first, then call
+       the base class constructor.
+    """
+
+    # Check if svm module is installed or not
+    #
+    if (imp_svm == False):
+      logging.exception('Module "svm.py" not installed, cannot use ' + \
+                        'SuppVectorMach classifier')
+      raise Exception
+
+    self.max_iter_count = None
+    self.dist_measure =   None
+    self.sample =         100.0
+    self.svm_type =       svm.C_SVC
+    self.kernel_type =    'LINEAR'
+    self.C =              10
+    self.svm_model =      None  # Will be set in train() method
+
+    base_kwargs = {}  # Dictionary, will contain unprocessed arguments for base
+                      # class constructor
+
+    for (keyword, value) in kwargs.items():
+
+      if (keyword.startswith('max_it')):
+        auxiliary.check_is_integer('max_iter_count', value)
+        auxiliary.check_is_positive('max_iter_count', value)
+        self.max_iter_count = value
+
+      elif (keyword.startswith('dist_m')):
+        auxiliary.check_is_function_or_method('dist_measure', value)
+        self.dist_measure = value
+
+      elif (keyword.startswith('samp')):
+        if (value != None):
+          auxiliary.check_is_percentage('sample', value)
+          self.sample = value
+
+      elif (keyword.startswith('kernel')):
+        auxiliary.check_is_string('kernel_type', value)
+        if (value not in ['LINEAR', 'POLY', 'RBF', 'SIGMOID']):
+          logging.exception('Illegal value for kernel type: %s ' % (value) + \
+                            '(possible are: LINEAR, POLY, RBF, SIGMOID)')
+          raise Exception
+        self.kernel_type = value
+
+      elif (keyword == 'C'):
+        auxiliary.check_is_number('C', value)
+        auxiliary.check_is_not_negative('C', value)
+        self.C = value
+
+      else:
+        base_kwargs[keyword] = value
+
+    Classifier.__init__(self, base_kwargs)  # Initialise base class
+
+    # Check attribute values are set and valid - - - - - - - - - - - - - - - -
+    #
+    auxiliary.check_is_integer('max_iter_count', self.max_iter_count)
+    auxiliary.check_is_positive('max_iter_count', self.max_iter_count)
+    auxiliary.check_is_function_or_method('dist_measure', self.dist_measure)
+
+    self.log([('Maximum iteration count', self.max_iter_count),
+              ('Distance measure function', self.dist_measure),
+              ('Sampling rate', self.sample),
+              ('SVM kernel type', self.kernel_type),
+              ('C', self.C)]) # Log a message
+
+    # If the weight vector dictionary and both match and non-match sets - - - -
+    # are given start the training process
+    #
+    if ((self.train_w_vec_dict != None) and (self.train_match_set != None) \
+        and (self.train_non_match_set != None)):
+      self.train(self.train_w_vec_dict, self.train_match_set,
+                 (self.train_non_match_set))
+
+  # ---------------------------------------------------------------------------
+
+  def train(self, w_vec_dict, match_set, non_match_set):
+    """Method to train a classifier using the given weight vector dictionary.
+       Note that the given match and non-match sets of record identifier pairs
+       will not be used (unsupervised training).
+
+       This method will calculate three cluster centroids (one for matches,
+       non-matches and possible matches each), possibly using a sampled sub-set
+       of the weight vectors given, and then use the match and non-match
+       clusters to train a SVM.
+    """
+
+    auxiliary.check_is_dictionary('w_vec_dict', w_vec_dict)
+
+    self.train_w_vec_dict =    w_vec_dict  # Save
+    self.train_match_set =     match_set
+    self.train_non_match_set = non_match_set
+
+    # Get a random vector dictionary element to get dimensionality of vectors
+    #
+    (rec_id_tuple, w_vec) = w_vec_dict.popitem()
+    v_dim = len(w_vec)
+    w_vec_dict[rec_id_tuple] = w_vec  # Put back in
+
+    logging.info('Train TAILOR classifier using %d weight vectors' % \
+                 (len(w_vec_dict)))
+    logging.info('  Dimensionality:   %d' % (v_dim))
+
+    # Sample the weight vectors - - - - - - - - - - - - - - - - - - - - - - - -
+    #
+    if (self.sample == 100.0):
+      use_w_vec_dict = w_vec_dict
+
+    else:
+      num_w_vec_sample = max(2, int(len(w_vec_dict)*self.sample/100.0))
+
+      use_w_vec_dict = {}  # Create a new weight vector dictionary with samples
+
+      rec_id_tuple_sample = random.sample(w_vec_dict.keys(),num_w_vec_sample)
+      assert len(rec_id_tuple_sample) == num_w_vec_sample
+
+      for rec_id_tuple in rec_id_tuple_sample:
+        use_w_vec_dict[rec_id_tuple] = w_vec_dict[rec_id_tuple]
+
+    logging.info('  Number of weight vectors to be used for clustering: %d' % \
+                 (len(use_w_vec_dict)))
+
+    # Initialise the cluster centroid - - - - - - - - - - - - - - - - - - - - -
+    #
+    m_centroid =  [-999.99]*v_dim  # Get the minimum and maximum values in
+    nm_centroid = [999.99]*v_dim   # each weight vector element
+
+    for w_vec in use_w_vec_dict.itervalues():
+      for i in range(v_dim):
+        m_centroid[i] =  max(w_vec[i], m_centroid[i])
+        nm_centroid[i] = min(w_vec[i], nm_centroid[i])
+
+    # Set possible match centroid half-way in between
+    #
+    pm_centroid = []
+
+    for i in range(v_dim):
+      pm_centroid.append((m_centroid[i]+nm_centroid[i])/2.0)
+
+
+    logging.info('Initial cluster centroids:')
+    logging.info('  Initial match centroid:     %s' % \
+                 (auxiliary.str_vector(m_centroid)))
+    logging.info('  Initial non-match centroid: %s' % \
+                 (auxiliary.str_vector(nm_centroid)))
+    logging.info('  Initial possible match centroid: %s' % \
+                 (auxiliary.str_vector(pm_centroid)))
+
+    # Step 1: k-means clustering - - - - - - - - - - - - - - - - - - - - - - -
+    #
+    cluster_assign_dict = {}  # Dictionary with cluster assignments
+
+    iter_cnt = 1  # Iteration counter
+
+    num_changed = 1
+
+    while (num_changed > 0) and (iter_cnt < self.max_iter_count):
+
+      num_changed =     0
+      new_m_centroid =  [0.0]*v_dim  # Summed new distances
+      new_nm_centroid = [0.0]*v_dim
+      new_pm_centroid = [0.0]*v_dim
+
+      # Step 1a: Calculate cluster membership for each weight vector - - - - -
+      #
+      num_m =  0  # Number of weight vectors assigned to matches
+      num_nm = 0  # Number of weight vectors assigned to non-matches
+      num_pm = 0  # Number of weight vectors assigned to possible matches
+
+      for (rec_id_tuple, w_vec) in use_w_vec_dict.iteritems():
+
+        m_dist =  self.dist_measure(w_vec, m_centroid)
+        nm_dist = self.dist_measure(w_vec, nm_centroid)
+        pm_dist = self.dist_measure(w_vec, pm_centroid)
+
+        if ((m_dist < nm_dist) and (m_dist < pm_dist)):  # Assign to matches
+          old_assign = cluster_assign_dict.get(rec_id_tuple, 'X')
+          if (old_assign != 'M'):
+            num_changed += 1
+          cluster_assign_dict[rec_id_tuple] = 'M'
+          num_m += 1
+
+          for i in range(v_dim):  # Add to summed cluster distances
+            new_m_centroid[i] += w_vec[i]
+
+        elif (nm_dist < pm_dist):  # Assign to non-matches
+          old_assign = cluster_assign_dict.get(rec_id_tuple, 'X')
+          if (old_assign != 'NM'):
+            num_changed += 1
+          cluster_assign_dict[rec_id_tuple] = 'NM'
+          num_nm += 1
+
+          for i in range(v_dim):  # Add to summed cluster distances
+            new_nm_centroid[i] += w_vec[i]
+
+        else:  # Add to possible matches
+          old_assign = cluster_assign_dict.get(rec_id_tuple, 'X')
+          if (old_assign != 'PM'):
+            num_changed += 1
+          cluster_assign_dict[rec_id_tuple] = 'PM'
+          num_pm += 1
+
+          for i in range(v_dim):  # Add to summed cluster distances
+            new_pm_centroid[i] += w_vec[i]
+
+      num_all = len(cluster_assign_dict)
+
+      if ((num_m + num_nm + num_pm) != num_all):
+        logging.exception('Not all %d weight vectors assigned: ' + \
+                          'M=%d, NM=%d, PM=%d' % \
+                          (num_all, num_m, num_nm, num_pm))
+        raise Exception
+
+      if (num_m == 0) or (num_nm == 0):
+        logging.warn('One cluster is empty: matches=%d, non-matches=%d, ' % \
+                     (num_m, num_nm) + ' possible matches=%d' % (num_pm))
+        break  # Stop K-means iterations
+
+      # Step 1b: Calculate new cluster centroids - - - - - - - - - - - - - - -
+      #
+      for i in range(v_dim):  # Normalise new centroids
+        new_m_centroid[i] /=  float(num_m)
+        new_nm_centroid[i] /= float(num_nm)
+        new_pm_centroid[i] /= float(num_pm)
+
+      m_centroid =  new_m_centroid  # Assign new centroids
+      nm_centroid = new_nm_centroid
+      pm_centroid = new_pm_centroid
+
+      logging.info('Iteration %d: %d vectors changed cluster assignment' % \
+            (iter_cnt, num_changed))
+
+      iter_cnt += 1
+
+    self.m_centroid =  m_centroid  # Save for later use
+    self.nm_centroid = nm_centroid
+    self.pm_centroid = pm_centroid
+
+    logging.info('Final cluster centroids:')
+    logging.info('  Match centroid:          %s' % \
+                 (auxiliary.str_vector(m_centroid)))
+    logging.info('  Non-match centroid:      %s' % \
+                 (auxiliary.str_vector(nm_centroid)))
+    logging.info('  Possible match centroid: %s' % \
+                 (auxiliary.str_vector(pm_centroid)))
+    logging.info('  Cluster sizes: M=%d, NM=%d, PM=%d' % \
+                 (num_m, num_nm, num_pm))
+
+    if ((num_m == 0) or (num_nm == 0)):
+      logging.warn('One of the training clusters is empty - cannot train SVM')
+      self.svm_model = None
+      return
+
+    # Step 2: SVM classification using match and non-match clusters - - - - - -
+    #
+    train_data =   []
+    train_labels = []
+
+    for (rec_id_tuple, w_vec) in use_w_vec_dict.iteritems():
+      if (cluster_assign_dict[rec_id_tuple] == 'M'):
+        train_data.append(w_vec)
+        train_labels.append(1.0)  # Match class
+
+      elif (cluster_assign_dict[rec_id_tuple] == 'NM'):
+        train_data.append(w_vec)
+        train_labels.append(-1.0)  # Non-match class
+
+    assert len(train_data) == num_m + num_nm
+
+    # Initialise and train the SVM - - - - - - - - - - - - - - - - - - - - - -
+    #
+    if (self.kernel_type == 'LINEAR'):
+      svm_kernel = svm.LINEAR
+    elif (self.kernel_type == 'POLY'):
+      svm_kernel = svm.POLY
+    elif (self.kernel_type == 'RBF'):
+      svm_kernel = svm.RBF
+    elif (self.kernel_type == 'SIGMOID'):
+      svm_kernel = svm.SIGMOID
+
+    svm_prob =  svm.svm_problem(train_labels, train_data)
+
+    # Due to change in SVM parameter setting in svm module, we need to catch
+    # possible error
+    #
+    try:
+      svm_param = svm.svm_parameter(svm_type = svm.C_SVC, C=self.C,
+                                    kernel_type=svm_kernel)
+      self.svm_model = svm.svm_model(svm_prob, svm_param)
+      self.svm_version = 'old'
+
+    except:
+      svm_param = svm.svm_parameter('-s %d -c %f -t %d' % \
+                  (svm.C_SVC, self.C, svm_kernel))
+      self.svm_model = svm.libsvm.svm_train(svm_prob, svm_param)
+      self.svm_version = 'new'
+
+    logging.info('Trained SVM with %d training examples' % \
+                 (len(use_w_vec_dict)))
+
+  # ---------------------------------------------------------------------------
+
+  def test(self, w_vec_dict, match_set, non_match_set):
+    """Method to test a classifier using the given weight vector dictionary and
+       match and non-match sets of record identifier pairs.
+
+       Weight vectors will be assigned to matches or non-matches according to
+       the SVM classification. No weight vector will be assigned to the
+       possible match set.
+
+       Will return a confusion matrix as a list of the form: [TP, FN, FP, TN].
+    """
+
+    if (self.svm_model == None):
+      logging.warn('SVM has not been trained, testing not possible')
+      return [0,0,0,0]
+
+    svm_version = self.svm_version  # Shortcut
+
+    auxiliary.check_is_dictionary('w_vec_dict', w_vec_dict)
+    auxiliary.check_is_set('match_set', match_set)
+    auxiliary.check_is_set('non_match_set', non_match_set)
+
+    # Check that match and non-match sets are separate and do cover all weight
+    # vectors given
+    #
+    if (len(match_set.intersection(non_match_set)) > 0):
+      logging.exception('Intersection of match and non-match set not empty')
+      raise Exception
+    if ((len(match_set)+len(non_match_set)) != len(w_vec_dict)):
+      logging.exception('Weight vector dictionary of different length than' + \
+                        ' summed lengths of match and non-match sets: ' + \
+                        '%d / %d+%d=%d' % (len(w_vec_dict), len(match_set),
+                        len(non_match_set), len(match_set)+len(non_match_set)))
+      raise Exception
+
+    num_true_m =   0
+    num_false_m =  0
+    num_true_nm =  0
+    num_false_nm = 0
+
+    for (rec_id_tuple, w_vec) in w_vec_dict.iteritems():
+
+      if (svm_version == 'old'):
+        if (self.svm_model.predict(w_vec) == 1.0):  # Match prediction
+          pred_match = True
+        else:
+          pred_match = False
+
+      else:  # New SVM module version
+        x0, max_idx = svm.gen_svm_nodearray(w_vec)
+
+        if (svm.libsvm.svm_predict(self.svm_model, x0) == 1.0):  # Match
+          pred_match = True
+        else:
+          pred_match = False
+
+      if (pred_match == True):
+        if (rec_id_tuple in match_set):
+          num_true_m += 1
+        else:
+          num_false_m += 1
+      else:  # Non-match prediction
+        if (rec_id_tuple in non_match_set):
+          num_true_nm += 1
+        else:
+          num_false_nm += 1
+
+    assert (num_true_m+num_false_nm+num_false_m+num_true_nm) == len(w_vec_dict)
+
+    logging.info('  Results: TP = %d, FN = %d, FP = %d, TN = %d' % \
+                 (num_true_m,num_false_nm,num_false_m,num_true_nm))
+
+    return [num_true_m, num_false_nm, num_false_m, num_true_nm]
+
+  # --------------------------------------------------------------------------
+
+  def cross_validate(self, w_vec_dict, match_set, non_match_set, n=10):
+    """Method to conduct a cross validation using the given weight vector
+       dictionary and match and non-match sets of record identifier pairs.
+
+       Will return a confusion matrix as a list of the form: [TP, FN, FP, TN].
+
+       The cross validation approach splits the weight vector dictionary into
+       'n' parts (and 'n' corresponding sub-set for matches and non-matches),
+       and then generates 'n' TAILOR classifications, tests them and finally
+       returns the average performance of these 'n' classifiers.
+    """
+
+    auxiliary.check_is_integer('n', n)
+    auxiliary.check_is_positive('n', n)
+    auxiliary.check_is_dictionary('w_vec_dict', w_vec_dict)
+    auxiliary.check_is_set('match_set', match_set)
+    auxiliary.check_is_set('non_match_set', non_match_set)
+
+    # Check that match and non-match sets are separate and do cover all weight
+    # vectors given
+    #
+    if (len(match_set.intersection(non_match_set)) > 0):
+      logging.exception('Intersection of match and non-match set not empty')
+      raise Exception
+    if ((len(match_set)+len(non_match_set)) != len(w_vec_dict)):
+      logging.exception('Weight vector dictionary of different length than' + \
+                        ' summed lengths of match and non-match sets: ' + \
+                        '%d / %d+%d=%d' % (len(w_vec_dict), len(match_set),
+                        len(non_match_set), len(match_set)+len(non_match_set)))
+      raise Exception
+
+    # Get a random vector dictionary element to get dimensionality of vectors
+    #
+    (rec_id_tuple, w_vec) = w_vec_dict.popitem()
+    v_dim = len(w_vec)
+    w_vec_dict[rec_id_tuple] = w_vec  # Put back in
+
+    logging.info('')
+    logging.info('Conduct %d-fold cross validation on TAILOR classifier ' % \
+                 (n) + 'using %d weight vectors' % (len(w_vec_dict)))
+    logging.info('  Match and non-match sets with %d and %d entries' % \
+                 (len(match_set), len(non_match_set)))
+    logging.info('  Dimensionality:   %d' % (v_dim))
+
+    m_centroids =  []  # Keep the centroids from all folds
+    nm_centroids = []
+
+    # Create the sub-sets of record identifier pairs for folds - - - - - - - -
+    #
+    rec_id_tuple_list = w_vec_dict.keys()
+    random.shuffle(rec_id_tuple_list)
+    fold_num_rec_id_tuple = max(1,int(round(float(len(rec_id_tuple_list))/n)))
+
+    # Split the weight vector dictionary and match and non-match sets into
+    # (lists containing one entry per fold) and only store test elements
+    #
+    w_vec_dict_test_list = []
+    m_set_test_list =      []
+    nm_set_test_list =     []
+
+    for fold in range(n):
+      w_vec_dict_test_list.append({})
+      m_set_test_list.append(set())
+      nm_set_test_list.append(set())
+
+    for fold in range(n):
+
+      # Calculate start and end indices for test elements for this fold
+      #
+      if (fold == (n-1)):  # The last fold, get remainder of list
+        start = fold*fold_num_rec_id_tuple
+        this_fold_test_ids = rec_id_tuple_list[start:]
+      else:  # All other folds
+        start = fold*fold_num_rec_id_tuple
+        end = start+fold_num_rec_id_tuple
+        this_fold_test_ids = rec_id_tuple_list[start:end]
+
+      for rec_id_tuple in this_fold_test_ids:
+
+        w_vec_dict_test_list[fold][rec_id_tuple] = w_vec_dict[rec_id_tuple]
+
+        if (rec_id_tuple in match_set):
+          m_set_test_list[fold].add(rec_id_tuple)
+        else:
+          nm_set_test_list[fold].add(rec_id_tuple)
+
+      assert len(w_vec_dict_test_list[fold]) == len(this_fold_test_ids)
+      assert len(m_set_test_list[fold]) + len(nm_set_test_list[fold]) == \
+             len(this_fold_test_ids)
+
+    # Initialise the total classification results - - - - - - - - - - - - - - -
+    #
+    num_true_m =   0
+    num_false_nm = 0
+    num_false_m =  0
+    num_true_nm =  0
+
+    # Loop over folds - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    # Generate training and test dictionaries and sets
+    #
+    for fold in range(n):  # First extract test record identifier pairs
+
+      this_fold_test_m_set =       m_set_test_list[fold]
+      this_fold_test_nm_set =      nm_set_test_list[fold]
+      this_fold_test_w_vec_dict =  w_vec_dict_test_list[fold]
+
+      this_fold_train_m_set =  match_set.difference(m_set_test_list[fold])
+      this_fold_train_nm_set = non_match_set.difference(nm_set_test_list[fold])
+      this_fold_train_w_vec_dict = {}
+      for f2 in range(n):
+        if (f2 != fold):
+          this_fold_train_w_vec_dict.update(w_vec_dict_test_list[f2])
+
+      assert len(this_fold_test_m_set) + len(this_fold_train_m_set) == \
+             len(match_set)
+      assert len(this_fold_test_nm_set) + len(this_fold_train_nm_set) == \
+             len(non_match_set)
+      assert len(this_fold_test_w_vec_dict) + \
+             len(this_fold_train_w_vec_dict) == len(w_vec_dict)
+
+      assert this_fold_test_m_set.intersection(this_fold_train_m_set) == set()
+      assert this_fold_test_m_set.intersection(this_fold_test_nm_set) == set()
+      assert this_fold_test_m_set.intersection(this_fold_train_nm_set) == set()
+      assert this_fold_test_nm_set.intersection(this_fold_train_m_set) ==set()
+      assert this_fold_test_nm_set.intersection(this_fold_train_nm_set) ==set()
+      assert this_fold_train_m_set.intersection(this_fold_train_nm_set) ==set()
+
+      # Train and test TAILOR classifier on this fold's data
+      #
+      self.train(this_fold_train_w_vec_dict, this_fold_train_m_set,
+                 this_fold_train_nm_set)
+
+      [this_num_true_m,this_num_false_nm,this_num_false_m,this_num_true_nm] = \
+                                           self.test(this_fold_test_w_vec_dict,
+                                                     this_fold_test_m_set,
+                                                     this_fold_test_nm_set)
+      num_true_m +=   this_num_true_m
+      num_false_nm += this_num_false_nm
+      num_false_m +=  this_num_false_m
+      num_true_nm +=  this_num_true_nm
+
+    # Calculate final cross validation results - - - - - - - - - - - - - - - -
+    #
+    num_true_m /=   float(n)
+    num_false_nm /= float(n)
+    num_false_m /=  float(n)
+    num_true_nm /=  float(n)
+
+    logging.info('  Results: TP = %d, FN = %d, FP = %d, TN = %d' % \
+                 (num_true_m,num_false_nm,num_false_m,num_true_nm))
+
+    return [num_true_m, num_false_nm, num_false_m, num_true_nm]
+
+  # ---------------------------------------------------------------------------
+
+  def classify(self, w_vec_dict):
+    """Method to classify the given weight vector dictionary using the trained
+       classifier.
+
+       Will return three sets with record identifier pairs: 1) match set,
+       2) non-match set, and 3) possible match set.
+
+       The possible match set will be empty, as this classifier classifies all
+       weight vectors as either matches or non-matches.
+    """
+
+    if (self.svm_model == None):
+      logging.warn('SVM has not been trained, classification not possible')
+      return set(), set(), set()
+
+    svm_version = self.svm_version  # Shortcut
+
+    auxiliary.check_is_dictionary('w_vec_dict', w_vec_dict)
+
+    match_set =      set()
+    non_match_set =  set()
+    poss_match_set = set()
+
+    for (rec_id_tuple, w_vec) in w_vec_dict.iteritems():
+
+      if (svm_version == 'old'):
+        if (self.svm_model.predict(w_vec) == 1.0):  # Match prediction
+          match_set.add(rec_id_tuple)
+        else:  # Non-match prediction
+          non_match_set.add(rec_id_tuple)
+
+      else:  # New SVM module version
+        x0, max_idx = svm.gen_svm_nodearray(w_vec)
+
+        if (svm.libsvm.svm_predict(self.svm_model, x0) == 1.0):  # Match
+          match_set.add(rec_id_tuple)
+        else:  # Non-match prediction
+          non_match_set.add(rec_id_tuple)
+
+    assert (len(match_set) + len(non_match_set) + len(poss_match_set)) == \
+            len(w_vec_dict)
+
+    logging.info('Classified %d weight vectors: %d as matches, %d as ' % \
+                 (len(w_vec_dict), len(match_set), len(non_match_set)) + \
+                 'non-matches, and %d as possible matches' % \
+                 (len(poss_match_set)))
+
+    return match_set, non_match_set, poss_match_set
+
 
 # =============================================================================
 # Following are several auxiliary functions that are helpful for classification

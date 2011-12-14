@@ -8,7 +8,7 @@
 # (the "License"); you may not use this file except in compliance with
 # the License. You may obtain a copy of the License at:
 # 
-#   http://datamining.anu.edu.au/linkage.html
+#   https://sourceforge.net/projects/febrl/
 # 
 # Software distributed under the License is distributed on an "AS IS"
 # basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See
@@ -18,10 +18,10 @@
 # The Original Software is: "guiFebrl.py"
 # 
 # The Initial Developer of the Original Software is:
-#   Dr Peter Christen (Department of Computer Science, Australian National
-#                      University)
+#   Dr Peter Christen (Research School of Computer Science, The Australian
+#                      National University)
 # 
-# Copyright (C) 2002 - 2008 the Australian National University and
+# Copyright (C) 2002 - 2011 the Australian National University and
 # others. All Rights Reserved.
 # 
 # Contributors:
@@ -39,7 +39,7 @@
 # the terms of any one of the ANUOS License or the GPL.
 # =============================================================================
 #
-# Freely extensible biomedical record linkage (Febrl) - Version 0.4.1
+# Freely extensible biomedical record linkage (Febrl) - Version 0.4.2
 #
 # See: http://datamining.anu.edu.au/linkage.html
 #
@@ -5749,7 +5749,7 @@ class MainFebrlWindow:
                            'than disagreement weights.', 'warn')
         return
 
-      field_comp_dict['miss_weight'] = miss_weight
+      field_comp_dict['missing_weight'] = miss_weight
       field_comp_dict['agree_weight'] = agree_weight
       field_comp_dict['disagree_weight'] = disagree_weight
 
@@ -6071,7 +6071,7 @@ class MainFebrlWindow:
       febrl_code.append(indention_space+'disagree_weight = %s,' % \
                         (field_comp_dict['disagree_weight']))
       febrl_code.append(indention_space+'missing_weight = %s,' % \
-                        (field_comp_dict['miss_weight']))
+                        (field_comp_dict['missing_weight']))
       if (field_comp_dict['cache_field'] == True):
         febrl_code.append(indention_space+'do_caching = True,')
         if (field_comp_dict['max_cache_size'] != 'None'):
@@ -7051,7 +7051,7 @@ class MainFebrlWindow:
 
     classifier_method_name = self.classifier_names[classifier_name_index]
 
-    # First Get the match status information for supervised classifiers - - - -
+    # First get the match status information for supervised classifiers - - - -
     #
     if (classifier_method_name in ['OptimalThreshold', 'SuppVecMachine']):
 
@@ -7428,7 +7428,7 @@ class MainFebrlWindow:
                              (classifier_dict['s2_classifier'][1],
                               classifier_dict['s2_classifier'][2])
       else:  # K-means
-        dist_method = classifier_dict['s1_non_match_method'][1]
+        dist_method = classifier_dict['s2_classifier'][1]
 
         if (dist_method == 'Manhatten'):
           febrl_dist_str = 'mymath.distL1'
@@ -8280,7 +8280,7 @@ class MainFebrlWindow:
       'The Initial Developers of the Original Software are:',
       '  Peter Christen',
       '',
-      'Copyright (C) 2002 - 2007 the Australian National University and',
+      'Copyright (C) 2002 - 2011 the Australian National University and',
       'others. All Rights Reserved.',
       '',
       'Contributors:',
@@ -8780,7 +8780,7 @@ class MainFebrlWindow:
       else:
         this_tag_table = {}
 
-## Changed PC 25/08/2008 ????
+## Changed PC 25/08/2008
 #
 #      if (comp_std_type in ['Addr','Name']):
 #        field_sep =       cs_dict['field_separator']
@@ -8934,6 +8934,8 @@ class MainFebrlWindow:
 
       elif (self.data_set_type_list[0] == 'COL'):
 
+        header_line_flag = data_set_info['header_line']
+
         # Get width of the columns from GUI
         #
         col_width_vals = \
@@ -8987,6 +8989,8 @@ class MainFebrlWindow:
                                    field_list = field_val_list)
 
         elif (self.data_set_type_list[1] == 'COL'):
+
+          header_line_flag = data_set_info['header_line']
 
           # Get width of the columns from GUI
           #
@@ -9043,7 +9047,7 @@ class MainFebrlWindow:
         field_a_name =    comp_funct_dict['field_a_name']
         field_b_name =    comp_funct_dict['field_b_name']
         cache_field =     comp_funct_dict['cache_field']
-        miss_weight =     float(comp_funct_dict['miss_weight'])
+        miss_weight =     float(comp_funct_dict['missing_weight'])
         agree_weight =    float(comp_funct_dict['agree_weight'])
         disagree_weight = float(comp_funct_dict['disagree_weight'])
         max_cache_size =  comp_funct_dict['max_cache_size']
@@ -9389,7 +9393,7 @@ class MainFebrlWindow:
             elif (encode_funct == 'Phonix'):
               encode_list = [encode.phonix]
             elif (encode_funct == 'Fuzzy-Soundex'):
-              encode_list = [encode.fuzzysoundex]
+              encode_list = [encode.fuzzy_soundex]
             elif (encode_funct == 'Substring'):
               p1,p2 = encode_funct_param.split(',')
               encode_list = [encode.get_substring, int(p1), int(p2)]
@@ -9761,15 +9765,21 @@ class MainFebrlWindow:
         random_method = (random_sel[0], int(random_sel[1]), int(random_sel[2]))
 
       if (self.classifier_method['s2_classifier'][0] == 'kmeans'):
+        max_iter_count = 1000 # Default value
         dist_meas_name = self.classifier_method['s2_classifier'][1]
         dist_meas = {'Manhatten':mymath.distL1, 'Euclidean':mymath.distL2,
                      'L-Infinity':mymath.distLInf,
                      'Canberra':mymath.distCanberra}[dist_meas_name]
-        s2_classifier = (self.classifier_method['s2_classifier'][0], dist_meas)
+        s2_classifier = (self.classifier_method['s2_classifier'][0],
+                         dist_meas, max_iter_count)
       else: # SVM
+        increment = 10  # Default value
+        train_perc = 75  # Default value
         s2_classifier = (self.classifier_method['s2_classifier'][0],
                          self.classifier_method['s2_classifier'][1],
-                         float(self.classifier_method['s2_classifier'][2]))
+                         float(self.classifier_method['s2_classifier'][2]),
+                         increment,
+                         train_perc)
 
       classifier = classification.TwoStep(s1_match_method = s1_m_method,
                                           s1_non_match_method = s1_nm_method,
@@ -10108,9 +10118,9 @@ class MainFebrlWindow:
           if ((rec_id_tuple in m_set) and (rec_id_tuple in tm_set)):
             class_tp_w_list.append(w_sum)
           elif ((rec_id_tuple in m_set) and (rec_id_tuple in tnm_set)):
-            class_fn_w_list.append(w_sum)
-          elif ((rec_id_tuple in nm_set) and (rec_id_tuple in tm_set)):
             class_fp_w_list.append(w_sum)
+          elif ((rec_id_tuple in nm_set) and (rec_id_tuple in tm_set)):
+            class_fn_w_list.append(w_sum)
           elif ((rec_id_tuple in nm_set) and (rec_id_tuple in tnm_set)):
             class_tn_w_list.append(w_sum)
 

@@ -6,7 +6,7 @@
 # (the "License"); you may not use this file except in compliance with
 # the License. You may obtain a copy of the License at:
 # 
-#   http://datamining.anu.edu.au/linkage.html
+#   https://sourceforge.net/projects/febrl/
 # 
 # Software distributed under the License is distributed on an "AS IS"
 # basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See
@@ -16,10 +16,10 @@
 # The Original Software is: "auxiliary.py"
 # 
 # The Initial Developer of the Original Software is:
-#   Dr Peter Christen (Department of Computer Science, Australian National
-#                      University)
+#   Dr Peter Christen (Research School of Computer Science, The Australian
+#                      National University)
 # 
-# Copyright (C) 2002 - 2008 the Australian National University and
+# Copyright (C) 2002 - 2011 the Australian National University and
 # others. All Rights Reserved.
 # 
 # Contributors:
@@ -37,7 +37,7 @@
 # the terms of any one of the ANUOS License or the GPL.
 # =============================================================================
 #
-# Freely extensible biomedical record linkage (Febrl) - Version 0.4.1
+# Freely extensible biomedical record linkage (Febrl) - Version 0.4.2
 #
 # See: http://datamining.anu.edu.au/linkage.html
 #
@@ -310,6 +310,40 @@ def get_memory_usage():
 
   return 'Memory usage: %s %s (resident: %s %s)' % \
          (memo_list[1], memo_list[2], resi_list[1], resi_list[2])
+
+# =============================================================================
+
+def get_memory_usage_val():
+  """Function which return the current memory usage as a value that corresponds
+     to the amount of memory used in megabytes.
+     Currently only seems to work on Linux!
+
+     Returns -1 if memory usage cannot be calculated.
+  """
+
+  try:
+    ps = open('/proc/%d/status' % os.getpid())
+    vs = ps.read()
+    ps.close()
+  except:
+    return None  # Likely not on a Linux machine
+
+  if (('VmSize:' in vs) and ('VmRSS:' in vs)):
+    memo_index = vs.index('VmSize:')
+  else:
+    return None  # Likely not on a Linux machine
+
+  memo_list = vs[memo_index:].split(None,3)[:3]
+
+  if ((int(memo_list[1]) > 10240) and (memo_list[2] in ['kB','KB'])):
+    memo_use = float(memo_list[1])/1024.0
+  else:
+    memo_use = float(memo_list[1])
+
+  if (len(memo_list) < 3):
+    memo_use =  -1  # Invalid format in status information
+
+  return memo_use
 
 # =============================================================================
 

@@ -6,7 +6,7 @@
 # (the "License"); you may not use this file except in compliance with
 # the License. You may obtain a copy of the License at:
 # 
-#   http://datamining.anu.edu.au/linkage.html
+#   https://sourceforge.net/projects/febrl/
 # 
 # Software distributed under the License is distributed on an "AS IS"
 # basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See
@@ -16,10 +16,10 @@
 # The Original Software is: "measurements.py"
 # 
 # The Initial Developer of the Original Software is:
-#   Dr Peter Christen (Department of Computer Science, Australian National
-#                      University)
+#   Dr Peter Christen (Research School of Computer Science, The Australian
+#                      National University)
 # 
-# Copyright (C) 2002 - 2008 the Australian National University and
+# Copyright (C) 2002 - 2011 the Australian National University and
 # others. All Rights Reserved.
 # 
 # Contributors:
@@ -37,7 +37,7 @@
 # the terms of any one of the ANUOS License or the GPL.
 # =============================================================================
 #
-# Freely extensible biomedical record linkage (Febrl) - Version 0.4.1
+# Freely extensible biomedical record linkage (Febrl) - Version 0.4.2
 #
 # See: http://datamining.anu.edu.au/linkage.html
 #
@@ -175,9 +175,26 @@ def pairs_completeness(weight_vec_dict, dataset1, dataset2, get_id_funct,
       if (num_this_rec > 1):
         num_all_true_matches += num_this_rec*(num_this_rec-1)/2
 
-  else:  # For a linkage - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    # More efficent version: Only count number of matches ber record don't
+    # store them
+    #
+    entity_ident_dict2 = {}
 
-### TODO below ###########
+    for (rec_ident, rec) in dataset1.readall():
+      ent_id = get_id_funct(rec)
+      ent_id_count = entity_ident_dict2.get(ent_id, 0) + 1
+      entity_ident_dict2[ent_id] = ent_id_count
+
+    assert sum(entity_ident_dict2.values()) == dataset1.num_records
+
+    tm = 0  # Total number of true matches (without indexing)
+
+    for (ent_id, ent_count) in entity_ident_dict2.iteritems():
+      tm += ent_count*(ent_count-1)/2
+
+    assert num_all_true_matches == tm
+
+  else:  # For a linkage - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
     # Build two dictionaries with  entity identifiers as keys and a list of
     # their record identifier (rec_ident) as values
@@ -205,14 +222,54 @@ def pairs_completeness(weight_vec_dict, dataset1, dataset2, get_id_funct,
     logging.info('  Number of unique entity identifiers in data set 2: %d' % \
                  (len(entity_ident_dict2)))
 
-    # Now calculate total true match number
+    # Now calculate total true match number (loop over smaller dict)
     #
-    for (ent_id1, rec_list1) in entity_ident_dict1.iteritems():
+    if (len(entity_ident_dict1) < len(entity_ident_dict2)):
+      for (ent_id1, rec_list1) in entity_ident_dict1.iteritems():
 
-      if (ent_id1 in entity_ident_dict2):
-        rec_list2 = entity_ident_dict2[ent_id1]
+        if (ent_id1 in entity_ident_dict2):
+          rec_list2 = entity_ident_dict2[ent_id1]
 
-        num_all_true_matches += len(rec_list1) * len(rec_list2)
+          num_all_true_matches += len(rec_list1) * len(rec_list2)
+    else:
+      for (ent_id2, rec_list2) in entity_ident_dict2.iteritems():
+
+        if (ent_id2 in entity_ident_dict1):
+          rec_list1 = entity_ident_dict1[ent_id2]
+
+          num_all_true_matches += len(rec_list1) * len(rec_list2)
+
+    # More efficent version: Only count number of matches ber record don't
+    # store them
+    #
+    entity_ident_dict3 = {}
+    entity_ident_dict4 = {}
+
+    for (rec_ident, rec) in dataset1.readall():
+      ent_id = get_id_funct(rec)
+      ent_id_count = entity_ident_dict3.get(ent_id, 0) + 1
+      entity_ident_dict3[ent_id] = ent_id_count
+
+    for (rec_ident, rec) in dataset2.readall():
+      ent_id = get_id_funct(rec)
+      ent_id_count = entity_ident_dict4.get(ent_id, 0) + 1
+      entity_ident_dict4[ent_id] = ent_id_count
+
+    assert sum(entity_ident_dict3.values()) == dataset1.num_records
+    assert sum(entity_ident_dict4.values()) == dataset2.num_records
+
+    tm = 0  # Total number of true matches (without indexing)
+
+    if (len(entity_ident_dict3) < len(entity_ident_dict4)):
+      for (ent_id, ent_count) in entity_ident_dict3.iteritems():
+        if ent_id in entity_ident_dict4:
+          tm += ent_count*entity_ident_dict4[ent_id]
+    else:
+      for (ent_id, ent_count) in entity_ident_dict4.iteritems():
+        if ent_id in entity_ident_dict3:
+          tm += ent_count*entity_ident_dict3[ent_id]
+
+    assert num_all_true_matches == tm
 
   logging.info('  Number of all true matches: %d' % (num_all_true_matches))
 

@@ -6,7 +6,7 @@
 # (the "License"); you may not use this file except in compliance with
 # the License. You may obtain a copy of the License at:
 # 
-#   http://datamining.anu.edu.au/linkage.html
+#   https://sourceforge.net/projects/febrl/
 # 
 # Software distributed under the License is distributed on an "AS IS"
 # basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See
@@ -16,10 +16,10 @@
 # The Original Software is: "indexing.py"
 # 
 # The Initial Developer of the Original Software is:
-#   Dr Peter Christen (Department of Computer Science, Australian National
-#                      University)
+#   Dr Peter Christen (Research School of Computer Science, The Australian
+#                      National University)
 # 
-# Copyright (C) 2002 - 2008 the Australian National University and
+# Copyright (C) 2002 - 2011 the Australian National University and
 # others. All Rights Reserved.
 # 
 # Contributors:
@@ -37,7 +37,7 @@
 # the terms of any one of the ANUOS License or the GPL.
 # =============================================================================
 #
-# Freely extensible biomedical record linkage (Febrl) - Version 0.4.1
+# Freely extensible biomedical record linkage (Febrl) - Version 0.4.2
 #
 # See: http://datamining.anu.edu.au/linkage.html
 #
@@ -51,30 +51,44 @@
    Various derived classes are provided that implement different indexing
    techniques:
 
-     FullIndex         Performs no indexing but does the full comparison of all
-                       record pairs (quadratic complexity in the size of the
-                       number of records in the two data sets).
-     BlockingIndex     The 'standard' blocking index used for record linkage.
-     SortingIndex      Based on a sliding window over the sorted values of the
-                       index variable definitions.
-     QGramIndex        Allows for fuzzy indexing with 'overlapping' blocks,
-                       like clustering.
-     CanopyIndex       Based on TF-IDF/Jaccard and canopy clustering.
-     StringMapIndex    Based on the string-map multi-dimensional mapping
-                       algorithm combined with canopy clustering.
-     SuffixArrayIndex  Based on a suffix array, resulting in a similar approach
-                       as the SortingIndex (as blocks are created by going
-                       through the sorted suffix array).
-     BigMatchIndex     Based on the BigMatch program developed by the US Census
-                       Bureau. This index can only handle linkages (not
-                       deduplications). Based on the idea to only index the
-                       smaller data set into an inverted index, and then
-                       process each record from the larger data set as it is
-                       read from file.
-     DedupIndex        A index specialised for deduplications. It performs the
-                       build(), compact() and run() in one routine by reading
-                       of the file, building of the index and comparisons of
-                       record pairs are all done in the run() routine.
+     FullIndex               Performs no indexing but does the full comparison
+                             of all record pairs (quadratic complexity in the
+                             size of the number of records in the two data
+                             sets).
+     BlockingIndex           The 'standard' blocking index used for record
+                             linkage.
+     SortingIndex            Based on a sliding window over the sorted values
+                             of the index variable definitions - uses an
+                             inverted index approach where keys are unique
+                             index variable values.
+     SortingArrayIndex       Based on a sliding window over the sorted values
+                             of the index variable definitions - uses an array
+                             based approach where all index variable values
+                             (including duplicates) are stored.
+     AdaptSortingIndex       An adaptive version of the array based sorted
+                             index.
+     QGramIndex              Allows for fuzzy indexing with 'overlapping'
+                             blocks, like clustering.
+     CanopyIndex             Based on TF-IDF/Jaccard and canopy clustering.
+     StringMapIndex          Based on the string-map multi-dimensional mapping
+                             algorithm combined with canopy clustering.
+     SuffixArrayIndex        Based on a suffix array, resulting in a similar
+                             approach as the SortingIndex (as blocks are
+                             created by going through the sorted suffix array).
+     RobustSuffixArrayIndex  Combines the suffix array approach with the sorted
+                             window approach to overcome variations in the
+                             index key values.
+     BigMatchIndex           Based on the BigMatch program developed by the US
+                             Census Bureau. This index can only handle linkages
+                             (not deduplications). Based on the idea to only
+                             index the smaller data set into an inverted index,
+                             and then process each record from the larger data
+                             set as it is read from file.
+     DedupIndex              A index specialised for deduplications. It
+                             performs the build(), compact() and run() in one
+                             routine by reading of the file, building of the
+                             index and comparisons of record pairs are all done
+                             in the run() routine.
 
    When initialising an index its index variables have to be defined using the
    attribute 'index_def' (see more details below).
@@ -1740,7 +1754,8 @@ class BlockingIndex(Indexing):
 # =============================================================================
 
 class SortingIndex(Indexing):
-  """Class that implements the 'sorted neighbourhood' indexing approach.
+  """Class that implements the 'sorted neighbourhood' indexing approach based
+     on an inverted index.
 
      The index variable values are sorted alphabetically and then a window
      (with user specified size) is moved over these sorted values. All records
@@ -1796,8 +1811,6 @@ class SortingIndex(Indexing):
 
        Read all records from both files, extract blocking variables and then
        insert records into blocks.
-
-       Finally calculate number of record pairs in all blocks.
     """
 
     logging.info('')
@@ -2065,6 +2078,836 @@ class SortingIndex(Indexing):
     #
     return self.__compare_rec_pairs_from_dict__(length_filter_perc,
                                                 cut_off_threshold)
+
+
+# =============================================================================
+
+class SortingArrayIndex(Indexing):
+  """Class that implements the 'sorted neighbourhood' indexing approach based
+     on a sorted array.
+
+     The index variable values are sorted alphabetically and then a window
+     (with user specified size) is moved over these sorted values. All records
+     in the blocks covered by the current window position are then compared to
+     each other.
+
+     The additional argument (besides the base class arguments) which has to be
+     set when this index is initialised is:
+
+       window_size  A positive integer that gives the size of the moving window
+                    in number of index variable values.
+
+     Note that a window_size of 1 will result in no records being compared with
+     each other (this is different from the previous SortingIndex above).
+  """
+
+  # ---------------------------------------------------------------------------
+
+  def __init__(self, **kwargs):
+    """Constructor. Process the 'window_size' argument first, then call the
+       base class constructor.
+    """
+
+    self.window_size = None  # Set the window size to not defined
+
+    base_kwargs = {}  # Dictionary, will contain unprocessed arguments for base
+                      # class constructor
+
+    for (keyword, value) in kwargs.items():
+
+      if (keyword.startswith('window')):
+        auxiliary.check_is_integer('window_size', value)
+        auxiliary.check_is_positive('window_size', value)
+        if (value == 1):
+          logging.exception('Window size must be larger than 1.')
+          raise Exception
+
+        self.window_size = value
+
+      else:
+        base_kwargs[keyword] = value
+
+    Indexing.__init__(self, base_kwargs)  # Initialise base class
+
+    # Make sure 'window_size' attribute is set - - - - - - - - - - - - - - - -
+    #
+    auxiliary.check_is_integer('window_size', self.window_size)
+    auxiliary.check_is_positive('window_size', self.window_size)
+
+    self.log([('Window size', self.window_size)])  # Log a message
+
+  # ---------------------------------------------------------------------------
+
+  def build(self):
+    """Method to build an index data structure.
+
+       Read all records from both files, extract blocking variables and then
+       insert records into blocks.
+    """
+
+    logging.info('')
+    logging.info('Build sorted array index: "%s"' % (self.description))
+
+    start_time = time.time()
+
+    self.__records_into_inv_index__()  # Read records and put into index
+
+    logging.info('Built sorted array index in %s' % \
+                 (auxiliary.time_string(time.time()-start_time)))
+
+    memory_usage_str = auxiliary.get_memory_usage()
+    if (memory_usage_str != None):
+      logging.info('  '+memory_usage_str)
+
+    self.status = 'built'  # Update index status
+
+  # ---------------------------------------------------------------------------
+
+  def compact(self):
+    """Method to compact an index data structure.
+
+       Make a dictionary of all record pairs over all indices, which removes
+       duplicate record pairs.
+    """
+
+    NUM_BLOCK_PROGRESS_REPORT = 1000
+
+    logging.info('')
+    logging.info('Compact sorted array index: "%s"' % (self.description))
+
+    start_time = time.time()
+
+    # Check if index has been built - - - - - - - - - - - - - - - - - - - - - -
+    #
+    if (self.status != 'built'):
+      logging.exception('Index "%s" has not been built, compacting is not ' % \
+                        (self.description)+'possible')
+      raise Exception
+
+    num_indices = len(self.index_def)
+
+    dedup_rec_pair_funct = self.__dedup_rec_pairs__  # Shorthands
+    link_rec_pair_funct =  self.__link_rec_pairs__
+    w =                    self.window_size
+
+    rec_pair_dict = {}  # A dictionary with record identifiers from data set 1
+                        # as keys and sets of identifiers from data set 2 as
+                        # values
+
+    for i in range(num_indices):
+
+      istart_time = time.time()
+
+      num_blocks_done = 0
+
+      if (self.do_deduplication == True):  # A deduplication - - - - - - - - -
+
+        this_index = self.index1[i]  # Shorthand
+
+        rec_sorted_array = []  # The sorted array with the record identifiers
+                               # of all records
+
+        # Sorting the unique blocking key values is faster than sorting all
+        # values once they are in the sorted array
+        #
+        block_val_list = this_index.keys()  # Get all blocking values
+        block_val_list.sort()
+
+        num_block_vals = len(block_val_list)
+
+        # Loop over all blocks in the inverted index
+        #
+        for block_key_val in block_val_list:
+
+          rec_id_list = this_index[block_key_val]
+          rec_sorted_array += rec_id_list
+
+        # Can be shorter if empty blocking key values occur that
+        #
+        assert len(rec_sorted_array) <= self.dataset1.num_records
+
+        # Now generate record pairs from the sliding window
+        #
+        for j in range(0, len(rec_sorted_array)-w+1):
+
+          # Get record identifiers in the current window
+          #
+          win_rec_id_list = rec_sorted_array[j:j+w][:]
+          assert len(win_rec_id_list) == w, \
+                 (j,w,self.dataset1.num_records,win_rec_id_list)
+          win_rec_id_list.sort()
+
+          ## Possibly improvement: Win pos 1 and all others separate code
+          rec_cnt = 1
+          for rec_ident1 in win_rec_id_list:
+            rec_ident2_set = rec_pair_dict.get(rec_ident1, set())
+            for rec_ident2 in win_rec_id_list[rec_cnt:]:
+              assert rec_ident1 != rec_ident2
+              rec_ident2_set.add(rec_ident2)
+            rec_pair_dict[rec_ident1] = rec_ident2_set
+            rec_cnt += 1
+
+          num_blocks_done += 1
+
+          # Log progress report every XXX blocks processed - - - - - - - - - -
+          #
+          if ((num_blocks_done % NUM_BLOCK_PROGRESS_REPORT) == 0):
+            logging.info('    Processed %d of %d blocks' % \
+                         (num_blocks_done, num_block_vals))
+            memory_usage_str = auxiliary.get_memory_usage()
+            if (memory_usage_str != None):
+              logging.info('      '+memory_usage_str)
+
+        del rec_sorted_array
+
+      else:  # A linkage - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+        this_index1 = self.index1[i]  # Shorthands
+        this_index2 = self.index2[i]
+
+        rec_sorted_array = []  # The sorted array with the record identifiers
+                               # of all records
+
+        # Get all unique blocking key values from both indices
+        #
+        block_val_set = set(this_index1.keys()+this_index2.keys())
+        block_val_list = list(block_val_set)
+        block_val_list.sort()
+
+        num_block_vals = len(block_val_list)
+
+        # Loop over all blocks in the inverted indices
+        #
+        for block_key_val in block_val_list:
+
+          rec_id_list1 = this_index1.get(block_key_val, [])
+          rec_id_list2 = this_index2.get(block_key_val, [])
+
+          # Merge lists of record identifiers
+          #
+          if (rec_id_list1 != []) and (rec_id_list2 != []):
+
+            # Split 0-1 into equal intervals and give each record a
+            # corresponding floating point number, then sort.
+            # For example:
+            # rec_id_list1=[a,b,c,d,e]
+            #   => [(0.167,a), (0.333,b), (0.5,c), (0.663,d), (0.833,e)]
+            # rec_id_list2=[x,y,z]
+            #   => [(0.25,x), (0.5,y), (0.75,z)]
+            # Merged list: [(0.167,a), (0.25,x), (0.333,b), (0.5,y), (0.5,c),
+            #               (0.663,d), (0.75,z), (0.833,e)]
+
+            merge_list = []
+
+            interval1 = 1.0 / (len(rec_id_list1)+1.0)
+            j = 1
+            for rec_ident in rec_id_list1:
+              merge_list.append((j*interval1, rec_ident, '1'))
+              assert j*interval1 > 0 and j*interval1 < 1
+              j += 1
+            interval2 = 1.0 / (len(rec_id_list2)+1.0)
+            j = 1
+            for rec_ident in rec_id_list2:
+              merge_list.append((j*interval2, rec_ident, '2'))
+              assert j*interval2 > 0 and j*interval2 < 1
+              j += 1
+
+            merge_list.sort()
+
+            assert len(merge_list) == len(rec_id_list1)+len(rec_id_list2)
+
+            for (val, rec_ident, src_index) in merge_list:
+              rec_sorted_array.append((rec_ident, src_index))
+
+          elif (rec_id_list1 == []):
+            for rec_ident in rec_id_list2:
+              rec_sorted_array.append((rec_ident, '2'))  # From index 2
+
+          elif (rec_id_list2 == []):
+            for rec_ident in rec_id_list1:
+              rec_sorted_array.append((rec_ident, '1'))  # From index 1
+
+        # Can be shorter if empty blocking key values occur
+        #
+        assert len(rec_sorted_array) <= (self.dataset1.num_records + \
+                                         self.dataset2.num_records), \
+          (len(rec_sorted_array), (self.dataset1.num_records + \
+                                         self.dataset2.num_records))
+
+        # Now generate record pairs from the sliding window
+        #
+        for j in range(0, len(rec_sorted_array)-w+1):
+
+          # Get record identifiers in the current window
+          #
+          win_rec_id_list = rec_sorted_array[j:j+w][:]
+          assert len(win_rec_id_list) == w, \
+                 (j,w,self.dataset1.num_records,win_rec_id_list)
+
+          rec_id_list1 = []  # Record identifiers from index 1
+          rec_id_list2 = []  # Record identifiers from index 2
+
+          for (rec_ident, source_index) in win_rec_id_list:
+            if (source_index == '1'):
+              rec_id_list1.append(rec_ident)
+            else:
+              rec_id_list2.append(rec_ident)
+
+          for rec_ident1 in rec_id_list1:
+            for rec_ident2 in rec_id_list2:
+
+              rec_ident2_set = rec_pair_dict.get(rec_ident1, set())
+              rec_ident2_set.add(rec_ident2)
+              rec_pair_dict[rec_ident1] = rec_ident2_set
+
+          num_blocks_done += 1
+
+          # Log progress report every XXX blocks processed - - - - - - - - - -
+          #
+          if ((num_blocks_done % NUM_BLOCK_PROGRESS_REPORT) == 0):
+            logging.info('    Processed %d of %d blocks' % \
+                         (num_blocks_done, num_block_vals))
+            memory_usage_str = auxiliary.get_memory_usage()
+            if (memory_usage_str != None):
+              logging.info('      '+memory_usage_str)
+
+        del rec_sorted_array
+
+      logging.info('  Compacted sorting index %d in %s' % \
+                   (i, auxiliary.time_string(time.time()-istart_time)))
+
+      self.index1[i].clear()  # Not needed anymore
+      self.index2[i].clear()
+
+      logging.info('    Explicitly run garbage collection')
+      gc.collect()
+
+      memory_usage_str = auxiliary.get_memory_usage()
+      if (memory_usage_str != None):
+        logging.info('      '+memory_usage_str)
+
+    self.rec_pair_dict = rec_pair_dict
+
+    self.num_rec_pairs = 0  # Count lengths of all record identifier sets - - -
+
+    for rec_ident2_set in self.rec_pair_dict.itervalues():
+      self.num_rec_pairs += len(rec_ident2_set)
+
+    logging.info('Compacted sorting index in %s' % \
+                 (auxiliary.time_string(time.time()-start_time)))
+    logging.info('  Number of record pairs: %d' % (self.num_rec_pairs))
+
+    self.status = 'compacted'  # Update index status
+
+  # ---------------------------------------------------------------------------
+
+  def run(self, length_filter_perc = None, cut_off_threshold = None):
+    """Iterate over all blocks in the index.
+
+       Compare the record pairs as produced by the sorting indexing process,
+       and return a weight vector dictionary with keys made of a tuple (record
+       identifier 1, record identifier 2), and corresponding values the
+       comparison weights.
+    """
+
+    logging.info('')
+    logging.info('Started comparison of %d record pairs' % \
+                 (self.num_rec_pairs))
+    if (self.log_funct != None):
+      self.log_funct('Started comparison of %d record pairs' % \
+                     (self.num_rec_pairs))
+
+    # Check if index has been compacted - - - - - - - - - - - - - - - - - - - -
+    #
+    if (self.status != 'compacted'):
+      logging.exception('Index "%s" has not been compacted, running ' % \
+                        (self.description)+'comparisons not possible')
+      raise Exception
+
+    # Compare the records
+    #
+    return self.__compare_rec_pairs_from_dict__(length_filter_perc,
+                                                cut_off_threshold)
+
+# =============================================================================
+
+class AdaptSortingIndex(Indexing):
+  """Class that implements the adaptive sorted neighbourhood indexing approach
+     based on an inverted index and an adaptive construction of blocks based on
+     the similarities of neighbouring index key values.
+
+     For details see the following paper:
+
+     - Adaptive sorted neighborhood methods for efficient record linkage
+       S Yan, D Lee, M.Y Kan and L.C Giles.
+       Proceedings of the 7th ACM/IEEE-CS joint conference on Digital libraries
+       2007.
+
+     The index variable values are sorted alphabetically first, then a search
+     algorithm with adaptive window sizes is moved over the sorted index key
+     values, and blocks are generated where two adjacent values have an
+     approximate string similarity below a given threshold.
+
+     The initial implementation is a simplified  version of the above
+     description that compares all adjacent index key values in a liner fashion.
+
+     The additional argument (besides the base class arguments) which has to be
+     set when this index is initialised is:
+
+       str_cmp_funct  A function to compare two strings (as implemented in the
+                      stringcmp module).
+       str_cmp_thres  The threshold for the string comparison function, must
+                      be in (0..1).
+  """
+
+  # ---------------------------------------------------------------------------
+
+  def __init__(self, **kwargs):
+    """Constructor. Process the index specific arguments first, then call the
+       base class constructor.
+    """
+
+    self.str_cmp_funct = None
+    self.str_cmp_thres = None
+
+    base_kwargs = {}  # Dictionary, will contain unprocessed arguments for base
+                      # class constructor
+
+    for (keyword, value) in kwargs.items():
+
+      if (keyword.startswith('str_cmp_f')):
+        auxiliary.check_is_function_or_method('str_cmp_funct', value)
+        self.str_cmp_funct = value
+
+      elif (keyword.startswith('str_cmp_t')):
+        auxiliary.check_is_normalised('str_cmp_thres', value)
+        self.str_cmp_thres = value
+
+      else:
+        base_kwargs[keyword] = value
+
+    Indexing.__init__(self, base_kwargs)  # Initialise base class
+
+    # Make sure parameters have been set - - - - - - - - - - - - - - - - - - -
+    #
+    auxiliary.check_is_function_or_method('str_cmp_funct', self.str_cmp_funct)
+    auxiliary.check_is_normalised('str_cmp_thres', self.str_cmp_thres)
+
+    # A log a message
+    #
+    self.log([('String comparison function',  self.str_cmp_funct),
+              ('String comparison threshold', self.str_cmp_thres)])
+
+  # ---------------------------------------------------------------------------
+
+  def build(self):
+    """Method to build an index data structure.
+
+       Read all records from both files, extract blocking variables and then
+       insert records into blocks.
+    """
+
+    logging.info('')
+    logging.info('Build adaptive sorted index: "%s"' % \
+                 (self.description))
+
+    start_time = time.time()
+
+    self.__records_into_inv_index__()  # Read records and put into index
+
+    logging.info('Built adaptive sorted index in %s' % \
+                 (auxiliary.time_string(time.time()-start_time)))
+
+    memory_usage_str = auxiliary.get_memory_usage()
+    if (memory_usage_str != None):
+      logging.info('  '+memory_usage_str)
+
+    self.status = 'built'  # Update index status
+
+  # ---------------------------------------------------------------------------
+
+  def compact(self):
+    """Method to compact an index data structure.
+
+       Adaptively generate blocks according to the sorted index key values.
+
+       Make a dictionary of all record pairs over all indices, which removes
+       duplicate record pairs.
+    """
+
+    NUM_BLOCK_PROGRESS_REPORT = 1000
+
+    logging.info('')
+    logging.info('Compact adaptive sorted index: "%s"' % \
+                 (self.description))
+
+    start_time = time.time()
+
+    # Check if index has been built - - - - - - - - - - - - - - - - - - - - - -
+    #
+    if (self.status != 'built'):
+      logging.exception('Index "%s" has not been built, compacting is not ' % \
+                        (self.description)+'possible')
+      raise Exception
+
+    num_indices = len(self.index_def)
+
+    dedup_rec_pair_funct = self.__dedup_rec_pairs__  # Shorthands
+    link_rec_pair_funct =  self.__link_rec_pairs__
+
+    str_cmp_funct =  self.str_cmp_funct
+    str_cmp_thres =  self.str_cmp_thres
+
+    rec_pair_dict = {}  # A dictionary with record identifiers from data set 1
+                        # as keys and sets of identifiers from data set 2 as
+                        # values
+
+    for i in range(num_indices):
+
+      istart_time = time.time()
+
+      num_blocks_done = 0
+
+      if (self.do_deduplication == True):  # A deduplication - - - - - - - - -
+
+        this_index = self.index1[i]  # Shorthand
+
+        index_val_list = this_index.keys()  # Sort all unique index key values
+        index_val_list.sort()
+
+        num_index_vals = len(index_val_list)
+
+#        win_start_index = 0  # Position in the index key value list of the
+#                             # start of the current window
+#        win_end_index =   0  # Make sure it works even if there is one index
+#                             # key value only
+#
+#        while (win_end_index < num_index_vals):
+#
+#          first_val = index_val_list[win_start_index]
+#          last_val =  index_val_list[win_end_index]
+#
+#          # Increase window size as long as index values are similar
+#          #
+#          while ((str_cmp_funct(first_val, last_val) > str_cmp_thres) and \
+#                 (win_end_index < num_index_vals-1)):
+#            win_end_index += 1
+#            last_val =  index_val_list[win_end_index]
+#
+#          # Generate the list of record identifiers from this window
+#          #
+#          curr_win_record_set = set()
+#          for this_val in index_val_list[win_start_index:win_end_index+1]:
+#
+#            curr_rec_id_list = this_index[this_val]
+#
+#            curr_win_record_set = \
+#                               curr_win_record_set.union(set(curr_rec_id_list))
+#
+#          if (len(curr_win_record_set) > 1):
+#
+#            dedup_rec_pair_funct(list(curr_win_record_set), rec_pair_dict)
+#
+#          win_end_index += 1
+#          win_start_index = win_end_index
+
+        # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+        # The code below follows algorithm 2 from the above mentioned paper. It
+        # is more efficient than the above simple linear scan.
+        #
+        # The notation given in this algorithm will be used as much as possible.
+        #
+        block_start_index = 0
+
+        while (block_start_index < num_index_vals):
+
+          w_first = block_start_index
+          w = 1  # To make sure this works even with one single index key value
+          w_last = w_first + w
+
+          # Get the first and last index key values in the current window
+          #
+          first_val = index_val_list[w_first]
+          last_val =  index_val_list[w_last-1]
+
+          # Enlargement phase: Move the window forward as long as index key
+          # values are similar
+          #
+          while ((str_cmp_funct(first_val, last_val) > str_cmp_thres) and
+                 (w_last < num_index_vals)):
+            w_first = w_last-1  # Make sure the windows overlap
+            w *= 2              # Geometric increase in the window size
+            w_last += w-1       # Adjust for overlap
+            if (w_last > num_index_vals):
+              w_last = num_index_vals  # Reached end of array
+
+            first_val = last_val
+            last_val =  index_val_list[w_last-1]
+
+          # Retrenchment phase: Find the boundary pair (use simple linear scan)
+          # (the retrenchment phase as described in the above mentioned paper is
+          # yet to be implementd)
+          #
+          tmp_pos = block_start_index
+
+          # Take care of special case where last block is 1 index key value only
+          #
+          if (tmp_pos+1 == num_index_vals):
+            block_end_index = tmp_pos+1
+
+          else:
+            first_val =  index_val_list[tmp_pos]
+            second_val = index_val_list[tmp_pos+1]
+
+            while ((str_cmp_funct(first_val, second_val) > str_cmp_thres) and
+                   ((tmp_pos+1) < num_index_vals)):
+              tmp_pos += 1
+              first_val =  second_val
+              second_val = index_val_list[tmp_pos]
+
+            block_end_index = tmp_pos+1
+
+          # Generate the list of record identifiers from this block
+          #
+          curr_win_record_set = set()
+          for this_val in index_val_list[block_start_index:block_end_index]:
+            curr_rec_id_list = this_index[this_val]
+
+            curr_win_record_set = \
+                                curr_win_record_set.union(set(curr_rec_id_list))
+
+          if (len(curr_win_record_set) > 1):
+            dedup_rec_pair_funct(list(curr_win_record_set), rec_pair_dict)
+
+          block_start_index = block_end_index
+
+          num_blocks_done += 1
+
+          del curr_win_record_set
+
+          # Log progress report every XXX blocks processed - - - - - - - - - -
+          #
+          if ((num_blocks_done % NUM_BLOCK_PROGRESS_REPORT) == 0):
+            logging.info('    Processed %d of %d blocks' % \
+                         (num_blocks_done, num_index_vals))
+            memory_usage_str = auxiliary.get_memory_usage()
+            if (memory_usage_str != None):
+              logging.info('      '+memory_usage_str)
+
+      else:  # A linkage - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+        this_index1 = self.index1[i]  # Shorthands
+        this_index2 = self.index2[i]
+
+        # Get and sort all unique index key values from both indices
+        #
+        index_val_set = set(this_index1.keys()+this_index2.keys())
+        index_val_list = list(index_val_set)
+        index_val_list.sort()
+
+        num_index_vals = len(index_val_list)
+
+#        win_start_index = 0  # Position in the index key value list of the
+#                             # start of the current window
+#        win_end_index =   0  # Make sure it works even if there is one index
+#                             # key value only
+#
+#        while (win_end_index < num_index_vals):
+#
+#          first_val = index_val_list[win_start_index]
+#          last_val =  index_val_list[win_end_index]
+#
+#          # Increase window size as long as index values are similar
+#          #
+#          while ((str_cmp_funct(first_val, last_val) > str_cmp_thres) and \
+#                 (win_end_index < num_index_vals-1)):
+#            win_end_index += 1
+#            last_val =  index_val_list[win_end_index]
+#
+#          # Generate the lists of record identifiers from this window
+#          #
+#          curr_win_record_set1 = set()
+#          curr_win_record_set2 = set()
+#
+#          for this_val in index_val_list[win_start_index:win_end_index+1]:
+#
+#            if (this_val in this_index1):
+#              curr_rec_id_list1 = this_index1[this_val]
+#
+#              curr_win_record_set1 = \
+#                             curr_win_record_set1.union(set(curr_rec_id_list1))
+#
+#            if (this_val in this_index2):
+#              curr_rec_id_list2 = this_index2[this_val]
+#
+#              curr_win_record_set2 = \
+#                             curr_win_record_set2.union(set(curr_rec_id_list2))
+#
+#          if ((len(curr_win_record_set1) > 0) and \
+#              (len(curr_win_record_set2) > 0)):
+#
+#            link_rec_pair_funct(list(curr_win_record_set1),
+#                                list(curr_win_record_set2), rec_pair_dict)
+#
+#          win_end_index += 1
+#          win_start_index = win_end_index
+
+        # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+        # The code below follows algorithm 2 from the above mentioned paper. It
+        # is more efficient than the above simple linear scan.
+        #
+        # The notation given in this algorithm will be used as much as possible.
+        #
+        block_start_index = 0
+
+        while (block_start_index < num_index_vals):
+
+          w_first = block_start_index
+          w = 1  # To make sure this works even with one single index key value
+          w_last = w_first + w
+
+          # Get the first and last index key values in the current window
+          #
+          first_val = index_val_list[w_first]
+          last_val =  index_val_list[w_last-1]
+
+          # Enlargement phase: Move the window forward as long as index key
+          # values are similar
+          #
+          while ((str_cmp_funct(first_val, last_val) > str_cmp_thres) and
+                 (w_last < num_index_vals)):
+            w_first = w_last-1  # Make sure the windows overlap
+            w *= 2              # Geometric increase in the window size
+            w_last += w-1       # Adjust for overlap
+            if (w_last > num_index_vals):
+              w_last = num_index_vals  # Reached end of array
+
+            first_val = last_val
+            last_val =  index_val_list[w_last-1]
+
+          # Retrenchment phase: Find the boundary pair (use simple linear scan)
+          # (the retrenchment phase as described in the above mentioned paper is
+          # yet to be implementd)
+          #
+          #
+          tmp_pos = block_start_index
+
+          # Take care of special case where last block is 1 index key value only
+          #
+          if (tmp_pos+1 == num_index_vals):
+            block_end_index = tmp_pos+1
+
+          else:
+            first_val =  index_val_list[tmp_pos]
+            second_val = index_val_list[tmp_pos+1]
+
+            while ((str_cmp_funct(first_val, second_val) > str_cmp_thres) and
+                   ((tmp_pos+1) < num_index_vals)):
+              tmp_pos += 1
+              first_val =  second_val
+              second_val = index_val_list[tmp_pos]
+
+            block_end_index = tmp_pos+1
+
+          # Generate the list of record identifiers from this block
+          #
+          curr_win_record_set1 = set()
+          curr_win_record_set2 = set()
+
+          for this_val in index_val_list[block_start_index:block_end_index]:
+
+            if (this_val in this_index1):
+              curr_rec_id_list1 = this_index1[this_val]
+
+              curr_win_record_set1 = \
+                             curr_win_record_set1.union(set(curr_rec_id_list1))
+
+            if (this_val in this_index2):
+              curr_rec_id_list2 = this_index2[this_val]
+
+              curr_win_record_set2 = \
+                             curr_win_record_set2.union(set(curr_rec_id_list2))
+
+          if ((len(curr_win_record_set1) > 0) and \
+              (len(curr_win_record_set2) > 0)):
+            link_rec_pair_funct(list(curr_win_record_set1),
+                                list(curr_win_record_set2), rec_pair_dict)
+
+          block_start_index = block_end_index
+
+          num_blocks_done += 1
+
+          del curr_win_record_set1, curr_win_record_set2
+
+          # Log progress report every XXX blocks processed - - - - - - - - - -
+          #
+          if ((num_blocks_done % NUM_BLOCK_PROGRESS_REPORT) == 0):
+            logging.info('    Processed %d of %d blocks' % \
+                         (num_blocks_done, num_index_vals))
+            memory_usage_str = auxiliary.get_memory_usage()
+            if (memory_usage_str != None):
+              logging.info('      '+memory_usage_str)
+
+      logging.info('  Compacted sorting index %d in %s' % \
+                   (i, auxiliary.time_string(time.time()-istart_time)))
+
+      self.index1[i].clear()  # Not needed anymore
+      self.index2[i].clear()
+
+      logging.info('    Explicitly run garbage collection')
+      gc.collect()
+
+      memory_usage_str = auxiliary.get_memory_usage()
+      if (memory_usage_str != None):
+        logging.info('      '+memory_usage_str)
+
+    self.rec_pair_dict = rec_pair_dict
+
+    self.num_rec_pairs = 0  # Count lengths of all record identifier sets - - -
+
+    for rec_ident2_set in self.rec_pair_dict.itervalues():
+      self.num_rec_pairs += len(rec_ident2_set)
+
+    logging.info('Compacted sorting index in %s' % \
+                 (auxiliary.time_string(time.time()-start_time)))
+    logging.info('  Number of record pairs: %d' % (self.num_rec_pairs))
+
+    self.status = 'compacted'  # Update index status
+
+  # ---------------------------------------------------------------------------
+
+  def run(self, length_filter_perc = None, cut_off_threshold = None):
+    """Iterate over all blocks in the index.
+
+       Compare the record pairs as produced by the sorting indexing process,
+       and return a weight vector dictionary with keys made of a tuple (record
+       identifier 1, record identifier 2), and corresponding values the
+       comparison weights.
+    """
+
+    logging.info('')
+    logging.info('Started comparison of %d record pairs' % \
+                 (self.num_rec_pairs))
+    if (self.log_funct != None):
+      self.log_funct('Started comparison of %d record pairs' % \
+                     (self.num_rec_pairs))
+
+    # Check if index has been compacted - - - - - - - - - - - - - - - - - - - -
+    #
+    if (self.status != 'compacted'):
+      logging.exception('Index "%s" has not been compacted, running ' % \
+                        (self.description)+'comparisons not possible')
+      raise Exception
+
+    # Compare the records
+    #
+    return self.__compare_rec_pairs_from_dict__(length_filter_perc,
+                                                cut_off_threshold)
+
+
+
+
+
 
 # =============================================================================
 
@@ -4550,9 +5393,9 @@ class SuffixArrayIndex(Indexing):
 
        block_method   A tuple containing the details of how to form the blocks
                       using the strings in the suffix array. This tuple is of
-                      the form: (min_q_gram_len, max_block_size), with
+                      the form: (min_suffix_len, max_block_size), with
                       parameters:
-                      - min_q_gram_len  The minimum length of sub-strings to be
+                      - min_suffix_len  The minimum length of sub-strings to be
                                         stored in the suffix-array and to be
                                         used as indexing (blocking) values.
                       - max_block_size  The maximum records to be put into a
@@ -4623,8 +5466,8 @@ class SuffixArrayIndex(Indexing):
                         (str(self.block_method)))
       raise Exception
 
-    auxiliary.check_is_integer('min_q_gram_len', self.block_method[0])
-    auxiliary.check_is_positive('min_q_gram_len', self.block_method[0])
+    auxiliary.check_is_integer('min_suffix_len', self.block_method[0])
+    auxiliary.check_is_positive('min_suffix_len', self.block_method[0])
     auxiliary.check_is_integer('max_block_size', self.block_method[1])
     auxiliary.check_is_positive('max_block_size', self.block_method[1])
 
@@ -4641,7 +5484,7 @@ class SuffixArrayIndex(Indexing):
     """Method to build an index data structure.
 
        Read the data set(s) from file(s) and insert into suffix arrays (one per
-       index defintion), which are the nsorted.
+       index defintion), then remove unneeded suffix array entries.
     """
 
     logging.info('')
@@ -4664,7 +5507,7 @@ class SuffixArrayIndex(Indexing):
     start_char =             self.START_CHAR
     end_char =               self.END_CHAR
     padded =                 self.padded
-    min_q_gram_len =         self.block_method[0]
+    min_suffix_len =         self.block_method[0]
     max_block_size =         self.block_method[1]
 
     # Set a flag for the way suffix array values are generated
@@ -4753,26 +5596,24 @@ class SuffixArrayIndex(Indexing):
 
               # According to Akiko Aizawa (e-mail 8/03/2007) not only suffix
               # strings are generated in their approach, but all sub-strings
-              # down to length min_q_gram_len
+              # down to length min_suffix_len
 
               # Outer loop over all sub-string length
               #
-              #for s1 in range(index_val_len-1, min_q_gram_len-1, -1):
-              for s1 in range(min_q_gram_len, index_val_len+1):
-
+              #for s1 in range(index_val_len-1, min_suffix_len-1, -1):
+              for s1 in range(min_suffix_len, index_val_len+1):
                 # Inner loop over all possible sub-strings with this length
                 #
                 for s2 in range(index_val_len-s1+1):
                   this_suffix_str = index_val[s2:s2+s1]
                   this_suffix_str_set.add(this_suffix_str)
-
             else:  # Only create the true suffixes of the index value string
 
-              for s in range(index_val_len-min_q_gram_len+1):
+              for s in range(index_val_len-min_suffix_len+1):
                 this_suffix_str = index_val[s:]
                 this_suffix_str_set.add(this_suffix_str)
 
-            # Now insert all sufix strings into index
+            # Now insert all suffix strings into index
             #
             for this_suffix_str in this_suffix_str_set:
 
@@ -4782,12 +5623,11 @@ class SuffixArrayIndex(Indexing):
 
                 # Check if max_block records had this string value before
                 #
-                if (len(suffix_str_rec_list) == max_block_size):
-                  del suffix_str_rec_list
-                  this_index[this_suffix_str] = -1 # Mark as being too frequent
-                else:  # Put back into index
+                if (len(suffix_str_rec_list) < max_block_size):
                   suffix_str_rec_list.append(rec_ident)
                   this_index[this_suffix_str] = suffix_str_rec_list
+                else:  # Too many records have this value
+                  this_index[this_suffix_str] = -1 # Mark as being too frequent
 
             del this_suffix_str_set
 
@@ -4803,12 +5643,12 @@ class SuffixArrayIndex(Indexing):
                    (dataset.num_records, used_sec_str, rec_time_str))
       logging.info('')
 
-    # Now sort the suffix array strings - - - - - - - - - - - - - - - - - - - -
+    # Now remove unneeded entries in suffix array strings - - - - - - - - - - -
     #
     self.suffix_array_strings1 = []
     self.suffix_array_strings2 = []
 
-    logging.info('Sorting suffix array strings:')
+    logging.info('Removing unneeded suffix array strings:')
 
     for i in range(num_indices):
 
@@ -4846,7 +5686,6 @@ class SuffixArrayIndex(Indexing):
                    'than %d (maximum block size) records' % (max_block_size))
 
       this_suff_array_strings = this_index.keys()
-      this_suff_array_strings.sort()
       self.suffix_array_strings1.append(this_suff_array_strings)
       logging.info('  Suffix array in index %d for data set 1 contains %d ' \
                    % (i, len(this_suff_array_strings)) + 'strings')
@@ -4872,7 +5711,6 @@ class SuffixArrayIndex(Indexing):
                      'than %d (maximum block size) records' % (max_block_size))
 
         this_suff_array_strings = this_index.keys()
-        this_suff_array_strings.sort()
         self.suffix_array_strings2.append(this_suff_array_strings)
         logging.info('  Suffix array in index %d for data set 2 contains %d ' \
                      % (i, len(this_suff_array_strings)) + 'strings')
@@ -4985,13 +5823,13 @@ class SuffixArrayIndex(Indexing):
 
           curr_str_val_records1 = this_index1[s] # Suffix array from data set 1
           curr_block_size1 =      len(curr_str_val_records1)
-          largest_block =         max(largest_block, curr_block_size1)
 
           if s in this_str_list2:  # String is in both suffix arrays
 
             curr_str_val_records2 = this_index2[s]  # From data set 2
             curr_block_size2 =      len(curr_str_val_records2)
-            largest_block =         max(largest_block, curr_block_size2)
+            largest_block =         max(largest_block, \
+                                        curr_block_size1 + curr_block_size2)
 
             link_rec_pair_funct(curr_str_val_records1, curr_str_val_records2,
                                 rec_pair_dict)
@@ -5066,6 +5904,615 @@ class SuffixArrayIndex(Indexing):
     #
     return self.__compare_rec_pairs_from_dict__(length_filter_perc,
                                                 cut_off_threshold)
+
+
+# =============================================================================
+
+class RobustSuffixArrayIndex(Indexing):
+  """Class that builds a suffix array based index on the values in the blocking
+     variables, which can then efficiently be processed with different q-gram
+     criterias.
+
+     For details see the following paper:
+
+     - Robust Record Linkage Blocking using Suffix Arrays
+       Timothy de Vries, Hui Ke, Sanjay Chawla and Peter Christen.
+       Proceedings of the ACM Conference on Information and Knowledge
+       Management (CIKM), Hong Kong, November 2009.
+
+     The additional argument (besides the base class arguments) which has to be
+     set when this index is initialised is:
+
+       block_method   A tuple containing the details of how to form the blocks
+                      using the strings in the suffix array. This tuple is of
+                      the form: (min_suffix_len, max_block_size), with
+                      parameters:
+                      - min_suffix_len  The minimum length of sub-strings to
+                                        be stored in the suffix-array and to
+                                        be used as indexing (blocking) values.
+                      - max_block_size  The maximum records to be put into a
+                                        block.
+       padded         If set to True (default), the beginning and end of the
+                      indexing values taken from records will be padded with a
+                      special start and end characters. If set to False no
+                      such padding will be done.
+       str_cmp_funct  A function to compare two strings (as implemented in the
+                      stringcmp module).
+       str_cmp_thres  The threshold for the string comparison function, must
+                      be in (0..1).
+  """
+
+  # ---------------------------------------------------------------------------
+
+  def __init__(self, **kwargs):
+    """Constructor. Process the index specific arguments first, then call the
+       base class constructor.
+
+       Note that number of record pairs will not be known after initialisation
+       (so it is left at value None).
+    """
+
+    self.block_method =  None
+    self.padded =        True
+    self.str_cmp_funct = None
+    self.str_cmp_thres = None
+
+    base_kwargs = {}  # Dictionary, will contain unprocessed arguments for base
+                      # class constructor
+
+    for (keyword, value) in kwargs.items():
+
+      if (keyword.startswith('block_m')):
+        auxiliary.check_is_tuple('block_method', value)
+        self.block_method = value
+
+      elif (keyword.startswith('padd')):
+        auxiliary.check_is_flag('padded', value)
+        self.padded = value
+
+      elif (keyword.startswith('str_cmp_f')):
+        auxiliary.check_is_function_or_method('str_cmp_funct', value)
+        self.str_cmp_funct = value
+
+      elif (keyword.startswith('str_cmp_t')):
+        auxiliary.check_is_normalised('str_cmp_thres', value)
+        self.str_cmp_thres = value
+
+      else:
+        base_kwargs[keyword] = value
+
+    Indexing.__init__(self, base_kwargs)  # Initialise base class
+
+    # Check if block method and parameters given are OK - - - - - - - - - - - -
+    #
+    auxiliary.check_is_not_none('block_method', self.block_method)
+    auxiliary.check_is_function_or_method('str_cmp_funct', self.str_cmp_funct)
+    auxiliary.check_is_normalised('str_cmp_thres', self.str_cmp_thres)
+
+    if (len(self.block_method) != 2):
+      logging.exception('Blocking method tuple needs two elements: %s' % \
+                        (str(self.block_method)))
+      raise Exception
+
+    auxiliary.check_is_integer('max_block_size', self.block_method[1])
+    auxiliary.check_is_positive('max_block_size', self.block_method[1])
+
+    self.log([('Blocking method',             self.block_method),
+              ('String comparison function',  self.str_cmp_funct),
+              ('String comparison threshold', self.str_cmp_thres),
+              ('Padded flag',                 self.padded)])
+
+    self.START_CHAR = chr(1)
+    self.END_CHAR =   chr(2)
+
+  # ---------------------------------------------------------------------------
+
+  def build(self):
+    """Method to build an index data structure.
+
+       This is the same as the build method for the SuffixArrayIndex.
+    """
+
+    logging.info('')
+    logging.info('Build robust suffix array index: "%s"' % (self.description))
+
+    start_time = time.time()
+
+    num_indices = len(self.index_def)
+
+    # Index data structure for blocks is one dictionary per index - - - - - - -
+    # (a suffix array, with suffix strings as keys and record
+    # identifiers as lists)
+    #
+    for i in range(num_indices):
+      self.index1[i] = {}  # Index for data set 1
+      self.index2[i] = {}  # Index for data set 2
+
+    get_index_values_funct = self.__get_index_values__  # Shorthands
+    skip_missing =           self.skip_missing
+    start_char =             self.START_CHAR
+    end_char =               self.END_CHAR
+    padded =                 self.padded
+    min_suffix_len =         self.block_method[0]
+    max_block_size =         self.block_method[1]
+
+    max_suff_str_len = [0]*num_indices  # Record longest suffix strings
+
+    # A list of data structures needed for the build process:
+    # - the index data structure (dictionary)
+    # - the record cache
+    # - the data set to be read
+    # - the comparison fields which are used
+    # - a list index (0 for data set 1, 1 for data set 2)
+    #
+    build_list = [(self.index1, self.rec_cache1, self.dataset1,
+                   self.comp_field_used1, 0)] # For data set 1
+
+    if (self.do_deduplication == False):  # If linkage append data set 2
+      build_list.append((self.index2, self.rec_cache2, self.dataset2,
+                   self.comp_field_used2, 1))
+
+    # Reading loop over all records in one or both data set(s) - - - - - - - -
+    #
+    for (index,rec_cache,dataset,comp_field_used_list,ds_index) in build_list:
+
+      # Calculate a counter for the progress report
+      #
+      if (self.progress_report != None):
+        progress_report_cnt = max(1, int(dataset.num_records / \
+                                     (100.0 / self.progress_report)))
+      else:  # So no progress report is being logged
+        progress_report_cnt = dataset.num_records + 1
+
+      istart_time = time.time()
+
+      rec_read = 0  # Number of records read from data set
+
+      for (rec_ident, rec) in dataset.readall(): # Read all records in data set
+
+        # Extract record fields needed for comparisons (set all others to '')
+        #
+        comp_rec = []
+
+        field_ind = 0
+        for field in rec:
+          if (field_ind in comp_field_used_list):
+            comp_rec.append(field.lower())
+          else:
+            comp_rec.append('')
+          field_ind += 1
+
+        rec_cache[rec_ident] = comp_rec  # Put into record cache
+
+        # Now get the index variable values for this record - - - - - - - - - -
+        #
+        rec_index_val_list = get_index_values_funct(rec, ds_index)
+
+        for i in range(num_indices):  # Put record identifier into all indices
+
+          this_index = index[i]  # Shorthand
+
+          index_val = rec_index_val_list[i]
+
+          if ((index_val != '') or (skip_missing == False)):
+
+            if (padded == True):  # Add start and end characters
+              index_val = '%s%s%s' % (start_char, index_val, end_char)
+
+            index_val_len = len(index_val)
+
+            max_suff_str_len[i] = max(max_suff_str_len[i], index_val_len)
+
+            # Create all suffix strings (up to minimum length) and insert them
+            # into the index
+
+            # A set of all suffix string values for this index value
+            #
+            this_suffix_str_set = set()
+            this_suffix_str_set.add(index_val)  # Even if shorter than min_len
+
+            # Create the true suffixes of the index value string
+            #
+            for s in range(index_val_len-min_suffix_len+1):
+              this_suffix_str = index_val[s:]
+              this_suffix_str_set.add(this_suffix_str)
+
+            # Now insert all suffix strings into index
+            #
+            for this_suffix_str in this_suffix_str_set:
+
+              suffix_str_rec_list = this_index.get(this_suffix_str, [])
+
+              if (suffix_str_rec_list != -1):  # Not too many records yet
+
+                # Check if max_block records had this string value before
+                #
+                if (len(suffix_str_rec_list) < max_block_size):
+                  suffix_str_rec_list.append(rec_ident)
+                  this_index[this_suffix_str] = suffix_str_rec_list
+                else:  # Too many records have this value
+                  this_index[this_suffix_str] = -1 # Mark as being too frequent
+
+            del this_suffix_str_set
+
+        rec_read += 1
+
+        if ((rec_read % progress_report_cnt) == 0):
+          self.__log_build_progress__(rec_read,dataset.num_records,start_time)
+
+      used_sec_str = auxiliary.time_string(time.time()-istart_time)
+      rec_time_str = auxiliary.time_string((time.time()-istart_time) / \
+                                           dataset.num_records)
+      logging.info('Read and indexed %d records in %s (%s per record)' % \
+                   (dataset.num_records, used_sec_str, rec_time_str))
+      logging.info('')
+
+    # Now remove unneeded entries in suffix array strings - - - - - - - - - - -
+    #
+    self.suffix_array_strings1 = []
+    self.suffix_array_strings2 = []
+
+    logging.info('Removing unneeded suffix array strings:')
+
+    for i in range(num_indices):
+
+      # For a deduplication, all suffix array string values that have only one
+      # record can be removed, as are all entries containing more than
+      # 'max_block_size' records)
+      #
+      this_index = self.index1[i]
+
+      num_original = len(this_index)
+      num_removed_1 =      0
+      num_removed_large =  0
+
+      this_suff_array_strings = this_index.keys()
+
+      for s in this_suff_array_strings:
+
+        if (this_index[s] == -1):  # This entry was too frequent
+          del this_index[s]
+          num_removed_large += 1
+        else:
+          this_block_len = len(this_index[s])
+
+          # Check if length is 1 for a deduplication only
+          #
+          if (self.do_deduplication == True) and (this_block_len == 1):
+            del this_index[s]
+            num_removed_1 += 1
+
+      if (self.do_deduplication == True):
+        logging.info('  Removed %d (of %d) strings from suffix array 1 as ' % \
+                     (num_removed_1,num_original) + 'they only had one record')
+      logging.info('  Removed %d (of %d) strings from suffix array 1 as ' % \
+                   (num_removed_large, num_original) + 'they had more ' + \
+                   'than %d (maximum block size) records' % (max_block_size))
+
+      this_suff_array_strings = this_index.keys()
+      self.suffix_array_strings1.append(this_suff_array_strings)
+      logging.info('  Suffix array in index %d for data set 1 contains %d ' \
+                   % (i, len(this_suff_array_strings)) + 'strings')
+
+      # Linkage (only remove entries with too many records) - - - - - - - - - -
+      #
+      if (self.do_deduplication == False):
+        this_index = self.index2[i]
+
+        num_original = len(this_index)
+        num_removed_large = 0
+
+        this_suff_array_strings = this_index.keys()
+
+        for s in this_suff_array_strings:
+
+          if (this_index[s] == -1):  # This entry was too frequent
+            del this_index[s]
+            num_removed_large += 1
+
+        logging.info('  Removed %d (of %d) strings from suffix array 2 as ' % \
+                     (num_removed_large, num_original) + 'they had more ' + \
+                     'than %d (maximum block size) records' % (max_block_size))
+
+        this_suff_array_strings = this_index.keys()
+        self.suffix_array_strings2.append(this_suff_array_strings)
+        logging.info('  Suffix array in index %d for data set 2 contains %d ' \
+                     % (i, len(this_suff_array_strings)) + 'strings')
+
+      logging.info('    Longest string in this suffix array is %d characters' \
+                   % (max_suff_str_len[i]) + ' long')
+
+    logging.info('Built suffix array index in %s' % \
+                 (auxiliary.time_string(time.time()-start_time)))
+
+    memory_usage_str = auxiliary.get_memory_usage()
+    if (memory_usage_str != None):
+      logging.info('  '+memory_usage_str)
+
+    self.status = 'built'  # Update index status
+
+  # ---------------------------------------------------------------------------
+
+  def compact(self):
+    """Method to compact an index data structure.
+
+       Sort suffix array, then do approximate string comparisons and merge
+       lists if suffixarray values are similar.
+
+       Also remove resulting blocks that are larger than 'max_block_size'.
+
+       Then put all resulting record pairs into a dictionary.
+
+       Finally calculate the total number of record pairs.
+    """
+
+    logging.info('')
+    logging.info('Compact robust suffix array index: "%s"' % \
+                 (self.description))
+
+    start_time = time.time()
+
+    # Check if index has been built - - - - - - - - - - - - - - - - - - - - - -
+    #
+    if (self.status != 'built'):
+      logging.exception('Index "%s" has not been built, compacting is not ' % \
+                        (self.description)+'possible')
+      raise Exception
+
+    dedup_rec_pair_funct = self.__dedup_rec_pairs__  # Shorthands
+    link_rec_pair_funct =  self.__link_rec_pairs__
+
+    max_block_size = self.block_method[1]
+    str_cmp_funct =  self.str_cmp_funct
+    str_cmp_thres =  self.str_cmp_thres
+
+    num_indices = len(self.index_def)
+
+    rec_pair_dict = {}  # A dictionary with record identifiers from data set 1
+                        # as keys and sets of identifiers from data set 2 as
+                        # values
+
+    for i in range(num_indices):
+
+      istart_time = time.time()
+
+      num_strings_done = 0
+      largest_block =    0
+
+      if (self.do_deduplication == True):  # A deduplication - - - - - - - - -
+
+        this_str_list = self.suffix_array_strings1[i]  # Shorthands
+        this_index =    self.index1[i]
+
+        this_str_list_len = len(this_str_list)
+        this_str_list.sort()  # Sort all suffixes alphabetically
+
+        # Create a new index and a new string list where similar strings (and
+        # their record lists) are merged
+        #
+        merged_index =    {}
+        merged_str_list = []
+
+        j = 0
+        while (j < (this_str_list_len-1)):
+          this_str = this_str_list[j]  # Get current string
+          k = j+1  # Compare with following strings until string similarity
+                   # is below given threshold
+
+          while ((k < this_str_list_len) and \
+                 (str_cmp_funct(this_str, this_str_list[k]) >= str_cmp_thres)):
+            k += 1
+
+          if ((j+1) == k):  # Case 1: No merger, simply copy into merged index
+            merged_index[this_str] = this_index[this_str]
+            merged_str_list.append(this_str)
+
+          else:  # Merge strings
+            merged_str = this_str+'-'+this_str_list[k-1]  # New merged string
+                                              # (first and last string value)
+            merged_rec_set = set(this_index[this_str])
+
+            for l in range(j+1,k):
+              other_str = this_str_list[l]
+              merged_rec_set = merged_rec_set.union(set(this_index[other_str]))
+
+            # Do not store if too large (check with Tim deVries!) *************
+            #
+##            if (len(merged_rec_set) <= max_block_size):
+            merged_index[merged_str] = list(merged_rec_set)
+            merged_str_list.append(merged_str)
+
+          j = k  # k is the first not merged string
+
+        merged_str_list_len = len(merged_str_list)
+
+        # Calculate a counter for the progress report
+        #
+        if (self.progress_report != None):
+          progress_report_cnt = max(1, int(merged_str_list_len / \
+                                       (100.0 / self.progress_report)))
+        else:  # So no progress report is being logged
+          progress_report_cnt = merged_str_list_len + 1
+
+        for s in merged_str_list:
+
+          curr_str_val_records = merged_index[s]  # Get records for this string
+          curr_block_size =      len(curr_str_val_records)
+          largest_block =        max(largest_block, curr_block_size)
+
+          dedup_rec_pair_funct(curr_str_val_records, rec_pair_dict)
+
+          num_strings_done += 1
+
+          if ((num_strings_done % progress_report_cnt) == 0):
+            perc_done = int(round(100.0*num_strings_done / merged_str_list_len))
+            logging.info('    Processed %d of %d (%d%%) strings' % \
+                         (num_strings_done, merged_str_list_len, perc_done))
+            memory_usage_str = auxiliary.get_memory_usage()
+            if (memory_usage_str != None):
+              logging.info('      '+memory_usage_str)
+
+          del curr_str_val_records
+
+      else:  # A linkage - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+        this_str_list1 = self.suffix_array_strings1[i]  # Shorthands
+        this_str_list2 = self.suffix_array_strings2[i]
+        this_index1 =    self.index1[i]
+        this_index2 =    self.index2[i]
+
+        # Create a combined sorted string list
+        #
+        comb_str_list = list(set(this_str_list1).union(set(this_str_list2)))
+
+        comb_str_list_len = len(comb_str_list)
+        comb_str_list.sort()
+
+        # Create a new index and a new string list where similar strings (and
+        # their record lists) are merged
+        #
+        merged_index =    {}  # Will have two list, one each per data set
+        merged_str_list = []
+
+        j = 0
+        while (j < (comb_str_list_len-1)):
+          this_str = comb_str_list[j]  # Get current string
+
+          k = j+1  # Compare with following strings until string similarity
+                   # is below given threshold
+
+          while ((k < comb_str_list_len) and \
+                 (str_cmp_funct(this_str, comb_str_list[k]) >= str_cmp_thres)):
+            k += 1
+
+          if ((j+1) == k):  # Case 1: No merger, simply copy into merged index
+
+            # Only insert into merged index if there are records in this entry
+            # from both data sets
+            #
+            this_rec_list1 = this_index1.get(this_str, [])
+            this_rec_list2 = this_index2.get(this_str, [])
+            if ((this_rec_list1 != []) and (this_rec_list2 != [])):
+              merged_index[this_str] = (this_rec_list1, this_rec_list2)
+              merged_str_list.append(this_str)
+
+          else:  # Merge strings
+            merged_str = this_str+'-'+comb_str_list[k-1]  # New merged string
+                                              # (first and last string value)
+            merged_rec_set1 = set(this_index1.get(this_str, []))
+            merged_rec_set2 = set(this_index2.get(this_str, []))
+
+            for l in range(j+1,k):
+              other_str = comb_str_list[l]
+              new_rec_set1 = set(this_index1.get(other_str, []))
+              new_rec_set2 = set(this_index2.get(other_str, []))
+              merged_rec_set1 = merged_rec_set1.union(new_rec_set1)
+              merged_rec_set2 = merged_rec_set2.union(new_rec_set2)
+
+            # Do not store if too large (check with Tim deVries!) *************
+            #
+##            if (len(merged_rec_set) <= max_block_size):
+
+            # Only insert into merged index if there are records in this entry
+            # from both data sets
+            #
+            if ((len(merged_rec_set1) > 0) and (len(merged_rec_set2) > 0)):
+              merged_index[merged_str] = (list(merged_rec_set1),
+                                          list(merged_rec_set2))
+              merged_str_list.append(merged_str)
+
+          j = k  # k is the first not merged string
+
+        merged_str_list_len = len(merged_str_list)
+
+        # Calculate a counter for the progress report
+        #
+        if (self.progress_report != None):
+          progress_report_cnt = max(1, int(merged_str_list_len / \
+                                       (100.0 / self.progress_report)))
+        else:  # So no progress report is being logged
+          progress_report_cnt = merged_str_list_len + 1
+
+        for s in merged_str_list:
+
+          curr_str_val_records = merged_index[s]  # Get records for this string
+          curr_str_val_records1 = curr_str_val_records[0]
+          curr_str_val_records2 = curr_str_val_records[1]
+          largest_block = max(largest_block, \
+                       len(curr_str_val_records1) + len(curr_str_val_records2))
+
+          link_rec_pair_funct(curr_str_val_records1, curr_str_val_records2,
+                              rec_pair_dict)
+
+          num_strings_done += 1
+
+          if ((num_strings_done % progress_report_cnt) == 0):
+            perc_done = int(round(100.0*num_strings_done / merged_str_list_len))
+            logging.info('    Processed %d of %d (%d%%) strings' % \
+                         (num_strings_done, merged_str_list_len, perc_done))
+            memory_usage_str = auxiliary.get_memory_usage()
+            if (memory_usage_str != None):
+              logging.info('      '+memory_usage_str)
+
+          del curr_str_val_records1, curr_str_val_records2
+
+      logging.info('  Compacted suffix array index %d in %s' % \
+                   (i, auxiliary.time_string(time.time()-istart_time)))
+      logging.info('    Largest block contained %d records' % (largest_block))
+
+      self.index1[i].clear()  # Not needed anymore
+      self.index2[i].clear()
+
+      logging.info('    Explicitly run garbage collection')
+      gc.collect()
+
+      memory_usage_str = auxiliary.get_memory_usage()
+      if (memory_usage_str != None):
+        logging.info('      '+memory_usage_str)
+
+    self.rec_pair_dict = rec_pair_dict
+
+    self.num_rec_pairs = 0  # Count lengths of all record identifier sets - - -
+
+    for rec_ident2_set in self.rec_pair_dict.itervalues():
+      self.num_rec_pairs += len(rec_ident2_set)
+
+    logging.info('Compacted suffix array index in %s' % \
+                 (auxiliary.time_string(time.time()-start_time)))
+    logging.info('  Number of record pairs: %d' % (self.num_rec_pairs))
+
+    self.status = 'compacted'  # Update index status
+
+  # ---------------------------------------------------------------------------
+
+  def run(self, length_filter_perc = None, cut_off_threshold = None):
+    """Iterate over all blocks in the index.
+
+       Compare the record pairs as produced by the suffix array indexing
+       process, and return a weight vector dictionary with keys made of a tuple
+       (record identifier 1, record identifier 2), and corresponding values the
+       comparison weights.
+    """
+
+    logging.info('')
+    logging.info('Started comparison of %d record pairs' % \
+                 (self.num_rec_pairs))
+    if (self.log_funct != None):
+      self.log_funct('Started comparison of %d record pairs' % \
+                     (self.num_rec_pairs))
+
+    # Check if index has been compacted - - - - - - - - - - - - - - - - - - - -
+    #
+    if (self.status != 'compacted'):
+      logging.exception('Index "%s" has not been compacted, running ' % \
+                        (self.description)+'comparisons not possible')
+      raise Exception
+
+    # Compare the records
+    #
+    return self.__compare_rec_pairs_from_dict__(length_filter_perc,
+                                                cut_off_threshold)
+
 
 # =============================================================================
 
