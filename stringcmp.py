@@ -500,12 +500,11 @@ def winklermod(str1, str2, in_weight):
   #
   minlen = min(len(str1), len(str2))
 
-  for same in range(1,minlen+1):
-    if (str1[:same] != str2[:same]):
+  for same in range(min(minlen, 4)):
+    if str1[same] != str2[same]:
       break
-  same -= 1
-  if (same > 4):
-    same = 4
+  else:
+    same += 1
 
   assert (same >= 0)
 
