@@ -69,7 +69,7 @@ if (rand_ins_pos != None):  # If a valid position was returned
     print '      Inserted char "%s" into field "%s": "%s" -> "%s"' \
           % (rand_char, field_name, old_field_val, dup_field_val)
 ```
-#### 4. Check is the modification is successful, and update the modification counts.
+#### 4. Check if the modification is successful, and update the modification counts.
 A modification is successful if it makes a difference to the record than the original record, and it is not a duplicate with 
 another record.
 
